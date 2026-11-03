@@ -40,7 +40,7 @@ export class BriefPage {
 
   /** A suggested question goes straight to Chat, with the client in focus. */
   protected askNow(question: string): void {
-    const client = this.store.linkedContext()?.clientId ?? this.store.dockClientId();
+    const client = this.store.pickedClientId() ?? this.store.openLeads()[0]?.clientId;
     void this.router.navigate(['/rm/chat'], { queryParams: { q: question, client } });
   }
 

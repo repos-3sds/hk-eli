@@ -6,7 +6,7 @@ import { MomentType } from '../models/today.models';
  */
 export interface ChatQuestion {
   readonly text: string;
-  /** The client the question is about, if the RM picked one (from Today or a linked widget). */
+  /** The client the question is about, if the RM picked one (picked on Today). */
   readonly clientId: string | null;
 }
 
