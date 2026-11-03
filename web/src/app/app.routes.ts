@@ -27,8 +27,7 @@ export const routes: Routes = [
       {
         path: 'ideas',
         title: 'Ideas · HK ELI Chatbot',
-        loadComponent: () => import('./features/placeholder/tab-placeholder').then((m) => m.TabPlaceholder),
-        data: { title: 'Ideas', icon: 'lightbulb', purpose: 'Plain words become parameter chips, then the top five ideas with their concentration effect.' },
+        loadComponent: () => import('./features/idea-finder/idea-finder-page').then((m) => m.IdeaFinderPage),
       },
       {
         path: 'update',
