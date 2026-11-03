@@ -10,7 +10,10 @@ import { TodayStore } from '../today.store';
 import { BriefRow } from './brief-row';
 import { LeadActions } from './lead-actions';
 
-/** Today, first view: the moment strip and the morning brief. Order: greeting and short brief, the ask box, the strip, then the ranked brief list (its actions sit in the right-hand panel). */
+/**
+ * Today landing view, a calm centred column: greeting, headline and short brief, the ask box with suggested
+ * questions, then tabs for the morning brief and the 10-day calendar. The client panel opens when a client is picked.
+ */
 @Component({
   selector: 'eli-brief-page',
   imports: [MatButtonModule, MatIconModule, Composer, MomentStrip, BriefRow, TrustLine],
@@ -32,6 +35,13 @@ export class BriefPage {
   });
 
   protected readonly skeletons = [0, 1, 2];
+
+  /** Arrow keys move between the two tabs. */
+  protected switchTab(tab: 'brief' | 'calendar', event: Event): void {
+    event.preventDefault();
+    this.store.landingTab.set(tab);
+    queueMicrotask(() => (this.host.nativeElement.querySelector(`#tab-${tab}`) as HTMLElement | null)?.focus());
+  }
 
   /** A chip in the strip was pressed: bring that client's lead into view if it is in the brief. */
   protected onStripPick(moment: Moment): void {

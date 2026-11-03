@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -59,4 +59,13 @@ export class TodayLayout {
     { initialValue: this.router.url },
   );
   protected readonly onBrief = computed(() => /^\/rm\/today\/?(\?|#|$)/.test(this.url()));
+
+  constructor() {
+    // The landing view starts calm with the panel closed; views about one client (ideas) open it.
+    effect(() => {
+      if (!this.onBrief()) {
+        untracked(() => this.store.dockOpen.set(true));
+      }
+    });
+  }
 }

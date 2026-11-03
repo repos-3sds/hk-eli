@@ -37,7 +37,9 @@ export class TodayStore {
   readonly composerDraft = signal('');
   readonly callNotes = signal<ReadonlySet<string>>(new Set());
   /** Whether the client panel on the right is shown. The RM can close it for more room. */
-  readonly dockOpen = signal(true);
+  readonly dockOpen = signal(false);
+  /** Which list the landing view shows under the ask box. */
+  readonly landingTab = signal<'brief' | 'calendar'>('brief');
 
   // Data
   readonly strip = rxResource({ params: () => this.scope(), stream: ({ params }) => this.data.getMomentStrip(params) });
@@ -66,6 +68,29 @@ export class TodayStore {
     this.showAllLeads() ? this.matchingLeads() : this.matchingLeads().slice(0, this.config.briefLeadLimit),
   );
   readonly hiddenLeads = computed(() => this.matchingLeads().slice(this.visibleLeads().length));
+
+  /** "Good evening, Srivalli": the small line above the headline. */
+  readonly salutation = computed(() => {
+    const hour = this.clock.hour();
+    const part = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+    return `${part}, ${this.session.user().firstName}`;
+  });
+
+  /** The landing headline: how many clients still need the RM today. */
+  readonly headline = computed(() => {
+    const count = this.openLeads().length;
+    if (count === 0) {
+      return 'Nobody needs you urgently today.';
+    }
+    return `${count} ${count === 1 ? 'client needs' : 'clients need'} you today.`;
+  });
+
+  /** Ready-made questions under the ask box. The first one names the top lead. */
+  readonly suggestions = computed(() => {
+    const top = this.openLeads()[0];
+    const list = top ? [`Prepare me for my call with ${top.clientName.split(' ')[0]}`] : [];
+    return [...list, 'Who matures this week?', 'Which knock-outs are close to the barrier?'];
+  });
 
   readonly greeting = computed(() => {
     const hour = this.clock.hour();
@@ -146,8 +171,10 @@ export class TodayStore {
     this.focusedDay.set(null);
   }
 
+  /** Puts a client in the right-hand panel and opens it. */
   pickClient(clientId: string): void {
     this.pickedClientId.set(clientId);
+    this.dockOpen.set(true);
   }
 
   clearLinkedContext(): void {

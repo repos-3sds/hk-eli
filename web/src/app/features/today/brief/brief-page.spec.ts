@@ -31,9 +31,9 @@ async function render(scenario: 'normal' | 'empty' | 'error' = 'normal') {
 }
 
 describe('BriefPage', () => {
-  it('shows the strip, the greeting and three ranked rows', async () => {
+  it('shows the greeting, the short brief and three ranked rows', async () => {
     const { el } = await render();
-    expect(el.querySelectorAll('.day')).toHaveLength(10);
+    expect(el.querySelector('.salutation')?.textContent).toContain('Srivalli');
     expect(el.querySelector('.greeting')?.textContent).toContain('4 clients need you today');
     expect(el.querySelectorAll('eli-brief-row')).toHaveLength(3);
     expect(el.textContent).toContain('Show 1 more client (Ho S.');
@@ -42,14 +42,22 @@ describe('BriefPage', () => {
     expect(el.querySelector('.summary')?.textContent).toContain('1 maturity, 1 likely knock-out, 1 stock delivery and 1 idle client. Start with Chan Tai Man: matures');
   });
 
-  it('puts the greeting first, then the ask box, the strip and the brief list', async () => {
-    const { el } = await render();
-    const order = ['.brief-head', 'eli-composer', 'eli-moment-strip', '.list-head'].map((sel) => {
-      const node = el.querySelector(sel)!;
-      return [...el.children].indexOf(node as Element);
-    });
-    expect(order).toEqual([...order].sort((a, b) => a - b));
-    expect(order.every((i) => i >= 0)).toBe(true);
+  it('puts the ask box and suggestions in the landing, with tabs for the brief and the calendar', async () => {
+    const { el, fixture } = await render();
+    expect(el.querySelector('.hero eli-composer')).not.toBeNull();
+    expect(el.querySelector('.chip')?.textContent).toContain('Prepare me for my call with Chan');
+    expect(el.querySelector('eli-moment-strip')).toBeNull();
+    (el.querySelector('#tab-calendar') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(el.querySelectorAll('.day')).toHaveLength(10);
+    expect(el.querySelector('eli-brief-row')).toBeNull();
+  });
+
+  it('fills the ask box from a suggestion', async () => {
+    const { el, fixture } = await render();
+    (el.querySelector('.chip') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(TestBed.inject(TodayStore).composerDraft()).toBe('Prepare me for my call with Chan');
   });
 
   it('marks the client in the panel as selected and moves the selection on a press', async () => {
@@ -62,13 +70,13 @@ describe('BriefPage', () => {
     expect(rows()[1].getAttribute('aria-pressed')).toBe('true');
   });
 
-  it('shows the actions in the selected row when the client panel is closed', async () => {
+  it('starts with the client panel closed, so the selected row carries the actions', async () => {
     const { el, fixture } = await render();
     const actions = () => el.querySelector('eli-brief-row .item.panel-closed .inline-actions');
-    expect(actions()).toBeNull();
-    TestBed.inject(TodayStore).dockOpen.set(false);
-    fixture.detectChanges();
     expect(actions()?.textContent).toContain('Show rollover ideas');
+    TestBed.inject(TodayStore).dockOpen.set(true);
+    fixture.detectChanges();
+    expect(actions()).toBeNull();
   });
 
   it('reveals the hidden client', async () => {

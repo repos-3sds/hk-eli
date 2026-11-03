@@ -63,6 +63,20 @@ describe('TodayStore', () => {
     expect(store.focusedLead()).toBeNull();
   });
 
+  it('starts with the panel closed and opens it when a client is picked', async () => {
+    const store = await setup();
+    expect(store.dockOpen()).toBe(false);
+    store.pickClient('c-1093');
+    expect(store.dockOpen()).toBe(true);
+    expect(store.focusedLead()?.clientId).toBe('c-1093');
+  });
+
+  it('builds the landing headline and suggestions from the open leads', async () => {
+    const store = await setup();
+    expect(store.headline()).toBe('4 clients need you today.');
+    expect(store.suggestions()[0]).toBe('Prepare me for my call with Chan');
+  });
+
   it('undoes Not today', async () => {
     const store = await setup();
     const lead = store.allLeads()[0];

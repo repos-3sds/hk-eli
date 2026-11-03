@@ -32,7 +32,7 @@ import { TodayStore } from '../today.store';
       border: 1px solid var(--eli-border); border-radius: var(--eli-radius-s); background: var(--eli-bg-input);
       &:focus-within { border-color: var(--eli-accent-link); }
     }
-    .box.tall { align-items: flex-start; min-height: 112px; padding: var(--eli-space-6) var(--eli-space-6); }
+    .box.tall { align-items: flex-start; min-height: 120px; padding: var(--eli-space-7) var(--eli-space-7); border-radius: 14px; }
     .box.tall .send { align-self: flex-end; }
     .ctx {
       display: inline-flex; align-items: center; gap: var(--eli-space-2); flex: none; height: 20px; padding: var(--eli-space-1) var(--eli-space-2) var(--eli-space-1) var(--eli-space-4);
