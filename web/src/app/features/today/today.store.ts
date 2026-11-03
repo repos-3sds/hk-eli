@@ -75,6 +75,22 @@ export class TodayStore {
     return `${part}, ${name}. ${count} ${count === 1 ? 'client needs' : 'clients need'} you today.`;
   });
 
+  /** The brief lead for the client in the dock, if that client is in today's brief and not parked. */
+  readonly focusedLead = computed<Lead | null>(() => {
+    const id = this.dockClientId();
+    const parked = this.parkedLeadIds();
+    return this.allLeads().find((l) => l.clientId === id && !parked.has(l.id)) ?? null;
+  });
+
+  /** 1-based place of the focused lead among the leads still open today. */
+  readonly focusedRank = computed(() => {
+    const lead = this.focusedLead();
+    return lead ? this.openLeads().indexOf(lead) + 1 : 0;
+  });
+
+  /** Leads not parked, in brief order (ignores the strip filters, so the dock can step through all of them). */
+  readonly openLeads = computed(() => this.allLeads().filter((l) => !this.parkedLeadIds().has(l.id)));
+
   readonly filtersActive = computed(() => this.activeTypes().size < MOMENT_TYPES.length || this.focusedDay() !== null);
 
   setScope(scope: BookScope): void {
@@ -116,6 +132,18 @@ export class TodayStore {
   parkLead(lead: Lead): void {
     this.parkedLeadIds.update((s) => new Set(s).add(lead.id));
     this.data.recordNotToday(lead.id).subscribe({ error: () => this.unparkLead(lead) });
+  }
+
+  /** Moves the dock to the lead after (or before) the focused one, wrapping round. */
+  stepLead(direction: 1 | -1): void {
+    const open = this.openLeads();
+    if (open.length === 0) {
+      return;
+    }
+    const current = this.focusedLead();
+    const index = current ? open.indexOf(current) : -1;
+    const next = open[(index + direction + open.length) % open.length];
+    this.pickClient(next.clientId);
   }
 
   unparkLead(lead: Lead): void {

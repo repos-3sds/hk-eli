@@ -2,15 +2,16 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { RFQ_LABELS } from '../../../core/models/today.models';
+import { BriefActionsBlock } from './brief-actions-block';
 import { ConcentrationBar } from '../shared/concentration-bar';
 import { EliDatePipe, UsdPipe } from '../shared/format';
 import { OutcomeChip } from '../shared/outcome-chip';
 import { TodayStore } from '../today.store';
 
-/** The client in focus: book, concentration, lead outcomes from the blotter, recent RFQs. All read from records. */
+/** The client in focus: their morning-brief actions (when they are in the brief), then book, concentration, lead outcomes from the blotter, recent RFQs. All read from records. */
 @Component({
   selector: 'eli-context-dock',
-  imports: [MatIconModule, ConcentrationBar, OutcomeChip, EliDatePipe, UsdPipe],
+  imports: [MatIconModule, BriefActionsBlock, ConcentrationBar, OutcomeChip, EliDatePipe, UsdPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './context-dock.html',
   styleUrl: './context-dock.scss',

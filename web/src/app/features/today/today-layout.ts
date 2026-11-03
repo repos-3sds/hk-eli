@@ -2,13 +2,14 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { Composer } from './composer/composer';
 import { ContextDock } from './dock/context-dock';
+import { LeadActions } from './brief/lead-actions';
 import { TodayStore } from './today.store';
 
 /** Today tab frame: the view (brief or ideas) and the composer on the left, the client dock on the right. */
 @Component({
   selector: 'eli-today-layout',
   imports: [RouterOutlet, Composer, ContextDock],
-  providers: [TodayStore],
+  providers: [TodayStore, LeadActions],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="main">

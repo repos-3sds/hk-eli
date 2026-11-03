@@ -12,6 +12,8 @@
       <p class="meta">{{ c.segment }} · RM {{ c.rmName }} · CIF {{ c.cifMasked }} · risk profile {{ c.riskProfile }}</p>
     </header>
 
+    <eli-brief-actions-block />
+
     <dl class="kpis">
       <div class="kpi"><dt>ELI outstanding</dt><dd>{{ c.eliOutstandingUsd | usd }}</dd></div>
       <div class="kpi"><dt>Maturing in 10 days</dt><dd>{{ c.maturingUsd | usd }}</dd></div>

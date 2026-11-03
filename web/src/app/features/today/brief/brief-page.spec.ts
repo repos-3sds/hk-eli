@@ -8,6 +8,7 @@ import { TodayDataSource } from '../../../core/data/today-data-source';
 import { TEST_CONFIG } from '../../../testing/test-config';
 import { TodayStore } from '../today.store';
 import { BriefPage } from './brief-page';
+import { LeadActions } from './lead-actions';
 
 async function render(scenario: 'normal' | 'empty' | 'error' = 'normal') {
   TestBed.configureTestingModule({
@@ -15,6 +16,7 @@ async function render(scenario: 'normal' | 'empty' | 'error' = 'normal') {
     providers: [
       provideRouter([]),
       TodayStore,
+      LeadActions,
       { provide: APP_CONFIG, useValue: { ...TEST_CONFIG, mockScenario: scenario } },
       { provide: TodayDataSource, useClass: MockTodayDataSource },
     ],
@@ -29,13 +31,24 @@ async function render(scenario: 'normal' | 'empty' | 'error' = 'normal') {
 }
 
 describe('BriefPage', () => {
-  it('shows the strip, the greeting and three lead cards', async () => {
+  it('shows the strip, the greeting and three ranked rows', async () => {
     const { el } = await render();
     expect(el.querySelectorAll('.day')).toHaveLength(10);
     expect(el.querySelector('.greeting')?.textContent).toContain('4 clients need you today');
-    expect(el.querySelectorAll('eli-lead-card')).toHaveLength(3);
+    expect(el.querySelectorAll('eli-brief-row')).toHaveLength(3);
     expect(el.textContent).toContain('Show 1 more client (Ho S.');
     expect(el.textContent).toContain('Business date 2 Nov 2026');
+    expect(el.querySelector('eli-brief-row .rank')?.textContent).toBe('1');
+  });
+
+  it('marks the client in the panel as selected and moves the selection on a press', async () => {
+    const { el, fixture } = await render();
+    const rows = () => [...el.querySelectorAll('eli-brief-row .row')] as HTMLButtonElement[];
+    expect(rows()[0].getAttribute('aria-pressed')).toBe('true');
+    rows()[1].click();
+    fixture.detectChanges();
+    expect(rows()[0].getAttribute('aria-pressed')).toBe('false');
+    expect(rows()[1].getAttribute('aria-pressed')).toBe('true');
   });
 
   it('reveals the hidden client', async () => {
@@ -44,13 +57,13 @@ describe('BriefPage', () => {
     fixture.detectChanges();
     await TestBed.inject(ApplicationRef).whenStable();
     fixture.detectChanges();
-    expect(el.querySelectorAll('eli-lead-card')).toHaveLength(4);
+    expect(el.querySelectorAll('eli-brief-row')).toHaveLength(4);
   });
 
   it('says so when nothing needs the RM', async () => {
     const { el } = await render('empty');
     expect(el.textContent).toContain('Nothing needs you urgently today');
-    expect(el.querySelectorAll('eli-lead-card')).toHaveLength(0);
+    expect(el.querySelectorAll('eli-brief-row')).toHaveLength(0);
   });
 
   it('shows an error with a retry', async () => {

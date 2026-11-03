@@ -15,13 +15,13 @@
     <div class="eli-skeleton" style="height: 16px; width: 640px; margin-top: 8px"></div>
   </div>
   @for (i of skeletons; track i) {
-    <div class="eli-skeleton card-skeleton"></div>
+    <div class="eli-skeleton row-skeleton"></div>
   }
   <span class="eli-visually-hidden" role="status">Loading your morning brief</span>
 } @else if (store.brief.hasValue()) {
   <header class="brief-head">
     <h2 class="greeting">{{ store.greeting() }}</h2>
-    <p class="sub">Your morning brief, ready {{ preparedAt() }} from {{ store.brief.value().preparedFrom }}. Sorted by how many signals agree.</p>
+    <p class="sub">Your morning brief, ready {{ preparedAt() }} from {{ store.brief.value().preparedFrom }}. Sorted by how many signals agree. Pick a client to work on them in the panel on the right.</p>
   </header>
 
   @if (store.allLeads().length === 0) {
@@ -36,10 +36,10 @@
     @if (store.filtersActive()) {
       <p class="filters">Filtered by the strip. <button type="button" class="eli-link" (click)="store.clearFilters()">Show everything</button></p>
     }
-    <div class="tw:flex tw:flex-col tw:gap-8" aria-live="polite">
-      @for (lead of store.visibleLeads(); track lead.id) {
-        <eli-lead-card [lead]="lead" [current]="lead.clientId === store.dockClientId()"
-          (pick)="store.pickClient($event.clientId)" (ask)="onAsk($event)" (park)="onPark($event)" />
+    <div class="tw:flex tw:flex-col tw:gap-2" aria-live="polite" role="list" aria-label="Morning brief">
+      @for (lead of store.visibleLeads(); track lead.id; let i = $index) {
+        <eli-brief-row role="listitem" [lead]="lead" [rank]="i + 1" [selected]="lead.id === store.focusedLead()?.id"
+          (pick)="store.pickClient($event.clientId)" (ask)="actions.ask($event)" (park)="actions.park($event)" />
       } @empty {
         <section class="state">
           <mat-icon svgIcon="info" aria-hidden="true" />

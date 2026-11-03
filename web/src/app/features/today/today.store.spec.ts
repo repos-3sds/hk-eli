@@ -44,6 +44,25 @@ describe('TodayStore', () => {
     expect(store.visibleLeads().some((l) => l.clientId === 'c-4821')).toBe(false);
   });
 
+  it('focuses the dock client\'s lead and steps through the brief, wrapping round', async () => {
+    const store = await setup();
+    expect(store.focusedLead()?.clientId).toBe('c-4821');
+    expect(store.focusedRank()).toBe(1);
+    store.stepLead(1);
+    expect(store.focusedRank()).toBe(2);
+    store.stepLead(-1);
+    store.stepLead(-1);
+    expect(store.focusedRank()).toBe(4);
+  });
+
+  it('has no focused lead for a client outside the brief or once parked', async () => {
+    const store = await setup();
+    store.parkLead(store.allLeads()[0]);
+    expect(store.focusedLead()).toBeNull();
+    store.pickClient('c-9034');
+    expect(store.focusedLead()).toBeNull();
+  });
+
   it('undoes Not today', async () => {
     const store = await setup();
     const lead = store.allLeads()[0];
