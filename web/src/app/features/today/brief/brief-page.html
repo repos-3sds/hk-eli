@@ -20,7 +20,7 @@
   @if (store.brief.hasValue()) {
     <div class="chips" aria-label="Suggested questions">
       @for (q of store.suggestions(); track q) {
-        <button type="button" class="chip" (click)="store.composerDraft.set(q)"><mat-icon svgIcon="sparkles" aria-hidden="true" />{{ q }}</button>
+        <button type="button" class="chip" (click)="askNow(q)"><mat-icon svgIcon="sparkles" aria-hidden="true" />{{ q }}</button>
       }
     </div>
   }

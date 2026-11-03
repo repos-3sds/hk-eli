@@ -1,7 +1,7 @@
 import { ApplicationRef } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MatIconTestingModule } from '@angular/material/icon/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { APP_CONFIG } from '../../../core/config/app-config';
 import { MockTodayDataSource } from '../../../core/data/mock-today-data-source';
 import { TodayDataSource } from '../../../core/data/today-data-source';
@@ -53,11 +53,12 @@ describe('BriefPage', () => {
     expect(el.querySelector('eli-brief-row')).toBeNull();
   });
 
-  it('fills the ask box from a suggestion', async () => {
-    const { el, fixture } = await render();
+  it('sends a suggestion straight to Chat with the client in focus', async () => {
+    const { el } = await render();
+    const router = TestBed.inject(Router);
+    const spy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     (el.querySelector('.chip') as HTMLButtonElement).click();
-    fixture.detectChanges();
-    expect(TestBed.inject(TodayStore).composerDraft()).toBe('Prepare me for my call with Chan');
+    expect(spy).toHaveBeenCalledWith(['/rm/chat'], { queryParams: { q: 'Prepare me for my call with Chan', client: 'c-4821' } });
   });
 
   it('marks the client in the panel as selected and moves the selection on a press', async () => {

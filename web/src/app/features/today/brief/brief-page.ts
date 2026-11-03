@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, ElementRef, computed, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { Router } from '@angular/router';
 import { MOMENT_LABELS, Moment } from '../../../core/models/today.models';
 import { Composer } from '../composer/composer';
 import { MomentStrip } from '../moment-strip/moment-strip';
@@ -25,6 +26,7 @@ export class BriefPage {
   protected readonly store = inject(TodayStore);
   protected readonly actions = inject(LeadActions);
   private readonly host = inject(ElementRef<HTMLElement>);
+  private readonly router = inject(Router);
 
   protected readonly preparedAt = computed(() => (this.store.brief.hasValue() ? clockTime(this.store.brief.value().preparedAt) : ''));
 
@@ -35,6 +37,12 @@ export class BriefPage {
   });
 
   protected readonly skeletons = [0, 1, 2];
+
+  /** A suggested question goes straight to Chat, with the client in focus. */
+  protected askNow(question: string): void {
+    const client = this.store.linkedContext()?.clientId ?? this.store.dockClientId();
+    void this.router.navigate(['/rm/chat'], { queryParams: { q: question, client } });
+  }
 
   /** Arrow keys move between the two tabs. */
   protected switchTab(tab: 'brief' | 'calendar', event: Event): void {
