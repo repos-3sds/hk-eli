@@ -53,7 +53,7 @@ import { TodayStore } from '../today.store';
     :host { display: contents; }
     .block {
       display: flex; flex-direction: column; gap: var(--eli-space-5); padding: var(--eli-space-6) var(--eli-space-7);
-      border-left: 3px solid var(--eli-accent-orange); border-radius: var(--eli-radius-s); background: var(--eli-bg-surface);
+      border-left: 3px solid var(--eli-accent-orange); border-radius: var(--eli-radius-m); background: var(--eli-bg-surface); flex: none;
     }
     .head { display: flex; align-items: center; gap: var(--eli-space-2); margin: calc(-1 * var(--eli-space-3)) calc(-1 * var(--eli-space-4)) 0 0; }
     .head h3 { margin: 0; }
