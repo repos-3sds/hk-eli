@@ -44,6 +44,39 @@ describe('TodayStore', () => {
     expect(store.visibleLeads().some((l) => l.clientId === 'c-4821')).toBe(false);
   });
 
+  it('focuses the dock client\'s lead and steps through the brief, wrapping round', async () => {
+    const store = await setup();
+    expect(store.focusedLead()?.clientId).toBe('c-4821');
+    expect(store.focusedRank()).toBe(1);
+    store.stepLead(1);
+    expect(store.focusedRank()).toBe(2);
+    store.stepLead(-1);
+    store.stepLead(-1);
+    expect(store.focusedRank()).toBe(4);
+  });
+
+  it('has no focused lead for a client outside the brief or once parked', async () => {
+    const store = await setup();
+    store.parkLead(store.allLeads()[0]);
+    expect(store.focusedLead()).toBeNull();
+    store.pickClient('c-9034');
+    expect(store.focusedLead()).toBeNull();
+  });
+
+  it('starts with the panel closed and opens it when a client is picked', async () => {
+    const store = await setup();
+    expect(store.dockOpen()).toBe(false);
+    store.pickClient('c-1093');
+    expect(store.dockOpen()).toBe(true);
+    expect(store.focusedLead()?.clientId).toBe('c-1093');
+  });
+
+  it('builds the landing headline and suggestions from the open leads', async () => {
+    const store = await setup();
+    expect(store.headline()).toBe('4 clients need you today.');
+    expect(store.suggestions()[0]).toBe('Prepare me for my call with Chan');
+  });
+
   it('undoes Not today', async () => {
     const store = await setup();
     const lead = store.allLeads()[0];
@@ -64,19 +97,14 @@ describe('TodayStore', () => {
     expect(store.focusedDay()).toBeNull();
   });
 
-  it('shows the linked client in the dock until the RM picks another', async () => {
+  it('shows the top lead in the dock until the RM picks a client, and goes back on clear', async () => {
     const store = await setup();
     expect(store.dockClientId()).toBe('c-4821');
+    expect(store.pickedShortName()).toBeNull();
     store.pickClient('c-1093');
-    await settle();
     expect(store.dockClientId()).toBe('c-1093');
-    expect(store.client.value()?.name).toBe('Wong Ka Lok');
-  });
-
-  it('falls back to the top lead when the linked context is cleared', async () => {
-    const store = await setup();
-    store.clearLinkedContext();
-    expect(store.dockClientId()).toBe(store.allLeads()[0].clientId);
+    store.clearPickedClient();
+    expect(store.dockClientId()).toBe('c-4821');
   });
 
   it('switching scope resets the day focus', async () => {

@@ -31,7 +31,6 @@ import {
 
 const SIGNAL_ORDER: readonly SignalId[] = ['moment', 'cash', 'history', 'headroom', 'engaged', 'ideas'];
 const RM_NAME = 'Srivalli T.';
-const LINKED_WIDGETS = ['Blotter', 'Margin Matrix'];
 
 /** Fixture-backed data source with simulated latency and switchable scenarios (?scenario=empty|error|slow). */
 @Injectable()
@@ -139,6 +138,7 @@ export class MockTodayDataSource extends TodayDataSource {
         segment: c.segment,
         cifMasked: c.cifMasked,
         rmName: RM_NAME,
+        linkedWidgets: [],
         riskProfile: c.riskProfile,
         eliOutstandingUsd: c.eliOutstandingUsd,
         maturingUsd: c.maturingUsd,
@@ -146,7 +146,6 @@ export class MockTodayDataSource extends TodayDataSource {
         concentration: c.concentration.map((x) => ({ ...x, limitPct: 25 })),
         outcomes: c.outcomes.map((o) => ({ date: addDays(today, -o.daysAgo), label: o.label, status: o.status })),
         recentRfqs: c.rfqs.map((r) => ({ date: addDays(today, -r.daysAgo), description: r.description, status: r.status })),
-        linkedWidgets: LINKED_WIDGETS,
       };
     });
   }

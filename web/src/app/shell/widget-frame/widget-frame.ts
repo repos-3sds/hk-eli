@@ -19,7 +19,7 @@ import { RM_TABS } from './widget-tabs';
       <header class="title-bar">
         <h1 class="title">{{ appName }}</h1>
         <div class="actions">
-          <button type="button" class="act link" matTooltip="Linked to Blotter, Margin Matrix" aria-label="Widget links"><mat-icon svgIcon="link" /></button>
+          <button type="button" class="act link off" matTooltip="Not linked to other widgets yet" aria-label="Widget links: not linked yet" aria-disabled="true"><mat-icon svgIcon="link" /></button>
           <button type="button" class="act pin" [class.on]="pinned()" [matTooltip]="pinned() ? 'Unpin' : 'Pin'" [attr.aria-pressed]="pinned()" aria-label="Pin widget" (click)="togglePin()"><mat-icon svgIcon="dm-pin" /></button>
           <button type="button" class="act open" matTooltip="Pop out" aria-label="Pop out widget" (click)="info('Pop-out opens the widget in its own window in Digimarkets.')"><mat-icon svgIcon="dm-open" /></button>
           <button type="button" class="act close" matTooltip="Close" aria-label="Close widget" (click)="info('Closing is handled by the Digimarkets workspace.')"><mat-icon svgIcon="x" /></button>

@@ -8,27 +8,41 @@
     <p class="empty" role="alert">This client's details could not be loaded. <button type="button" class="eli-link" (click)="store.client.reload()">Try again</button></p>
   } @else if (store.client.value(); as c) {
     <header class="who" [attr.aria-busy]="store.client.isLoading()">
-      <h2 class="name">{{ c.name }}</h2>
-      <p class="meta">{{ c.segment }} · RM {{ c.rmName }} · CIF {{ c.cifMasked }} · risk profile {{ c.riskProfile }}</p>
+      <div class="who-text">
+        <h2 class="name">{{ c.name }}</h2>
+        <p class="meta">{{ c.segment }} · RM {{ c.rmName }} · CIF {{ c.cifMasked }} · risk profile {{ c.riskProfile }}</p>
+      </div>
+      <button matIconButton type="button" class="close" aria-label="Close the client panel" matTooltip="Close panel" (click)="store.dockOpen.set(false)">
+        <mat-icon svgIcon="x" />
+      </button>
     </header>
 
-    <dl class="kpis">
-      <div class="kpi"><dt>ELI outstanding</dt><dd>{{ c.eliOutstandingUsd | usd }}</dd></div>
-      <div class="kpi"><dt>Maturing in 10 days</dt><dd>{{ c.maturingUsd | usd }}</dd></div>
-      <div class="kpi"><dt>Last trade</dt><dd>{{ c.lastTradeDate | eliDate: 'dayMonth' }}</dd></div>
-    </dl>
+    <eli-brief-actions-block />
 
-    <section class="block" aria-labelledby="conc-h">
-      <h3 id="conc-h" class="eli-eyebrow">Concentration · share of ELI outstanding</h3>
-      @for (line of c.concentration; track line.underlying) {
-        <eli-concentration-bar [underlying]="line.underlying" [fromPct]="line.sharePct" [limitPct]="line.limitPct" />
-      } @empty {
-        <p class="empty">No ELI outstanding.</p>
-      }
+    <section class="card" aria-labelledby="book-h">
+      <h3 id="book-h" class="card-title">Book</h3>
+      <dl class="kpis">
+        <div class="kpi"><dt>ELI outstanding</dt><dd>{{ c.eliOutstandingUsd | usd }}</dd></div>
+        <div class="kpi"><dt>Maturing in 10 days</dt><dd>{{ c.maturingUsd | usd }}</dd></div>
+        <div class="kpi"><dt>Last trade</dt><dd>{{ c.lastTradeDate | eliDate: 'dayMonth' }}</dd></div>
+      </dl>
+      <div class="sub" aria-labelledby="conc-h">
+        <h4 id="conc-h" class="sub-title">Concentration <span>share of ELI outstanding</span></h4>
+        <div class="bars">
+          @for (line of c.concentration; track line.underlying) {
+            <eli-concentration-bar class="bar" [underlying]="line.underlying" [fromPct]="line.sharePct" [limitPct]="line.limitPct" />
+          } @empty {
+            <p class="empty">No ELI outstanding.</p>
+          }
+        </div>
+      </div>
     </section>
 
-    <section class="block" aria-labelledby="out-h">
-      <h3 id="out-h" class="eli-eyebrow">Leads and outcomes · read from the blotter</h3>
+    <details class="card fold">
+      <summary class="card-title">
+        <span>Leads and outcomes</span><span class="count">{{ c.outcomes.length }}</span><span class="src">from the blotter</span>
+        <mat-icon class="chev" svgIcon="chevron-down" aria-hidden="true" />
+      </summary>
       <ul class="rows">
         @for (o of c.outcomes; track o.label) {
           <li class="row"><span class="date">{{ o.date | eliDate: 'dayMonth' }}</span><span class="what">{{ o.label }}</span><eli-outcome-chip [status]="o.status" /></li>
@@ -36,26 +50,36 @@
           <li class="empty">No leads in the last 90 days.</li>
         }
       </ul>
-    </section>
+    </details>
 
-    <section class="block" aria-labelledby="rfq-h">
-      <h3 id="rfq-h" class="eli-eyebrow">Recent RFQs</h3>
+    <details class="card fold">
+      <summary class="card-title">
+        <span>Recent RFQs</span><span class="count">{{ c.recentRfqs.length }}</span><span class="src">last 30 days</span>
+        <mat-icon class="chev" svgIcon="chevron-down" aria-hidden="true" />
+      </summary>
       <ul class="rows">
         @for (r of c.recentRfqs; track r.description) {
-          <li class="row plain"><span class="date">{{ r.date | eliDate: 'dayMonth' }}</span><span class="what">{{ r.description }}</span><span class="status">{{ rfqLabels[r.status] }}</span></li>
+          <li class="row"><span class="date">{{ r.date | eliDate: 'dayMonth' }}</span><span class="what">{{ r.description }}</span><span class="status">{{ rfqLabels[r.status] }}</span></li>
         } @empty {
           <li class="empty">No RFQs in the last 30 days.</li>
         }
       </ul>
-    </section>
+    </details>
 
     <div class="foot">
-      <button type="button" class="eli-link send" (click)="sendToLinked(c.shortName, c.linkedWidgets)">
-        <mat-icon svgIcon="link" aria-hidden="true" />Send {{ c.shortName }} to linked widgets ({{ c.linkedWidgets.join(', ') }})
-      </button>
+      <span class="send-wrap" [matTooltip]="c.linkedWidgets.length ? '' : 'No widgets linked yet'">
+        <button type="button" class="eli-link send" [disabled]="c.linkedWidgets.length === 0">
+          <mat-icon svgIcon="link" aria-hidden="true" />Send {{ c.shortName }} to linked widgets
+        </button>
+      </span>
       <p class="advice"><mat-icon svgIcon="sparkles" aria-hidden="true" />AI-generated words. Not a recommendation or suitability advice; check the client profile before you call.</p>
     </div>
   } @else {
-    <p class="empty">Pick a client in the strip or the brief to see their book here.</p>
+    <div class="who">
+      <p class="empty who-text">Pick a client in the strip or the brief to see their book here.</p>
+      <button matIconButton type="button" class="close" aria-label="Close the client panel" matTooltip="Close panel" (click)="store.dockOpen.set(false)">
+        <mat-icon svgIcon="x" />
+      </button>
+    </div>
   }
 </aside>
