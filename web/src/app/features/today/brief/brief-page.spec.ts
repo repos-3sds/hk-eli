@@ -39,6 +39,17 @@ describe('BriefPage', () => {
     expect(el.textContent).toContain('Show 1 more client (Ho S.');
     expect(el.textContent).toContain('Business date 2 Nov 2026');
     expect(el.querySelector('eli-brief-row .rank')?.textContent).toBe('1');
+    expect(el.querySelector('.summary')?.textContent).toContain('1 maturity, 1 likely knock-out, 1 stock delivery and 1 idle client. Start with Chan Tai Man: matures');
+  });
+
+  it('puts the greeting first, then the ask box, the strip and the brief list', async () => {
+    const { el } = await render();
+    const order = ['.brief-head', 'eli-composer', 'eli-moment-strip', '.list-head'].map((sel) => {
+      const node = el.querySelector(sel)!;
+      return [...el.children].indexOf(node as Element);
+    });
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+    expect(order.every((i) => i >= 0)).toBe(true);
   });
 
   it('marks the client in the panel as selected and moves the selection on a press', async () => {

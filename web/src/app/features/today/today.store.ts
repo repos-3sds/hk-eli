@@ -6,6 +6,7 @@ import { TodayDataSource } from '../../core/data/today-data-source';
 import { BookScope, Lead, MOMENT_TYPES, MomentType } from '../../core/models/today.models';
 import { BusinessClock } from '../../core/time/business-clock';
 import { SessionService } from '../../core/session/session.service';
+import { momentText } from './shared/moment-text';
 
 /** Context handed in by a linked Digimarkets widget (for example a row picked in the Blotter). */
 export interface LinkedContext {
@@ -90,6 +91,29 @@ export class TodayStore {
 
   /** Leads not parked, in brief order (ignores the strip filters, so the dock can step through all of them). */
   readonly openLeads = computed(() => this.allLeads().filter((l) => !this.parkedLeadIds().has(l.id)));
+
+  /** The short brief under the greeting: what kinds of moment are waiting, and who to start with. Built from data, no model. */
+  readonly briefSummary = computed(() => {
+    const open = this.openLeads();
+    if (open.length === 0) {
+      return '';
+    }
+    const words: Record<MomentType, [string, string]> = {
+      maturity: ['maturity', 'maturities'],
+      knockout: ['likely knock-out', 'likely knock-outs'],
+      exercised: ['stock delivery', 'stock deliveries'],
+      idle: ['idle client', 'idle clients'],
+      rfq: ['open RFQ', 'open RFQs'],
+    };
+    const parts = MOMENT_TYPES.map((t) => [t, open.filter((l) => l.moment.type === t).length] as const)
+      .filter(([, n]) => n > 0)
+      .map(([t, n]) => `${n} ${words[t][n === 1 ? 0 : 1]}`);
+    const list = parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}` : parts[0];
+    const first = open[0];
+    const when = momentText(first.moment);
+    const met = first.signals.filter((x) => x.met).length;
+    return `${list[0].toUpperCase()}${list.slice(1)}. Start with ${first.clientName}: ${when.charAt(0).toLowerCase()}${when.slice(1)}, ${met} of ${first.signals.length} signals agree.`;
+  });
 
   readonly filtersActive = computed(() => this.activeTypes().size < MOMENT_TYPES.length || this.focusedDay() !== null);
 

@@ -5,7 +5,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
 import { TodayStore } from '../today.store';
 
-/** Ask box at the foot of Today. A question goes to the Chat tab, carrying the client context. */
+/** Ask box: under the greeting on the brief, at the foot of other Today views. A question goes to the Chat tab, carrying the client context. */
 @Component({
   selector: 'eli-composer',
   imports: [FormsModule, MatIconModule, MatTooltipModule],

@@ -1,3 +1,20 @@
+@if (store.brief.hasValue()) {
+  <header class="brief-head">
+    <h2 class="greeting">{{ store.greeting() }}</h2>
+    @if (store.briefSummary()) {
+      <p class="summary">{{ store.briefSummary() }}</p>
+    }
+    <p class="sub">Morning brief ready {{ preparedAt() }} from {{ store.brief.value().preparedFrom }}.</p>
+  </header>
+} @else if (!store.brief.error()) {
+  <div class="brief-head" aria-busy="true">
+    <div class="eli-skeleton" style="height: 24px; width: 420px"></div>
+    <div class="eli-skeleton" style="height: 16px; width: 640px; margin-top: 8px"></div>
+  </div>
+}
+
+<eli-composer />
+
 <eli-moment-strip (clientPicked)="onStripPick($event)" />
 
 @if (store.brief.error() || store.strip.error()) {
@@ -10,19 +27,15 @@
     <button matButton="outlined" type="button" (click)="store.retry()"><mat-icon svgIcon="refresh-cw" />Try again</button>
   </section>
 } @else if (store.brief.isLoading() && !store.brief.hasValue()) {
-  <div class="brief-head" aria-busy="true">
-    <div class="eli-skeleton" style="height: 24px; width: 420px"></div>
-    <div class="eli-skeleton" style="height: 16px; width: 640px; margin-top: 8px"></div>
-  </div>
   @for (i of skeletons; track i) {
     <div class="eli-skeleton row-skeleton"></div>
   }
   <span class="eli-visually-hidden" role="status">Loading your morning brief</span>
 } @else if (store.brief.hasValue()) {
-  <header class="brief-head">
-    <h2 class="greeting">{{ store.greeting() }}</h2>
-    <p class="sub">Your morning brief, ready {{ preparedAt() }} from {{ store.brief.value().preparedFrom }}. Sorted by how many signals agree. Pick a client to work on them in the panel on the right.</p>
-  </header>
+  <div class="list-head">
+    <h3 class="eli-eyebrow">Morning brief</h3>
+    <p class="list-sub">Sorted by how many signals agree. Pick a client to work on them in the panel on the right.</p>
+  </div>
 
   @if (store.allLeads().length === 0) {
     <section class="state">

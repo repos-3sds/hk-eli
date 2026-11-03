@@ -1,11 +1,13 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { filter, map } from 'rxjs';
 import { Composer } from './composer/composer';
 import { ContextDock } from './dock/context-dock';
 import { LeadActions } from './brief/lead-actions';
 import { TodayStore } from './today.store';
 
-/** Today tab frame: the view (brief or ideas) and the composer on the left, the client dock on the right. */
+/** Today tab frame: the view (brief or ideas) on the left, the client dock on the right. The brief puts the ask box near its top; other views keep it at the foot. */
 @Component({
   selector: 'eli-today-layout',
   imports: [RouterOutlet, Composer, ContextDock],
@@ -14,7 +16,9 @@ import { TodayStore } from './today.store';
   template: `
     <div class="main">
       <div class="view eli-scroll"><router-outlet /></div>
-      <eli-composer />
+      @if (!onBrief()) {
+        <eli-composer />
+      }
     </div>
     <eli-context-dock class="dock" />
   `,
@@ -27,4 +31,14 @@ import { TodayStore } from './today.store';
     @container widget (max-width: 1080px) { .dock { display: none; } }
   `,
 })
-export class TodayLayout {}
+export class TodayLayout {
+  private readonly router = inject(Router);
+  private readonly url = toSignal(
+    this.router.events.pipe(
+      filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+      map((e) => e.urlAfterRedirects),
+    ),
+    { initialValue: this.router.url },
+  );
+  protected readonly onBrief = computed(() => /^\/rm\/today\/?(\?|#|$)/.test(this.url()));
+}

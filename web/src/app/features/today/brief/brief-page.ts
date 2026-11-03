@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, ElementRef, computed, inject } from
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MOMENT_LABELS, Moment } from '../../../core/models/today.models';
+import { Composer } from '../composer/composer';
 import { MomentStrip } from '../moment-strip/moment-strip';
 import { TrustLine } from '../shared/trust-line';
 import { clockTime } from '../shared/format';
@@ -9,10 +10,10 @@ import { TodayStore } from '../today.store';
 import { BriefRow } from './brief-row';
 import { LeadActions } from './lead-actions';
 
-/** Today, first view: the moment strip and the morning brief. The brief is a ranked list; its actions sit in the right-hand panel. */
+/** Today, first view: the moment strip and the morning brief. Order: greeting and short brief, the ask box, the strip, then the ranked brief list (its actions sit in the right-hand panel). */
 @Component({
   selector: 'eli-brief-page',
-  imports: [MatButtonModule, MatIconModule, MomentStrip, BriefRow, TrustLine],
+  imports: [MatButtonModule, MatIconModule, Composer, MomentStrip, BriefRow, TrustLine],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './brief-page.html',
   styleUrl: './brief-page.scss',
