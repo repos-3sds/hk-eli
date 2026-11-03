@@ -257,8 +257,19 @@
   border-top: 1px solid var(--eli-border);
 }
 
+.send-wrap {
+  align-self: flex-start;
+}
+
 .send {
   display: inline-flex;
+
+  &:disabled {
+    color: var(--eli-text-muted);
+    cursor: default;
+    text-decoration: none;
+  }
+
   align-items: center;
   gap: var(--eli-space-3);
   font-size: var(--eli-font-size-s);

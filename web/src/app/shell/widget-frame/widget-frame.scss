@@ -180,3 +180,13 @@
     gap: var(--eli-space-1);
   }
 }
+
+/* Present but not in use yet: widget linking comes later. */
+.act.off {
+  color: var(--eli-text-muted);
+  cursor: default;
+
+  &:hover {
+    background: none;
+  }
+}

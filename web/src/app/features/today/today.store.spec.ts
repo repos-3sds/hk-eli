@@ -97,19 +97,14 @@ describe('TodayStore', () => {
     expect(store.focusedDay()).toBeNull();
   });
 
-  it('shows the linked client in the dock until the RM picks another', async () => {
+  it('shows the top lead in the dock until the RM picks a client, and goes back on clear', async () => {
     const store = await setup();
     expect(store.dockClientId()).toBe('c-4821');
+    expect(store.pickedShortName()).toBeNull();
     store.pickClient('c-1093');
-    await settle();
     expect(store.dockClientId()).toBe('c-1093');
-    expect(store.client.value()?.name).toBe('Wong Ka Lok');
-  });
-
-  it('falls back to the top lead when the linked context is cleared', async () => {
-    const store = await setup();
-    store.clearLinkedContext();
-    expect(store.dockClientId()).toBe(store.allLeads()[0].clientId);
+    store.clearPickedClient();
+    expect(store.dockClientId()).toBe('c-4821');
   });
 
   it('switching scope resets the day focus', async () => {
