@@ -8,8 +8,13 @@
     <p class="empty" role="alert">This client's details could not be loaded. <button type="button" class="eli-link" (click)="store.client.reload()">Try again</button></p>
   } @else if (store.client.value(); as c) {
     <header class="who" [attr.aria-busy]="store.client.isLoading()">
-      <h2 class="name">{{ c.name }}</h2>
-      <p class="meta">{{ c.segment }} · RM {{ c.rmName }} · CIF {{ c.cifMasked }} · risk profile {{ c.riskProfile }}</p>
+      <div class="who-text">
+        <h2 class="name">{{ c.name }}</h2>
+        <p class="meta">{{ c.segment }} · RM {{ c.rmName }} · CIF {{ c.cifMasked }} · risk profile {{ c.riskProfile }}</p>
+      </div>
+      <button matIconButton type="button" class="close" aria-label="Close the client panel" matTooltip="Close panel" (click)="store.dockOpen.set(false)">
+        <mat-icon svgIcon="x" />
+      </button>
     </header>
 
     <eli-brief-actions-block />
@@ -68,6 +73,11 @@
       <p class="advice"><mat-icon svgIcon="sparkles" aria-hidden="true" />AI-generated words. Not a recommendation or suitability advice; check the client profile before you call.</p>
     </div>
   } @else {
-    <p class="empty">Pick a client in the strip or the brief to see their book here.</p>
+    <div class="who">
+      <p class="empty who-text">Pick a client in the strip or the brief to see their book here.</p>
+      <button matIconButton type="button" class="close" aria-label="Close the client panel" matTooltip="Close panel" (click)="store.dockOpen.set(false)">
+        <mat-icon svgIcon="x" />
+      </button>
+    </div>
   }
 </aside>

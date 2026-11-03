@@ -36,6 +36,8 @@ export class TodayStore {
   readonly showAllLeads = signal(false);
   readonly composerDraft = signal('');
   readonly callNotes = signal<ReadonlySet<string>>(new Set());
+  /** Whether the client panel on the right is shown. The RM can close it for more room. */
+  readonly dockOpen = signal(true);
 
   // Data
   readonly strip = rxResource({ params: () => this.scope(), stream: ({ params }) => this.data.getMomentStrip(params) });

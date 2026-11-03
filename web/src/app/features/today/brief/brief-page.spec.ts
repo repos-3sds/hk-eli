@@ -62,6 +62,15 @@ describe('BriefPage', () => {
     expect(rows()[1].getAttribute('aria-pressed')).toBe('true');
   });
 
+  it('shows the actions in the selected row when the client panel is closed', async () => {
+    const { el, fixture } = await render();
+    const actions = () => el.querySelector('eli-brief-row .item.panel-closed .inline-actions');
+    expect(actions()).toBeNull();
+    TestBed.inject(TodayStore).dockOpen.set(false);
+    fixture.detectChanges();
+    expect(actions()?.textContent).toContain('Show rollover ideas');
+  });
+
   it('reveals the hidden client', async () => {
     const { el, fixture } = await render();
     (el.querySelector('.more') as HTMLButtonElement).click();

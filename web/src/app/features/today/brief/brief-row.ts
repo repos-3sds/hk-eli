@@ -16,7 +16,7 @@ import { callName, momentText } from '../shared/moment-text';
   imports: [MatButtonModule, MatIconModule, RouterLink, MomentChip],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="item" [class.selected]="selected()">
+    <div class="item" [class.selected]="selected()" [class.panel-closed]="panelClosed()">
       <button type="button" class="row" [attr.aria-pressed]="selected()" [attr.aria-labelledby]="'lead-' + lead().id" (click)="pick.emit(lead())">
         <span class="rank" aria-hidden="true">{{ rank() }}</span>
         <span class="who">
@@ -75,6 +75,7 @@ import { callName, momentText } from '../shared/moment-text';
 
     /* The actions live in the right-hand panel. Only when that panel is hidden do they show in the row. */
     .inline-actions { display: none; gap: var(--eli-space-4); flex-wrap: wrap; padding: 0 var(--eli-space-6) var(--eli-space-5) 42px; }
+    .panel-closed .inline-actions { display: flex; }
     @container widget (max-width: 1080px) {
       .inline-actions { display: flex; }
       .row { grid-template-columns: 20px minmax(0, 1fr) auto 16px; row-gap: var(--eli-space-3); }
@@ -89,6 +90,8 @@ export class BriefRow {
   readonly lead = input.required<Lead>();
   readonly rank = input.required<number>();
   readonly selected = input(false);
+  /** The right-hand panel is closed, so the selected row carries the actions. */
+  readonly panelClosed = input(false);
   readonly pick = output<Lead>();
   readonly ask = output<Lead>();
   readonly park = output<Lead>();

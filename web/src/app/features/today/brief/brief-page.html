@@ -34,7 +34,7 @@
 } @else if (store.brief.hasValue()) {
   <div class="list-head">
     <h3 class="eli-eyebrow">Morning brief</h3>
-    <p class="list-sub">Sorted by how many signals agree. Pick a client to work on them in the panel on the right.</p>
+    <p class="list-sub">Sorted by how many signals agree. @if (store.dockOpen()) {Pick a client to work on them in the panel on the right.} @else {Pick a client to see their actions.}</p>
   </div>
 
   @if (store.allLeads().length === 0) {
@@ -51,7 +51,7 @@
     }
     <div class="tw:flex tw:flex-col tw:gap-2" aria-live="polite" role="list" aria-label="Morning brief">
       @for (lead of store.visibleLeads(); track lead.id; let i = $index) {
-        <eli-brief-row role="listitem" [lead]="lead" [rank]="i + 1" [selected]="lead.id === store.focusedLead()?.id"
+        <eli-brief-row role="listitem" [lead]="lead" [rank]="i + 1" [selected]="lead.id === store.focusedLead()?.id" [panelClosed]="!store.dockOpen()"
           (pick)="store.pickClient($event.clientId)" (ask)="actions.ask($event)" (park)="actions.park($event)" />
       } @empty {
         <section class="state">
