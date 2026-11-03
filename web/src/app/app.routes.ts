@@ -22,8 +22,7 @@ export const routes: Routes = [
       {
         path: 'chat',
         title: 'Chat · HK ELI Chatbot',
-        loadComponent: () => import('./features/placeholder/tab-placeholder').then((m) => m.TabPlaceholder),
-        data: { title: 'Chat', icon: 'message-square', purpose: 'Ask about a client, an underlying or an idea. Answers carry a trust line and saved questions. Built next.' },
+        loadComponent: () => import('./features/chat/chat-page').then((m) => m.ChatPage),
       },
       {
         path: 'ideas',

@@ -45,6 +45,7 @@ Every view has its loading, error and empty state. "Nothing is sent outside the 
 | `src/app/core/data/` | `TodayDataSource` (the contract), the mock (fixtures, latency, scenarios) and the gateway client. Config picks one. |
 | `src/app/core/time/` | Business-day maths (weekends and configured holidays) and the clock. |
 | `src/app/core/trace/` | Adds one W3C `traceparent` to every request for OpenTelemetry. |
+| `src/app/features/chat/` | The Chat tab: `ChatStore`, thread, answer cards (typed blocks + trust line), follow-ups. Data via `ChatDataSource` (mock answers from Today data, or the gateway). |
 | `src/app/features/today/` | The Today tab: `TodayStore` (signals), strip, brief list (ranked rows), ideas, dock (with the brief actions block), composer. |
 
 ## Configuration (`public/config/app-config.json`)
