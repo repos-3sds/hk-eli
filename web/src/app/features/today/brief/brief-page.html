@@ -1,0 +1,61 @@
+<eli-moment-strip (clientPicked)="onStripPick($event)" />
+
+@if (store.brief.error() || store.strip.error()) {
+  <section class="state error" role="alert">
+    <mat-icon svgIcon="circle-alert" aria-hidden="true" />
+    <div>
+      <h2 class="state-title">The morning brief could not be loaded</h2>
+      <p class="state-text">Nothing was changed. The service may be busy; try again, or use the Blotter in the meantime.</p>
+    </div>
+    <button matButton="outlined" type="button" (click)="store.retry()"><mat-icon svgIcon="refresh-cw" />Try again</button>
+  </section>
+} @else if (store.brief.isLoading() && !store.brief.hasValue()) {
+  <div class="brief-head" aria-busy="true">
+    <div class="eli-skeleton" style="height: 24px; width: 420px"></div>
+    <div class="eli-skeleton" style="height: 16px; width: 640px; margin-top: 8px"></div>
+  </div>
+  @for (i of skeletons; track i) {
+    <div class="eli-skeleton card-skeleton"></div>
+  }
+  <span class="eli-visually-hidden" role="status">Loading your morning brief</span>
+} @else if (store.brief.hasValue()) {
+  <header class="brief-head">
+    <h2 class="greeting">{{ store.greeting() }}</h2>
+    <p class="sub">Your morning brief, ready {{ preparedAt() }} from {{ store.brief.value().preparedFrom }}. Sorted by how many signals agree.</p>
+  </header>
+
+  @if (store.allLeads().length === 0) {
+    <section class="state">
+      <mat-icon svgIcon="check" aria-hidden="true" />
+      <div>
+        <h3 class="state-title">Nothing needs you urgently today</h3>
+        <p class="state-text">No maturities, likely knock-outs, deliveries, idle clients or open RFQs in the next {{ store.strip.hasValue() ? store.strip.value().days.length : '' }} business days for this book.</p>
+      </div>
+    </section>
+  } @else {
+    @if (store.filtersActive()) {
+      <p class="filters">Filtered by the strip. <button type="button" class="eli-link" (click)="store.clearFilters()">Show everything</button></p>
+    }
+    <div class="tw:flex tw:flex-col tw:gap-8" aria-live="polite">
+      @for (lead of store.visibleLeads(); track lead.id) {
+        <eli-lead-card [lead]="lead" [current]="lead.clientId === store.dockClientId()"
+          (pick)="store.pickClient($event.clientId)" (ask)="onAsk($event)" (park)="onPark($event)" />
+      } @empty {
+        <section class="state">
+          <mat-icon svgIcon="info" aria-hidden="true" />
+          <div>
+            <h3 class="state-title">No clients match</h3>
+            <p class="state-text">Nobody in the brief fits the days and moment types picked in the strip, or they are parked for today.</p>
+          </div>
+          <button matButton="outlined" type="button" (click)="store.clearFilters()">Show everything</button>
+        </section>
+      }
+    </div>
+    @if (store.hiddenLeads().length > 0) {
+      <button type="button" class="eli-link more" (click)="store.showAllLeads.set(true)">{{ moreLabel() }}</button>
+    } @else if (store.showAllLeads() && store.matchingLeads().length > 3) {
+      <button type="button" class="eli-link more" (click)="store.showAllLeads.set(false)">Show fewer</button>
+    }
+  }
+  <eli-trust-line [businessDate]="store.brief.value().businessDate" [sources]="store.brief.value().sources" />
+}

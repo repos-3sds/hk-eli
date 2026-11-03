@@ -1,0 +1,16 @@
+{
+  "appName": "HK ELI Chatbot",
+  "dataSource": "mock",
+  "gatewayBaseUrl": "/api/hk-eli",
+  "requestTimeoutMs": 8000,
+  "mockLatencyMs": 450,
+  "mockScenario": "normal",
+  "asOfDate": null,
+  "timeZone": "Asia/Hong_Kong",
+  "businessDaysAhead": 10,
+  "marketHolidays": ["2026-12-25", "2026-12-26", "2027-01-01"],
+  "briefLeadLimit": 3,
+  "signalsTotal": 6,
+  "concentrationWarnRatio": 0.85,
+  "maturingWindowBusinessDays": 10
+}

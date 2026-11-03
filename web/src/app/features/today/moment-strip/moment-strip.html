@@ -1,0 +1,53 @@
+<section class="strip" aria-labelledby="strip-title">
+  <div class="head">
+    <h2 id="strip-title" class="title">Next {{ skeletonDays.length }} business days</h2>
+    <button type="button" class="scope" [matMenuTriggerFor]="scopeMenu" aria-label="Book scope">
+      {{ scopeLabels[store.scope()] }}
+      <mat-icon svgIcon="chevron-down" aria-hidden="true" />
+    </button>
+    <mat-menu #scopeMenu="matMenu">
+      @for (s of scopes; track s[0]) {
+        <button mat-menu-item type="button" (click)="store.setScope(s[0])" [attr.aria-checked]="store.scope() === s[0]" role="menuitemradio">{{ s[1] }}</button>
+      }
+    </mat-menu>
+    <span class="rule" aria-hidden="true"></span>
+    <div class="legend" role="group" aria-label="Show moment types">
+      @for (t of types; track t) {
+        <button type="button" class="legend-chip" [class.off]="!isActive(t)" [attr.aria-pressed]="isActive(t)" (click)="store.toggleType(t)">
+          <eli-moment-chip [type]="t">{{ typeLabels[t] }}</eli-moment-chip>
+        </button>
+      }
+    </div>
+  </div>
+
+  <div class="days">
+    @if (store.strip.isLoading() && !store.strip.hasValue()) {
+      @for (i of skeletonDays; track i) {
+        <div class="day"><div class="eli-skeleton" style="height: 14px; width: 60%"></div><div class="eli-skeleton" style="height: 24px; margin-top: 10px"></div></div>
+      }
+    } @else {
+      @for (col of columns(); track col.day.date) {
+        <div class="day" role="group" [attr.aria-label]="(col.day.date | eliDate) + ', ' + col.shown.length + ' moments'"
+          [class.holds]="col.holdsDockClient" [class.focused]="store.focusedDay() === col.day.offset">
+          <button type="button" class="day-head" [attr.aria-pressed]="store.focusedDay() === col.day.offset" (click)="store.focusDay(col.day.offset)"
+            [attr.aria-label]="'Show only ' + (col.day.date | eliDate)">
+            <span class="dname" [class.today]="col.day.offset === 0">{{ col.day.date | eliDate: 'day' }}</span>
+            <span class="doff">{{ col.day.offset | offset }}</span>
+          </button>
+          @for (m of col.shown; track m.id) {
+            <button type="button" class="client" [class.current]="m.clientId === store.dockClientId()" [attr.aria-label]="chipLabel(m)" (click)="pick(m)">
+              <eli-moment-chip [type]="m.type">{{ m.clientShortName }}</eli-moment-chip>
+            </button>
+          } @empty {
+            <span class="none">Nothing due</span>
+          }
+          @if (col.more > 0) {
+            <button type="button" class="client" (click)="expand(col.day.offset)" [attr.aria-label]="'Show ' + col.more + ' more on ' + (col.day.date | eliDate)">
+              <eli-moment-chip type="maturity" class="more">+{{ col.more }} more</eli-moment-chip>
+            </button>
+          }
+        </div>
+      }
+    }
+  </div>
+</section>

@@ -1,0 +1,39 @@
+/*
+ * Tailwind CSS 4, for styling only. Only the theme and utilities layers are
+ * loaded (no preflight). Every utility carries the tw: prefix and Tailwind's
+ * own palette is switched off, so a utility can only use one of our tokens.
+ */
+@layer theme, utilities;
+@import 'tailwindcss/theme.css' layer(theme) prefix(tw);
+@import 'tailwindcss/utilities.css' layer(utilities);
+@source './app';
+
+@theme {
+  --color-*: initial;
+  --font-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+
+  --color-canvas: var(--eli-bg-canvas);
+  --color-surface: var(--eli-bg-surface);
+  --color-row: var(--eli-bg-row);
+  --color-dock: var(--eli-bg-dock);
+  --color-input: var(--eli-bg-input);
+  --color-selected: var(--eli-bg-selected);
+  --color-line: var(--eli-border);
+  --color-strong: var(--eli-text-strong);
+  --color-primary: var(--eli-text-primary);
+  --color-muted: var(--eli-text-muted);
+  --color-muted-2: var(--eli-text-muted-2);
+  --color-orange: var(--eli-accent-orange);
+  --color-blue: var(--eli-accent-blue);
+  --color-link: var(--eli-accent-link);
+  --color-positive: var(--eli-status-positive);
+  --color-negative: var(--eli-status-negative);
+
+  --font-sans: var(--eli-font-sans);
+  --radius-s: var(--eli-radius-s);
+  --radius-m: var(--eli-radius-m);
+  --radius-pill: var(--eli-radius-pill);
+  --spacing: 2px;
+}

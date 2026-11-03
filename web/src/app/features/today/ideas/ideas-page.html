@@ -1,0 +1,55 @@
+<a class="back eli-link" routerLink="/rm/today"><mat-icon svgIcon="arrow-left" aria-hidden="true" />Back to morning brief</a>
+
+@if (ideas.isLoading() && !ideas.hasValue()) {
+  <div class="eli-skeleton" style="height: 28px; width: 420px; margin-top: 8px"></div>
+  <div class="grid">
+    <div class="eli-skeleton" style="height: 236px"></div><div class="eli-skeleton" style="height: 236px"></div><div class="eli-skeleton" style="height: 236px"></div>
+  </div>
+  <span class="eli-visually-hidden" role="status">Loading ideas</span>
+} @else if (ideas.error()) {
+  <section class="state" role="alert">
+    <mat-icon svgIcon="circle-alert" aria-hidden="true" />
+    <div><h2 class="state-title">Ideas could not be loaded</h2><p class="state-text">The ideas warehouse did not answer. Nothing was sent anywhere.</p></div>
+    <button matButton="outlined" type="button" (click)="ideas.reload()"><mat-icon svgIcon="refresh-cw" />Try again</button>
+  </section>
+} @else if (view(); as v) {
+  <header class="head">
+    <h2 class="title">{{ v.title }}</h2>
+    <eli-moment-chip [type]="v.set.moment.type">{{ v.chip }}</eli-moment-chip>
+  </header>
+  <p class="sub">{{ v.sub }}</p>
+  <p class="echo" aria-label="What you asked">{{ v.echo }}</p>
+
+  <div class="grid">
+    @for (idea of v.set.ideas; track idea.id) {
+      <eli-idea-card [idea]="idea" [priced]="priced(idea)" [inCallNotes]="store.callNotes().has(idea.id)" [quoteRequested]="requested().has(idea.id)"
+        (requestQuote)="requestQuote(v.set, $event)" (toggleNote)="store.toggleCallNote($event.id)" />
+    } @empty {
+      <p class="state-text">No pre-priced ideas fit this client today. Ask the desk for a custom quote from the Blotter.</p>
+    }
+  </div>
+
+  @for (idea of v.set.rankedLower; track idea.id) {
+    <section class="lower" [attr.aria-label]="'Ranked lower: ' + idea.title">
+      <div class="lower-main">
+        <p class="lower-title"><span class="lower-tag">Ranked lower</span> {{ idea.title }} · KI {{ idea.terms.kiPct }}% · coupon {{ idea.terms.couponPct }}%</p>
+        <p class="lower-reason">{{ idea.reason }}</p>
+      </div>
+      <eli-concentration-bar class="lower-bar" [underlying]="idea.concentration.underlying" [fromPct]="idea.concentration.fromPct" [toPct]="idea.concentration.toPct" [limitPct]="idea.concentration.limitPct" />
+    </section>
+  }
+
+  <p class="outcome"><eli-outcome-chip [status]="v.set.outcome" /> Outcome is read from the blotter. If {{ v.set.clientShortName }} trades within {{ v.set.outcomeWindowBusinessDays }} business days, this lead shows as Traded.</p>
+
+  <section class="prep" aria-labelledby="prep-h">
+    <h3 id="prep-h" class="prep-title">Call prep for {{ v.set.clientShortName }}</h3>
+    <ol class="prep-list">
+      @for (line of v.set.callPrep; track $index) {
+        <li>{{ line }}</li>
+      }
+    </ol>
+    <p class="prep-note">Talking points are AI-written from the figures above. Check suitability before you call.</p>
+  </section>
+
+  <eli-trust-line [businessDate]="businessDate" [sources]="['EQD master', 'outstanding stock']" [reference]="'client:' + v.set.clientShortName" />
+}

@@ -1,0 +1,166 @@
+@use '@angular/material' as mat;
+@use './styles/tokens';
+@use '@fontsource-variable/open-sans/wght.css';
+
+html {
+  color-scheme: dark;
+  @include mat.theme((
+    color: (
+      theme-type: dark,
+      primary: mat.$azure-palette,
+    ),
+    typography: (
+      plain-family: var(--eli-font-sans),
+      brand-family: var(--eli-font-sans),
+      regular-weight: 400,
+      medium-weight: 600,
+      bold-weight: 600,
+    ),
+    density: -2,
+  ));
+}
+
+// Material components themed with our tokens.
+:root {
+  @include mat.button-overrides((
+    filled-container-color: var(--eli-accent-blue),
+    filled-label-text-color: var(--eli-text-strong),
+    filled-container-shape: var(--eli-radius-s),
+    filled-container-height: 28px,
+    filled-horizontal-padding: 12px,
+    filled-label-text-size: var(--eli-font-size-s),
+    filled-label-text-weight: var(--eli-weight-semibold),
+    outlined-outline-color: var(--eli-border),
+    outlined-label-text-color: var(--eli-text-primary),
+    outlined-container-shape: var(--eli-radius-s),
+    outlined-container-height: 30px,
+    outlined-horizontal-padding: 12px,
+    outlined-label-text-size: var(--eli-font-size-s),
+    outlined-label-text-weight: var(--eli-weight-semibold),
+    text-label-text-color: var(--eli-accent-link),
+    text-container-shape: var(--eli-radius-s),
+    text-container-height: 28px,
+    text-horizontal-padding: 12px,
+    text-label-text-size: var(--eli-font-size-s),
+    text-label-text-weight: var(--eli-weight-semibold),
+  ));
+  @include mat.menu-overrides((
+    container-color: var(--eli-bg-dock),
+    container-shape: var(--eli-radius-s),
+    item-label-text-color: var(--eli-text-primary),
+    item-label-text-size: var(--eli-font-size-s),
+  ));
+  @include mat.tooltip-overrides((
+    container-color: var(--eli-bg-input),
+    supporting-text-color: var(--eli-text-primary),
+    supporting-text-size: var(--eli-font-size-s),
+  ));
+  @include mat.snack-bar-overrides((
+    container-color: var(--eli-bg-dock),
+    supporting-text-color: var(--eli-text-primary),
+    button-color: var(--eli-accent-link),
+  ));
+  @include mat.dialog-overrides((
+    container-color: var(--eli-bg-dock),
+    container-shape: var(--eli-radius-m),
+    subhead-color: var(--eli-text-strong),
+    supporting-text-color: var(--eli-text-primary),
+    subhead-size: var(--eli-font-size-l),
+    supporting-text-size: var(--eli-font-size-m),
+  ));
+  @include mat.table-overrides((
+    background-color: transparent,
+    header-headline-color: var(--eli-text-muted),
+    row-item-label-text-color: var(--eli-text-primary),
+    row-item-outline-color: var(--eli-border),
+    header-headline-size: var(--eli-font-size-s),
+    row-item-label-text-size: var(--eli-font-size-s),
+  ));
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--eli-bg-platform);
+  color: var(--eli-text-primary);
+  font-family: var(--eli-font-sans);
+  font-size: var(--eli-font-size-m);
+  line-height: var(--eli-line-height-m);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+button {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--eli-focus-ring);
+  outline-offset: 2px;
+}
+
+.eli-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+// Shared text roles
+.eli-eyebrow {
+  margin: 0;
+  color: var(--eli-text-muted);
+  font-size: var(--eli-font-size-s);
+  line-height: var(--eli-line-height-s);
+  letter-spacing: var(--eli-tracking-eyebrow);
+  text-transform: uppercase;
+}
+
+.eli-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--eli-accent-link);
+  cursor: pointer;
+  text-decoration: none;
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+// Skeleton blocks for loading states
+.eli-skeleton {
+  border-radius: var(--eli-radius-s);
+  background: linear-gradient(90deg, var(--eli-bg-row) 25%, var(--eli-bg-surface) 50%, var(--eli-bg-row) 75%);
+  background-size: 200% 100%;
+  animation: eli-shimmer 1.4s infinite linear;
+}
+
+@keyframes eli-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eli-skeleton {
+    animation: none;
+  }
+}
+
+.eli-scroll {
+  scrollbar-color: var(--eli-border) transparent;
+  scrollbar-width: thin;
+}

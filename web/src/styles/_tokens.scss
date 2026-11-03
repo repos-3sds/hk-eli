@@ -1,0 +1,97 @@
+// Design tokens for the HK ELI Chatbot, taken from the Digimarkets style guide
+// (HK ELI Figma 1P7HFxz01fdOBMo4YPEz8d for the shell, Moment Console
+// pNUYfynYbQZT6cP1LFAg2Y for the Today tab). Every colour, font, radius and
+// spacing value in component styles comes from here. Names are neutral (--eli-*).
+:root {
+  // Surfaces
+  --eli-bg-app-header: #070f1e;
+  --eli-bg-platform: #232c3f;
+  --eli-bg-canvas: #222b3f;
+  --eli-bg-sidebar: #141924;
+  --eli-bg-tab-rail: #262f42;
+  --eli-bg-tab-active: #141924;
+  --eli-bg-surface: #303a50;
+  --eli-bg-row: #32394e;
+  --eli-bg-dock: #1c2231;
+  --eli-bg-input: #0b0f18;
+  --eli-bg-selected: #2c4669;
+  --eli-bg-workspace-tab: #232c3f;
+  --eli-bg-workspace-tab-idle: #323f5c;
+
+  // Lines
+  --eli-border: #36485e;
+  --eli-border-widget: #141924;
+  --eli-separator: #2d374c;
+
+  // Text
+  --eli-text-strong: #ffffff;
+  --eli-text-primary: #e5e5e5;
+  --eli-text-muted: #828ea9;
+  --eli-text-muted-2: #9ba4ab;
+  --eli-text-rail-idle: rgb(255 255 255 / 50%);
+  --eli-text-workspace-idle: #9b9b9b;
+
+  // Accents and status (meaning is never carried by colour alone: every chip has a word)
+  --eli-accent-orange: #ff932e;
+  --eli-accent-blue: #1a78d1;
+  --eli-accent-blue-hover: #1668b6;
+  --eli-accent-link: #4ea0ff;
+  --eli-status-positive: #2b9f87;
+  --eli-status-negative: #ff3333;
+  --eli-status-badge: #ff4724;
+  --eli-focus-ring: #4ea0ff;
+
+  // Moment types (left edge of a moment chip)
+  --eli-moment-maturity: var(--eli-accent-orange);
+  --eli-moment-knockout: var(--eli-status-negative);
+  --eli-moment-exercised: var(--eli-accent-link);
+  --eli-moment-idle: var(--eli-text-muted-2);
+  --eli-moment-rfq: var(--eli-status-positive);
+
+  // Type
+  --eli-font-sans: 'Open Sans Variable', 'Open Sans', system-ui, sans-serif;
+  --eli-font-size-xs: 11px;
+  --eli-font-size-s: 12px;
+  --eli-font-size-m: 14px;
+  --eli-font-size-l: 16px;
+  --eli-font-size-xl: 20px;
+  --eli-line-height-s: 16px;
+  --eli-line-height-m: 20px;
+  --eli-line-height-l: 22px;
+  --eli-line-height-xl: 28px;
+  --eli-weight-regular: 400;
+  --eli-weight-semibold: 600;
+  --eli-tracking-eyebrow: 0.02em;
+
+  // Shape and space
+  --eli-radius-s: 4px;
+  --eli-radius-m: 8px;
+  --eli-radius-pill: 10px;
+  --eli-space-1: 2px;
+  --eli-space-2: 4px;
+  --eli-space-3: 6px;
+  --eli-space-4: 8px;
+  --eli-space-5: 10px;
+  --eli-space-6: 12px;
+  --eli-space-7: 16px;
+  --eli-space-8: 24px;
+
+  // Frame sizes (Digimarkets workspace anatomy)
+  --eli-app-header-height: 36px;
+  --eli-sidebar-width: 36px;
+  --eli-widget-gap: 16px;
+  --eli-widget-titlebar-height: 39px;
+  --eli-tab-size: 80px;
+  --eli-dock-width: 534px;
+
+  // Motion
+  --eli-motion-fast: 120ms;
+  --eli-shadow-widget: 2px 2px 8px #0f1f28;
+  --eli-shadow-overlay: 0 8px 24px rgb(0 0 0 / 45%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --eli-motion-fast: 0ms;
+  }
+}

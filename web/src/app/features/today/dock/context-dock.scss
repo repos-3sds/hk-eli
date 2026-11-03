@@ -1,0 +1,135 @@
+:host {
+  display: block;
+  min-height: 0;
+}
+
+.dock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--eli-space-7);
+  height: 100%;
+  overflow: auto;
+  padding: var(--eli-space-7);
+  border-radius: var(--eli-radius-s);
+  background: var(--eli-bg-dock);
+}
+
+.name {
+  margin: 0;
+  color: var(--eli-text-strong);
+  font-size: var(--eli-font-size-l);
+  line-height: var(--eli-line-height-l);
+  font-weight: var(--eli-weight-semibold);
+}
+
+.meta {
+  margin: var(--eli-space-1) 0 0;
+  color: var(--eli-text-muted);
+  font-size: var(--eli-font-size-s);
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--eli-space-4);
+  margin: 0;
+}
+
+.kpi {
+  padding: var(--eli-space-4) var(--eli-space-5);
+  border-radius: var(--eli-radius-s);
+  background: var(--eli-bg-canvas);
+
+  dt {
+    color: var(--eli-text-muted);
+    font-size: var(--eli-font-size-s);
+    line-height: var(--eli-line-height-s);
+  }
+
+  dd {
+    margin: var(--eli-space-1) 0 0;
+    color: var(--eli-text-strong);
+    font-weight: var(--eli-weight-semibold);
+  }
+}
+
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--eli-space-4);
+}
+
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--eli-space-6);
+  padding: var(--eli-space-3) 0;
+  border-bottom: 1px solid var(--eli-border);
+
+  &.plain {
+    border-bottom: 0;
+  }
+}
+
+.date {
+  flex: none;
+  width: 40px;
+  color: var(--eli-text-muted);
+  font-size: var(--eli-font-size-s);
+}
+
+.what {
+  flex: 1;
+  color: var(--eli-text-primary);
+}
+
+.status {
+  color: var(--eli-text-muted-2);
+  font-size: var(--eli-font-size-s);
+}
+
+.empty {
+  margin: 0;
+  color: var(--eli-text-muted);
+  font-size: var(--eli-font-size-s);
+}
+
+.foot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--eli-space-6);
+  margin-top: auto;
+}
+
+.send {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--eli-space-3);
+  font-size: var(--eli-font-size-s);
+
+  mat-icon {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+.advice {
+  display: flex;
+  gap: var(--eli-space-3);
+  margin: 0;
+  color: var(--eli-text-muted);
+  font-size: var(--eli-font-size-s);
+  line-height: var(--eli-line-height-s);
+
+  mat-icon {
+    flex: none;
+    width: 14px;
+    height: 14px;
+  }
+}
