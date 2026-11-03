@@ -132,6 +132,7 @@ export interface ClientContext {
   readonly concentration: readonly ConcentrationLine[];
   readonly outcomes: readonly LeadOutcome[];
   readonly recentRfqs: readonly RecentRfq[];
+  /** Widgets this client could be sent to. Empty until HK ELI is linked to other widgets. */
   readonly linkedWidgets: readonly string[];
 }
 

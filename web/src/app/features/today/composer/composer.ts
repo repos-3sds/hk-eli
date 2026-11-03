@@ -12,11 +12,10 @@ import { TodayStore } from '../today.store';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <form class="box" [class.tall]="tall()" (submit)="send($event)" role="search" aria-label="Ask the HK ELI Chatbot">
-      @if (store.linkedContext(); as ctx) {
+      @if (store.pickedShortName(); as name) {
         <span class="ctx">
-          <mat-icon svgIcon="link" aria-hidden="true" />
-          Client: {{ ctx.clientShortName }} · from {{ ctx.fromWidget }}
-          <button type="button" class="clear" (click)="store.clearLinkedContext()" [attr.aria-label]="'Clear client context ' + ctx.clientShortName" matTooltip="Clear: back to your whole book"><mat-icon svgIcon="x" /></button>
+          Client: {{ name }}
+          <button type="button" class="clear" (click)="store.clearPickedClient()" [attr.aria-label]="'Clear client ' + name" matTooltip="Clear: ask about your whole book"><mat-icon svgIcon="x" /></button>
         </span>
       }
       <label class="eli-visually-hidden" for="ask">Ask about a client, an underlying or an idea</label>
@@ -76,7 +75,7 @@ export class Composer {
     if (!question) {
       return;
     }
-    const client = this.store.linkedContext()?.clientId ?? this.store.dockClientId();
+    const client = this.store.pickedClientId() ?? undefined;
     this.store.composerDraft.set('');
     void this.router.navigate(['/rm/chat'], { queryParams: { q: question, client } });
   }

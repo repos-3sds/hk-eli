@@ -5,7 +5,8 @@ import { Idea } from '../../../core/models/today.models';
 
 export interface ConfirmQuoteData {
   readonly clientName: string;
-  readonly idea: Idea;
+  /** Only the title and terms are shown. */
+  readonly idea: Pick<Idea, 'title' | 'terms'>;
 }
 
 /** The RM's yes before anything leaves the chatbot: a live-quote request to the desk. */
@@ -18,7 +19,7 @@ export interface ConfirmQuoteData {
     <mat-dialog-content>
       <p>This sends a quote request to the SPE desk for <strong>{{ data.clientName }}</strong>:</p>
       <p class="terms">{{ data.idea.title }} · KI {{ data.idea.terms.kiPct }}% · strike {{ data.idea.terms.strikePct }}% · indicative coupon {{ data.idea.terms.couponPct }}% p.a.</p>
-      <p class="note">Nothing is sent to the client. The desk replies with a live price in the Blotter.</p>
+      <p class="note">Nothing is sent to the client. The desk replies with a live price.</p>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button matButton="outlined" [mat-dialog-close]="false">Cancel</button>

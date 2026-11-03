@@ -8,17 +8,20 @@ import { BusinessClock } from '../../core/time/business-clock';
 import { SessionService } from '../../core/session/session.service';
 import { momentText } from './shared/moment-text';
 
-/** Context handed in by a linked Digimarkets widget (for example a row picked in the Blotter). */
+/**
+ * State for the Today tab, held in signals. Loading, error and empty states come from the
+ * resources; the screens only read them. Provided by the Today layout, so it lives as long as the tab.
+ */
+/**
+ * Context a linked Digimarkets widget could hand in (for example a row picked in another widget).
+ * The feature is in place but unused: HK ELI is designed to stand alone, so this stays null for now.
+ */
 export interface LinkedContext {
   readonly clientId: string;
   readonly clientShortName: string;
   readonly fromWidget: string;
 }
 
-/**
- * State for the Today tab, held in signals. Loading, error and empty states come from the
- * resources; the screens only read them. Provided by the Today layout, so it lives as long as the tab.
- */
 @Injectable()
 export class TodayStore {
   private readonly data = inject(TodayDataSource);
@@ -31,7 +34,8 @@ export class TodayStore {
   readonly activeTypes = signal<ReadonlySet<MomentType>>(new Set(MOMENT_TYPES));
   readonly focusedDay = signal<number | null>(null);
   readonly pickedClientId = signal<string | null>(null);
-  readonly linkedContext = signal<LinkedContext | null>({ clientId: 'c-4821', clientShortName: 'Chan T.', fromWidget: 'Blotter' });
+  /** Not used yet: no widget is linked. */
+  readonly linkedContext = signal<LinkedContext | null>(null);
   readonly parkedLeadIds = signal<ReadonlySet<string>>(new Set());
   readonly showAllLeads = signal(false);
   readonly composerDraft = signal('');
@@ -45,10 +49,22 @@ export class TodayStore {
   readonly strip = rxResource({ params: () => this.scope(), stream: ({ params }) => this.data.getMomentStrip(params) });
   readonly brief = rxResource({ params: () => this.scope(), stream: ({ params }) => this.data.getMorningBrief(params) });
 
-  /** The client the dock shows: the one picked here, else the linked widget's, else the top lead. */
+  /** The client the dock shows: the one the RM picked, else the top lead. HK ELI stands alone; no other widget hands in a client. */
   readonly dockClientId = computed<string | null>(
     () => this.pickedClientId() ?? this.linkedContext()?.clientId ?? this.allLeads()[0]?.clientId ?? null,
   );
+
+  /** Short name of the client the RM picked, for the ask box chip. */
+  readonly pickedShortName = computed(() => {
+    const id = this.pickedClientId();
+    if (!id) {
+      return null;
+    }
+    if (this.client.hasValue() && this.client.value()?.id === id) {
+      return this.client.value()!.shortName;
+    }
+    return this.allLeads().find((l) => l.clientId === id)?.clientShortName ?? null;
+  });
   readonly client = rxResource({
     params: () => this.dockClientId(),
     stream: ({ params }) => (params ? this.data.getClientContext(params) : of(null)),
@@ -177,7 +193,9 @@ export class TodayStore {
     this.dockOpen.set(true);
   }
 
-  clearLinkedContext(): void {
+  /** Back to the whole book: no client picked and no linked context. */
+  clearPickedClient(): void {
+    this.pickedClientId.set(null);
     this.linkedContext.set(null);
   }
 

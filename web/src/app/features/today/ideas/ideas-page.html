@@ -25,7 +25,7 @@
       <eli-idea-card [idea]="idea" [priced]="priced(idea)" [inCallNotes]="store.callNotes().has(idea.id)" [quoteRequested]="requested().has(idea.id)"
         (requestQuote)="requestQuote(v.set, $event)" (toggleNote)="store.toggleCallNote($event.id)" />
     } @empty {
-      <p class="state-text">No pre-priced ideas fit this client today. Ask the desk for a custom quote from the Blotter.</p>
+      <p class="state-text">No pre-priced ideas fit this client today. Ask the desk for a custom quote.</p>
     }
   </div>
 

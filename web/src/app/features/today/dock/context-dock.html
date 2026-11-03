@@ -67,9 +67,11 @@
     </details>
 
     <div class="foot">
-      <button type="button" class="eli-link send" (click)="sendToLinked(c.shortName, c.linkedWidgets)">
-        <mat-icon svgIcon="link" aria-hidden="true" />Send {{ c.shortName }} to linked widgets ({{ c.linkedWidgets.join(', ') }})
-      </button>
+      <span class="send-wrap" [matTooltip]="c.linkedWidgets.length ? '' : 'No widgets linked yet'">
+        <button type="button" class="eli-link send" [disabled]="c.linkedWidgets.length === 0">
+          <mat-icon svgIcon="link" aria-hidden="true" />Send {{ c.shortName }} to linked widgets
+        </button>
+      </span>
       <p class="advice"><mat-icon svgIcon="sparkles" aria-hidden="true" />AI-generated words. Not a recommendation or suitability advice; check the client profile before you call.</p>
     </div>
   } @else {
