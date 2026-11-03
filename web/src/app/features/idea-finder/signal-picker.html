@@ -1,0 +1,35 @@
+  <section class="packs" aria-labelledby="packs-h">
+    <h3 id="packs-h" class="section-title">Starter packs</h3>
+    @for (p of packs; track p.id) {
+      <button type="button" class="pack" [class.on]="store.activePackId() === p.id" [attr.aria-pressed]="store.activePackId() === p.id" (click)="store.choosePack(p.id)">
+        <span class="pack-name">{{ p.name }}</span>
+        <span class="pack-blurb">{{ p.blurb }} · {{ p.signalIds.length }} signals</span>
+      </button>
+    }
+  </section>
+
+  <div class="picked-head">
+    <h3 class="section-title">Signals</h3>
+    <span class="picked-count" [class.max]="store.atMax()">{{ store.picked().length }} of {{ maxSignals }} picked</span>
+  </div>
+  @for (g of groups; track g.id) {
+    <section class="group" [attr.aria-label]="g.question">
+      <h4 class="question">{{ g.question }}</h4>
+      @for (s of signalsIn(g.id); track s.id) {
+        <div class="sig" [class.on]="store.picked().includes(s.id)">
+          <label class="sig-row">
+            <input type="checkbox" [checked]="store.picked().includes(s.id)" [disabled]="!store.picked().includes(s.id) && store.atMax()" (change)="store.toggleSignal(s.id)" />
+            <span class="sig-name">{{ s.name }}</span>
+            @if (s.needsClient && !store.client()) {<span class="needs">needs a client</span>}
+            <mat-icon class="info" svgIcon="info" aria-hidden="true" />
+          </label>
+          <div class="hover" role="tooltip">
+            <p><strong>What it checks.</strong> {{ s.rule }}</p>
+            <p><strong>Why it matters.</strong> {{ s.why }}</p>
+            <p class="caveat"><strong>What it does not tell you.</strong> {{ s.caveat }}</p>
+            <p class="src">{{ s.source }}</p>
+          </div>
+        </div>
+      }
+    </section>
+  }

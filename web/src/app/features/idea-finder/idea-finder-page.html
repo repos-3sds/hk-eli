@@ -1,0 +1,157 @@
+<header class="top">
+  <div class="titles">
+    <h2 class="title">Find ideas that line up</h2>
+    <p class="lede">Say what the client wants. Pick the signals that matter. Ideas that meet more of them rank higher; there is no AI score.</p>
+  </div>
+  <form class="ask" (submit)="$event.preventDefault(); store.read()" aria-label="Describe what the client wants">
+    <label class="eli-visually-hidden" for="idea-ask">What does the client want?</label>
+    <textarea id="idea-ask" name="ask" rows="2" class="input"
+      placeholder="e.g. Rollover for Chan, 6M, coupon 15%, KI 65 or lower, no more NVDA  (Enter to read)"
+      [ngModel]="store.text()" (ngModelChange)="store.text.set($event)" (keydown.enter)="onEnter($event)"></textarea>
+    <button matButton="filled" type="submit" [disabled]="!store.text().trim() || store.reading()">
+      <mat-icon svgIcon="sparkles" />{{ store.reading() ? 'Reading…' : 'Read it' }}
+    </button>
+  </form>
+
+  <div class="focus" aria-label="Narrow your focus">
+    <span class="focus-label">Narrow your focus</span>
+    <button type="button" class="fchip client" [class.set]="store.client()" [matMenuTriggerFor]="clientMenu">
+      {{ store.client() ? 'Client: ' + store.client()!.name : 'Pick a client' }}<mat-icon class="chev" svgIcon="chevron-down" aria-hidden="true" />
+    </button>
+    <mat-menu #clientMenu="matMenu">
+      <button mat-menu-item type="button" (click)="store.setClient(null)">No client (whole warehouse)</button>
+      @for (c of clients; track c.id) {
+        <button mat-menu-item type="button" (click)="store.setClient(c.id)">{{ c.name }} · {{ c.segment }}</button>
+      }
+    </mat-menu>
+
+    <button type="button" class="fchip" [class.set]="store.filters().tenorMonths" [matMenuTriggerFor]="tenorMenu">
+      Tenor: {{ store.filters().tenorMonths ? store.filters().tenorMonths + 'M' : 'any' }}<mat-icon class="chev" svgIcon="chevron-down" aria-hidden="true" />
+    </button>
+    <mat-menu #tenorMenu="matMenu">
+      <button mat-menu-item type="button" (click)="store.patchFilters({ tenorMonths: null })">Any tenor</button>
+      @for (t of tenors; track t) {
+        <button mat-menu-item type="button" (click)="store.patchFilters({ tenorMonths: t })">{{ t }} months</button>
+      }
+    </mat-menu>
+
+    @if (store.filters().minCouponPct !== null) {
+      <span class="fchip set">Coupon ≥ {{ store.filters().minCouponPct }}%
+        <button type="button" class="x" (click)="store.patchFilters({ minCouponPct: null })" aria-label="Remove coupon filter"><mat-icon svgIcon="x" /></button></span>
+    }
+    @if (store.filters().maxKiPct !== null) {
+      <span class="fchip set">KI ≤ {{ store.filters().maxKiPct }}%
+        <button type="button" class="x" (click)="store.patchFilters({ maxKiPct: null })" aria-label="Remove knock-in filter"><mat-icon svgIcon="x" /></button></span>
+    }
+    @for (t of store.filters().include; track t) {
+      <span class="fchip set">On {{ t }}
+        <button type="button" class="x" (click)="store.removeTicker('include', t)" [attr.aria-label]="'Remove ' + t"><mat-icon svgIcon="x" /></button></span>
+    }
+    @for (t of store.filters().exclude; track t) {
+      <span class="fchip set neg">No {{ t }}
+        <button type="button" class="x" (click)="store.removeTicker('exclude', t)" [attr.aria-label]="'Allow ' + t + ' again'"><mat-icon svgIcon="x" /></button></span>
+    }
+    @if (store.filters().minCouponPct !== null || store.filters().maxKiPct !== null || store.filters().tenorMonths !== null || store.filters().include.length || store.filters().exclude.length) {
+      <button type="button" class="eli-link clear" (click)="store.clearFilters()">Clear filters</button>
+    }
+  </div>
+  @if (store.readError()) {
+    <p class="note error" role="alert">{{ store.readError() }}</p>
+  } @else if (store.lastRead()?.ignored?.length) {
+    <p class="note">Not used: {{ store.lastRead()!.ignored.join(', ') }}. Use the chips to add anything that was missed.</p>
+  }
+</header>
+
+<div class="body">
+  <eli-signal-picker class="picker eli-scroll" />
+
+  <section class="results" aria-labelledby="res-h" aria-live="polite">
+    @if (store.results.error()) {
+      <div class="state error" role="alert">
+        <mat-icon svgIcon="circle-alert" aria-hidden="true" />
+        <span>The idea warehouse did not answer in time. Nothing was changed.</span>
+        <button matButton="outlined" type="button" (click)="store.results.reload()">Try again</button>
+      </div>
+    } @else if (store.results.isLoading() && !store.results.hasValue()) {
+      @for (i of [0, 1, 2, 3]; track i) {
+        <div class="eli-skeleton" style="height: 64px"></div>
+      }
+    } @else if (store.results.hasValue()) {
+      @let r = store.results.value();
+      <div class="res-head">
+        <h3 id="res-h" class="res-title">{{ r.passedFilters }} of {{ r.warehouseSize }} ideas pass your filters</h3>
+        <p class="res-sub">
+          Ranked by how many of your {{ store.picked().length }} signals line up, then by coupon.
+          @if (store.client(); as c) { Concentration shown for {{ c.name }} with {{ r.notionalUsd | usd }}. }
+          Indicative, priced {{ r.businessDate | eliDate: 'long' }} 18:00 HKT.
+        </p>
+        @if (store.clientSignalsWithoutClient()) {
+          <p class="warn"><mat-icon svgIcon="info" aria-hidden="true" />Some picked signals check fit to a client. Pick a client above, or they count as not met.</p>
+        }
+      </div>
+
+      @if (r.matches.length === 0) {
+        <div class="state">
+          <mat-icon svgIcon="info" aria-hidden="true" />
+          <span>No ideas pass these filters. Loosen the tenor, coupon or knock-in, or allow a stock you excluded.</span>
+          <button matButton="outlined" type="button" (click)="store.clearFilters()">Clear filters</button>
+        </div>
+      } @else {
+        <ol class="list">
+          @for (m of store.topMatches(); track m.id; let i = $index) {
+            <li class="item" [class.open]="store.openRow() === m.id">
+              <div class="row">
+                <span class="rank">{{ i + 1 }}</span>
+                <span class="what">
+                  <span class="idea-title">{{ m.title }}</span>
+                  <span class="terms">Coupon {{ m.terms.couponPct }}% p.a. · KI {{ m.terms.kiPct }}% · strike {{ m.terms.strikePct }}%</span>
+                </span>
+                <span class="conf" [attr.aria-label]="m.met + ' of ' + m.checks.length + ' signals line up'">
+                  <span class="dots" aria-hidden="true">
+                    @for (c of m.checks; track c.signalId) {<span class="dot" [class.on]="c.met"></span>}
+                  </span>
+                  <span class="count">{{ m.met }}/{{ m.checks.length }}</span>
+                </span>
+                <span class="effect">
+                  @if (m.effect; as e) {
+                    <eli-concentration-bar [underlying]="e.underlying" [fromPct]="e.fromPct" [toPct]="e.toPct" [limitPct]="e.limitPct" />
+                  } @else {
+                    <span class="muted">Pick a client to see concentration</span>
+                  }
+                </span>
+                <span class="acts">
+                  <button matButton type="button" (click)="toggleRow(m.id)" [attr.aria-expanded]="store.openRow() === m.id">Why<mat-icon class="chev" svgIcon="chevron-down" /></button>
+                  <span [matTooltip]="store.client() ? '' : 'Pick a client first'">
+                    <button matButton="outlined" type="button" [disabled]="!store.client()" (click)="requestQuote(m)">Live quote</button>
+                  </span>
+                </span>
+              </div>
+              @if (store.openRow() === m.id) {
+                <table class="evidence">
+                  <caption class="eli-visually-hidden">Signals for {{ m.title }}</caption>
+                  <thead><tr><th scope="col">Signal</th><th scope="col">Lines up?</th><th scope="col">The figure</th><th scope="col">Source</th></tr></thead>
+                  <tbody>
+                    @for (c of m.checks; track c.signalId) {
+                      <tr>
+                        <td>{{ signalName(c.signalId) }}</td>
+                        <td><span class="yn" [class.yes]="c.met">{{ c.met ? 'Yes' : 'No' }}</span></td>
+                        <td>{{ c.evidence }}</td>
+                        <td class="muted">{{ c.source }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              }
+            </li>
+          }
+        </ol>
+        @if (store.hiddenCount() > 0) {
+          <button type="button" class="eli-link more" (click)="store.showAll.set(!store.showAll())">
+            {{ store.showAll() ? 'Show the top 5 only' : 'Show ' + store.hiddenCount() + ' ranked lower' }}
+          </button>
+        }
+      }
+      <p class="trust"><mat-icon svgIcon="info" aria-hidden="true" />Figures from the idea warehouse, blotter, RFQ log and EQD master. Signals are rules on data, not AI. Not a recommendation; check suitability before you call.</p>
+    }
+  </section>
+</div>
