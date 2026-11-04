@@ -42,8 +42,19 @@ export class IdeaFinderPage {
 
   /** ?client=… from Today or Chat. */
   readonly client = input<string | undefined>();
+  /** ?pocket=… from a rollover pocket card on Today. */
+  readonly pocket = input<string | undefined>();
 
   constructor() {
+    effect(() => {
+      const id = this.pocket();
+      untracked(() => {
+        this.store.setPocket(id ?? null);
+        if (id) {
+          this.store.choosePack('rollover');
+        }
+      });
+    });
     effect(() => {
       const id = this.client();
       if (id) {

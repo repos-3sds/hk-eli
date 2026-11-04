@@ -1,6 +1,9 @@
 <section class="hero" aria-labelledby="hero-h">
   @if (store.brief.hasValue()) {
-    <p class="salutation"><mat-icon svgIcon="sun" aria-hidden="true" />{{ store.salutation() }}</p>
+    <div class="hero-top">
+      <p class="salutation"><mat-icon svgIcon="sun" aria-hidden="true" />{{ store.salutation() }}</p>
+      <eli-scope-switch />
+    </div>
     <h2 id="hero-h" class="greeting">{{ freshness.runFailed() && !showLastGood() ? 'No new list today.' : store.headline() }}</h2>
     @if (store.briefSummary() && !freshness.runFailed()) {
       <p class="summary">{{ store.briefSummary() }}</p>
@@ -86,8 +89,35 @@
         @if (freshness.runFailed()) {
           <p class="list-sub warn-text">Last good list, from close {{ freshness.value()!.dataAsOf | eliDate: 'long' }}. Not new today.</p>
         }
-        <p class="list-sub">Sorted by how many signals agree. Pick a client to see their book, owning RM and ideas.</p>
-        @if (store.filtersActive()) {
+        @if (store.pocketsBelow().length && !store.pocketFilter()) {
+          <section class="pockets" aria-labelledby="pockets-h">
+            <h3 id="pockets-h" class="pockets-h">Below the {{ store.pocketsBelow()[0].baselinePct }}% rollover line this month</h3>
+            <div class="pocket-grid">
+              @for (p of store.pocketsBelow(); track p.id) {
+                <article class="pocket" [attr.aria-label]="p.branch + ' ' + p.segment + ', rollover ' + p.rolloverPct + '%'">
+                  <div class="pocket-top">
+                    <span class="pocket-name">{{ p.branch }} · {{ p.segment }}</span>
+                    <span class="pocket-pct">{{ p.rolloverPct }}%</span>
+                  </div>
+                  <div class="bar" aria-hidden="true">
+                    <span class="fill" [style.width.%]="p.rolloverPct"></span>
+                    <span class="line" [style.left.%]="p.baselinePct"></span>
+                  </div>
+                  <p class="pocket-text">{{ p.rolledThisMonth }} of {{ p.maturedThisMonth }} maturities rolled this month. {{ p.maturingUsd | usd }} matures in the next 10 business days.</p>
+                  <div class="pocket-actions">
+                    <button type="button" class="eli-link" (click)="store.showPocket(p)"><mat-icon svgIcon="users" aria-hidden="true" />Show its clients</button>
+                    <button type="button" class="eli-link" (click)="ideasForPocket(p)"><mat-icon svgIcon="lightbulb" aria-hidden="true" />Ideas for this pocket</button>
+                  </div>
+                </article>
+              }
+            </div>
+            <p class="list-sub">Rollover this month against the {{ store.pocketsBelow()[0].baselinePct }}% baseline. Each pocket is one example, not an average.</p>
+          </section>
+        }
+        <p class="list-sub">Clients across {{ store.scopeName() === 'Whole business' ? 'the whole business' : store.scopeName() }}, sorted by how many signals agree. Pick a client to see their book, owner RM and ideas.</p>
+        @if (store.pocketFilter(); as p) {
+          <p class="filters">Showing clients in {{ p.branch }} · {{ p.segment }} (rollover {{ p.rolloverPct }}%). <button type="button" class="eli-link" (click)="store.clearFilters()">Show everything</button></p>
+        } @else if (store.filtersActive()) {
           <p class="filters">Filtered by the calendar. <button type="button" class="eli-link" (click)="store.clearFilters()">Show everything</button></p>
         }
         <div class="tw:flex tw:flex-col tw:gap-2" aria-live="polite" role="list" aria-label="Morning brief">
@@ -99,7 +129,7 @@
               <mat-icon svgIcon="info" aria-hidden="true" />
               <div>
                 <h3 class="state-title">No clients match</h3>
-                <p class="state-text">Nobody in the brief fits the days and moment types picked in the calendar, or they are parked for today.</p>
+                <p class="state-text">{{ store.pocketFilter() ? 'No client in this pocket has a moment in the next 10 business days, or they are marked reviewed.' : 'Nobody in the brief fits the days and moment types picked in the calendar, or they are marked reviewed.' }}</p>
               </div>
               <button matButton="outlined" type="button" (click)="store.clearFilters()">Show everything</button>
             </section>

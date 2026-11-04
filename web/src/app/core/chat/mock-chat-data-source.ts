@@ -49,7 +49,7 @@ export class MockChatDataSource extends ChatDataSource {
     if (named) {
       return this.callPrep(id, named);
     }
-    return this.today.getMorningBrief('my-book').pipe(
+    return this.today.getMorningBrief('all').pipe(
       map((brief) => ({
         id,
         fallback: true,
@@ -62,7 +62,7 @@ export class MockChatDataSource extends ChatDataSource {
   }
 
   private businessAnswer(id: string, blocks: AnswerBlock[], followUps: string[], sources: string[]): Observable<ChatAnswer> {
-    return this.today.getMorningBrief('team').pipe(map((brief) => ({ id, fallback: false, businessDate: brief.businessDate, sources, blocks, followUps })));
+    return this.today.getMorningBrief('all').pipe(map((brief) => ({ id, fallback: false, businessDate: brief.businessDate, sources, blocks, followUps })));
   }
 
   private rollover(id: string): Observable<ChatAnswer> {
@@ -129,7 +129,7 @@ export class MockChatDataSource extends ChatDataSource {
 
   private callPrep(id: string, clientId: string): Observable<ChatAnswer> {
     return forkJoin({
-      brief: this.today.getMorningBrief('team'),
+      brief: this.today.getMorningBrief('all'),
       context: this.today.getClientContext(clientId),
       ideas: this.today.getIdeas(clientId).pipe(catchError(() => of(null))),
     }).pipe(
@@ -187,7 +187,7 @@ export class MockChatDataSource extends ChatDataSource {
   }
 
   private history(id: string, clientId: string): Observable<ChatAnswer> {
-    return forkJoin({ brief: this.today.getMorningBrief('team'), context: this.today.getClientContext(clientId) }).pipe(
+    return forkJoin({ brief: this.today.getMorningBrief('all'), context: this.today.getClientContext(clientId) }).pipe(
       map(({ brief, context }) => {
         const first = context.name.split(' ')[0];
         const outcomes = context.outcomes.map((o) => `${shortDate(o.date)} · ${o.label} · ${o.status.replace('-', ' ')}`);
@@ -210,8 +210,8 @@ export class MockChatDataSource extends ChatDataSource {
   }
 
   private byType(id: string, type: 'maturity' | 'knockout', window: 'this' | 'next' | 'window'): Observable<ChatAnswer> {
-    return this.today.getMomentStrip('my-book').pipe(
-      switchMap((strip) => this.today.getMorningBrief('my-book').pipe(map((brief) => ({ strip, brief })))),
+    return this.today.getMomentStrip('all').pipe(
+      switchMap((strip) => this.today.getMorningBrief('all').pipe(map((brief) => ({ strip, brief })))),
       map(({ strip, brief }) => {
         const weekEnd = endOfWeekIndex(strip);
         const inWindow = (offset: number) => (window === 'this' ? offset <= weekEnd : window === 'next' ? offset > weekEnd : true);

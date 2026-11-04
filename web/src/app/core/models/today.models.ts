@@ -16,13 +16,32 @@ export const MOMENT_LABELS: Record<MomentType, string> = {
   rfq: 'Open RFQ',
 };
 
-/** Whose clients the strip and the brief cover. */
-export type BookScope = 'my-book' | 'team';
+/**
+ * Which part of the business the strip and the list cover. Launch users see all trades (R38),
+ * so the default is the whole business; they narrow by branch, segment or the digibank channel.
+ */
+export type BookScope = 'all' | `branch:${string}` | `segment:${string}` | 'channel:digibank';
 
-export const BOOK_SCOPE_LABELS: Record<BookScope, string> = {
-  'my-book': 'My book',
-  team: 'My team',
-};
+export interface ScopeOption {
+  readonly id: BookScope;
+  readonly label: string;
+  readonly group: 'Business' | 'Branch' | 'Segment' | 'Channel';
+}
+
+export const SCOPE_OPTIONS: readonly ScopeOption[] = [
+  { id: 'all', label: 'Whole business', group: 'Business' },
+  { id: 'branch:Central', label: 'Central', group: 'Branch' },
+  { id: 'branch:Kwun Tong', label: 'Kwun Tong', group: 'Branch' },
+  { id: 'branch:Mong Kok', label: 'Mong Kok', group: 'Branch' },
+  { id: 'branch:Tsim Sha Tsui', label: 'Tsim Sha Tsui', group: 'Branch' },
+  { id: 'segment:Treasures', label: 'Treasures', group: 'Segment' },
+  { id: 'segment:Treasure Private', label: 'Treasure Private', group: 'Segment' },
+  { id: 'channel:digibank', label: 'Digibank (self-directed)', group: 'Channel' },
+];
+
+export function scopeLabel(scope: BookScope): string {
+  return SCOPE_OPTIONS.find((o) => o.id === scope)?.label ?? 'Whole business';
+}
 
 /** One business day in the strip. `offset` 0 is today; T-n means n business days from today. */
 export interface BusinessDay {
@@ -58,7 +77,7 @@ export interface Signal {
 
 export type LeadActionKind = 'rollover-ideas' | 'exercised-stock-ideas' | 'knockout-ideas' | 'reactivation-ideas';
 
-/** A client who needs the RM today, with the reason in plain words. */
+/** A client who needs attention today, with the reason in plain words and who owns the client. */
 export interface Lead {
   readonly id: string;
   readonly clientId: string;
@@ -66,11 +85,28 @@ export interface Lead {
   readonly clientShortName: string;
   readonly segment: string;
   readonly cifMasked: string;
+  /** The RM (or "Digibank") a handoff goes to. */
+  readonly ownerRm: string;
+  readonly branch: string;
+  readonly channel: 'advisory' | 'digibank';
   readonly moment: Moment;
   /** Plain-words summary. Worded by the model from computed figures. */
   readonly summary: string;
   readonly signals: readonly Signal[];
   readonly action: { readonly kind: LeadActionKind; readonly label: string };
+}
+
+/** Rollover this month for one branch and segment, against the baseline. Below the line is an exception worth a look. */
+export interface Pocket {
+  readonly id: string;
+  readonly branch: string;
+  readonly segment: string;
+  readonly rolloverPct: number;
+  readonly baselinePct: number;
+  readonly maturedThisMonth: number;
+  readonly rolledThisMonth: number;
+  /** ELI notional maturing in the next 10 business days in this pocket. */
+  readonly maturingUsd: number;
 }
 
 export interface MorningBrief {
@@ -79,6 +115,10 @@ export interface MorningBrief {
   readonly preparedFrom: string;
   readonly sources: readonly string[];
   readonly leads: readonly Lead[];
+  /** Notional maturing in the next 10 business days across the scope. */
+  readonly maturingUsd: number;
+  /** Rollover pockets in the scope, lowest first. */
+  readonly pockets: readonly Pocket[];
 }
 
 export interface ConcentrationLine {
@@ -125,6 +165,8 @@ export interface ClientContext {
   readonly segment: string;
   readonly cifMasked: string;
   readonly rmName: string;
+  readonly branch: string;
+  readonly channel: 'advisory' | 'digibank';
   readonly riskProfile: number;
   readonly eliOutstandingUsd: number;
   readonly maturingUsd: number;

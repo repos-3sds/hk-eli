@@ -35,8 +35,8 @@ export class MockIdeaFinderDataSource extends IdeaFinderDataSource {
     return this.respond(() => {
       const client = FIXTURE_CLIENTS.find((c) => c.id === query.filters.clientId) ?? null;
       const warehouse = this.scenario === 'empty' ? [] : WAREHOUSE;
-      const { matches, passed, notionalUsd } = rankIdeas(warehouse, query, client, `${this.clock.today()}T09:05:00+08:00`);
-      return { matches, passedFilters: passed, blockers: filterBlockers(warehouse, query.filters), warehouseSize: warehouse.length, notionalUsd, businessDate: this.clock.businessDate() };
+      const { matches, hiddenByLimits, passed, notionalUsd } = rankIdeas(warehouse, query, client, `${this.clock.today()}T09:05:00+08:00`);
+      return { matches, hiddenByLimits, passedFilters: passed, blockers: filterBlockers(warehouse, query.filters), warehouseSize: warehouse.length, notionalUsd, businessDate: this.clock.businessDate() };
     });
   }
 

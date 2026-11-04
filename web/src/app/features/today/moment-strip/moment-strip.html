@@ -1,15 +1,7 @@
 <section class="strip" aria-labelledby="strip-title">
   <div class="head">
     <h2 id="strip-title" class="title">Next {{ skeletonDays.length }} business days</h2>
-    <button type="button" class="scope" [matMenuTriggerFor]="scopeMenu" aria-label="Book scope">
-      {{ scopeLabels[store.scope()] }}
-      <mat-icon svgIcon="chevron-down" aria-hidden="true" />
-    </button>
-    <mat-menu #scopeMenu="matMenu">
-      @for (s of scopes; track s[0]) {
-        <button mat-menu-item type="button" (click)="store.setScope(s[0])" [attr.aria-checked]="store.scope() === s[0]" role="menuitemradio">{{ s[1] }}</button>
-      }
-    </mat-menu>
+    <eli-scope-switch />
     <span class="rule" aria-hidden="true"></span>
     <div class="legend" role="group" aria-label="Show moment types">
       @for (t of types; track t) {

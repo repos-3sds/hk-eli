@@ -3,7 +3,8 @@ import { rxResource } from '@angular/core/rxjs-interop';
 import { of } from 'rxjs';
 import { APP_CONFIG } from '../../core/config/app-config';
 import { TodayDataSource } from '../../core/data/today-data-source';
-import { BookScope, Lead, MOMENT_TYPES, MomentType } from '../../core/models/today.models';
+import { BookScope, Lead, MOMENT_TYPES, MomentType, Pocket, scopeLabel } from '../../core/models/today.models';
+import { usdCompact } from './shared/format';
 import { BusinessClock } from '../../core/time/business-clock';
 import { SessionService } from '../../core/session/session.service';
 import { momentText } from './shared/moment-text';
@@ -30,7 +31,9 @@ export class TodayStore {
   private readonly session = inject(SessionService);
 
   // What the user has chosen
-  readonly scope = signal<BookScope>('my-book');
+  readonly scope = signal<BookScope>('all');
+  /** A rollover pocket the user chose to look into: the list narrows to its clients. */
+  readonly pocketFilter = signal<Pocket | null>(null);
   readonly activeTypes = signal<ReadonlySet<MomentType>>(new Set(MOMENT_TYPES));
   readonly focusedDay = signal<number | null>(null);
   readonly pickedClientId = signal<string | null>(null);
@@ -77,7 +80,10 @@ export class TodayStore {
     const parked = this.parkedLeadIds();
     const types = this.activeTypes();
     const day = this.focusedDay();
-    return this.allLeads().filter((l) => !parked.has(l.id) && types.has(l.moment.type) && (day === null || l.moment.offset === day));
+    const pocket = this.pocketFilter();
+    return this.allLeads().filter(
+      (l) => !parked.has(l.id) && types.has(l.moment.type) && (day === null || l.moment.offset === day) && (!pocket || inPocket(l, pocket)),
+    );
   });
 
   readonly visibleLeads = computed(() =>
@@ -92,13 +98,28 @@ export class TodayStore {
     return `${part}, ${this.session.user().firstName}`;
   });
 
-  /** The landing headline: how many clients need attention across the scope today. */
+  /** Rollover pockets in the scope that sit below the baseline, lowest first. */
+  readonly pocketsBelow = computed(() => (this.brief.hasValue() ? this.brief.value().pockets.filter((p) => p.rolloverPct < p.baselinePct) : []));
+
+  readonly scopeName = computed(() => scopeLabel(this.scope()));
+
+  /** The landing headline: the business picture for the scope, then how many clients need attention. */
   readonly headline = computed(() => {
+    const brief = this.brief.hasValue() ? this.brief.value() : null;
     const count = this.openLeads().length;
-    if (count === 0) {
+    if (!brief || (count === 0 && brief.maturingUsd === 0)) {
       return 'Nothing needs attention urgently today.';
     }
-    return `${count} ${count === 1 ? 'client needs' : 'clients need'} attention today.`;
+    const below = this.pocketsBelow().length;
+    const matures = `${usdCompact(brief.maturingUsd)} matures in the next 10 business days`;
+    const pockets = below === 0 ? 'rollover is at or above the line everywhere' : `${below} ${below === 1 ? 'pocket is' : 'pockets are'} below the rollover line`;
+    return `${matures}; ${pockets}.`;
+  });
+
+  /** "12 clients need attention": the count line that used to be the headline. */
+  readonly attentionLine = computed(() => {
+    const count = this.openLeads().length;
+    return count === 0 ? 'No clients need attention urgently.' : `${count} ${count === 1 ? 'client needs' : 'clients need'} attention today.`;
   });
 
   /** Ready-made questions under the ask box, by launch role. The first one for WMS names the top lead. */
@@ -152,13 +173,17 @@ export class TodayStore {
     const first = open[0];
     const when = momentText(first.moment);
     const met = first.signals.filter((x) => x.met).length;
-    return `${list[0].toUpperCase()}${list.slice(1)}. Start with ${first.clientName}: ${when.charAt(0).toLowerCase()}${when.slice(1)}, ${met} of ${first.signals.length} signals agree.`;
+    const who = `${open.length} ${open.length === 1 ? 'client needs' : 'clients need'} attention`;
+    return `${who}: ${list}. Start with ${first.clientName}: ${when.charAt(0).toLowerCase()}${when.slice(1)}, ${met} of ${first.signals.length} signals agree.`;
   });
 
-  readonly filtersActive = computed(() => this.activeTypes().size < MOMENT_TYPES.length || this.focusedDay() !== null);
+  readonly filtersActive = computed(
+    () => this.activeTypes().size < MOMENT_TYPES.length || this.focusedDay() !== null || this.pocketFilter() !== null,
+  );
 
   setScope(scope: BookScope): void {
     this.scope.set(scope);
+    this.pocketFilter.set(null);
     this.focusedDay.set(null);
     this.showAllLeads.set(false);
   }
@@ -182,6 +207,14 @@ export class TodayStore {
   clearFilters(): void {
     this.activeTypes.set(new Set(MOMENT_TYPES));
     this.focusedDay.set(null);
+    this.pocketFilter.set(null);
+  }
+
+  /** Narrow the list to one pocket's clients and show the brief. */
+  showPocket(pocket: Pocket): void {
+    this.pocketFilter.set(pocket);
+    this.showAllLeads.set(true);
+    this.landingTab.set('brief');
   }
 
   /** Puts a client in the right-hand panel and opens it. */
@@ -242,4 +275,12 @@ export class TodayStore {
     this.strip.reload();
     this.brief.reload();
   }
+}
+
+/** A lead belongs to a pocket when it is from that branch and segment (digibank pocket: the digibank channel). */
+export function inPocket(lead: Lead, pocket: Pocket): boolean {
+  if (pocket.branch === 'Digibank') {
+    return lead.channel === 'digibank';
+  }
+  return lead.branch === pocket.branch && lead.segment === pocket.segment;
 }

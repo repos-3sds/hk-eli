@@ -27,11 +27,11 @@ import {
   FixtureIdea,
   SIGNAL_CATALOGUE,
   SignalId,
-  TEAM_ONLY_CLIENT_IDS,
+  FixtureLead,
 } from './today.fixture';
+import { ROLLOVER_POCKETS, ownerOf } from './business.fixture';
 
 const SIGNAL_ORDER: readonly SignalId[] = ['moment', 'cash', 'history', 'headroom', 'engaged', 'ideas'];
-const RM_NAME = 'Srivalli T.';
 
 /** Fixture-backed data source with simulated latency and switchable scenarios (?scenario=empty|error|slow). */
 @Injectable()
@@ -55,8 +55,32 @@ export class MockTodayDataSource extends TodayDataSource {
     return of(null).pipe(delay(latency), switchMap(() => of(value())));
   }
 
+  /** Launch users see all trades; a scope narrows to a branch, a segment or the digibank channel. */
   private inScope(clientId: string, scope: BookScope): boolean {
-    return scope === 'team' || !TEAM_ONLY_CLIENT_IDS.includes(clientId);
+    if (scope === 'all') {
+      return true;
+    }
+    const owner = ownerOf(clientId);
+    const [kind, value] = scope.split(':') as [string, string];
+    switch (kind) {
+      case 'branch':
+        return owner?.branch === value;
+      case 'segment':
+        return this.client(clientId).segment === value;
+      case 'channel':
+        return owner?.channel === value;
+      default:
+        return false;
+    }
+  }
+
+  private pocketsInScope(scope: BookScope) {
+    const [kind, value] = scope.split(':') as [string, string | undefined];
+    return ROLLOVER_POCKETS.filter((p) =>
+      kind === 'branch' ? p.branch === value : kind === 'segment' ? p.segment === value : kind === 'channel' ? p.branch === 'Digibank' : true,
+    )
+      .map((p) => ({ ...p }))
+      .sort((a, b) => a.rolloverPct - b.rolloverPct);
   }
 
   private client(clientId: string): FixtureClient {
@@ -113,12 +137,17 @@ export class MockTodayDataSource extends TodayDataSource {
   getMorningBrief(scope: BookScope): Observable<MorningBrief> {
     return this.respond(() => {
       const moments = this.moments(scope);
-      const leads: Lead[] = FIXTURE_LEADS.filter((l) => this.inScope(l.clientId, scope)).flatMap((fixture) => {
+      // Curated leads where we have them; every other moment in scope gets a plain lead built from its facts.
+      const fixtures: FixtureLead[] = moments.map(
+        (m) => FIXTURE_LEADS.find((l) => l.clientId === m.clientId && l.momentType === m.type) ?? genericLead(this.client(m.clientId), m),
+      );
+      const leads: Lead[] = fixtures.flatMap((fixture) => {
         const moment = moments.find((m) => m.clientId === fixture.clientId && m.type === fixture.momentType);
         if (!moment) {
           return [];
         }
         const client = this.client(fixture.clientId);
+        const owner = ownerOf(client.id);
         const byId = new Map(fixture.signals.map((s) => [s.id, s]));
         return [{
           id: `lead-${fixture.clientId}-${fixture.momentType}`,
@@ -127,6 +156,9 @@ export class MockTodayDataSource extends TodayDataSource {
           clientShortName: client.shortName,
           segment: client.segment,
           cifMasked: client.cifMasked,
+          ownerRm: owner?.rmName ?? 'Unassigned',
+          branch: owner?.branch ?? 'Unassigned',
+          channel: owner?.channel ?? 'advisory',
           moment,
           summary: fixture.summary.replace('{weekday}', weekdayName(moment.date)),
           signals: SIGNAL_ORDER.map((id) => this.signal(id, byId.get(id)?.met ?? false, byId.get(id)?.caveat)),
@@ -141,6 +173,8 @@ export class MockTodayDataSource extends TodayDataSource {
         preparedFrom: "yesterday's blotter, fixings and RFQ log",
         sources: ['EQD master', 'outstanding stock'],
         leads,
+        maturingUsd: this.scenario === 'empty' ? 0 : this.pocketsInScope(scope).reduce((sum, p) => sum + p.maturingUsd, 0),
+        pockets: this.scenario === 'empty' ? [] : this.pocketsInScope(scope),
       };
     });
   }
@@ -155,7 +189,9 @@ export class MockTodayDataSource extends TodayDataSource {
         shortName: c.shortName,
         segment: c.segment,
         cifMasked: c.cifMasked,
-        rmName: RM_NAME,
+        rmName: ownerOf(c.id)?.rmName ?? 'Unassigned',
+        branch: ownerOf(c.id)?.branch ?? 'Unassigned',
+        channel: ownerOf(c.id)?.channel ?? 'advisory',
         linkedWidgets: [],
         riskProfile: c.riskProfile,
         eliOutstandingUsd: c.eliOutstandingUsd,
@@ -171,7 +207,7 @@ export class MockTodayDataSource extends TodayDataSource {
   getIdeas(clientId: string): Observable<RolloverIdeas> {
     return this.respond(() => {
       const client = this.client(clientId);
-      const moment = this.moments('team').find((m) => m.clientId === clientId);
+      const moment = this.moments('all').find((m) => m.clientId === clientId);
       if (!moment) {
         throw new Error(`No moment for ${clientId}`);
       }
@@ -232,6 +268,35 @@ export class MockTodayDataSource extends TodayDataSource {
   recordNotToday(_leadId: string): Observable<void> {
     return of(undefined).pipe(delay(0));
   }
+}
+
+/** A plain lead for a moment with no curated story: the facts only, signals from the client's own data. */
+function genericLead(client: FixtureClient, moment: Moment): FixtureLead {
+  const amount = client.maturingUsd >= 1000 ? `USD ${Math.round(client.maturingUsd / 1000)}k` : null;
+  const heaviest = client.concentration[0]?.sharePct ?? 0;
+  const engaged = (client.lastTradeDaysAgo ?? 999) <= 30 || client.rfqs.some((r) => r.daysAgo <= 30);
+  const words: Record<Moment['type'], { summary: string; label: string; kind: FixtureLead['action']['kind'] }> = {
+    maturity: { summary: `ELI matures {weekday}.${amount ? ` ${amount} returns as cash.` : ''}`, label: 'Show rollover ideas', kind: 'rollover-ideas' },
+    knockout: { summary: `Close to the knock-out barrier. If it knocks out on {weekday}, ${amount ?? 'the notional'} returns early.`, label: 'Show rollover ideas', kind: 'knockout-ideas' },
+    exercised: { summary: 'Stock expected to be delivered below strike {weekday}.', label: 'Show exercised-stock ideas', kind: 'exercised-stock-ideas' },
+    idle: { summary: `No ELI trade for ${client.lastTradeDaysAgo ?? 90}+ days.`, label: 'Show reactivation ideas', kind: 'reactivation-ideas' },
+    rfq: { summary: `${client.rfqs[0]?.description ?? 'An RFQ'} is still open. Quoted, not yet traded.`, label: 'Show ideas', kind: 'rollover-ideas' },
+  };
+  const w = words[moment.type];
+  return {
+    clientId: client.id,
+    momentType: moment.type,
+    summary: w.summary,
+    action: { kind: w.kind, label: w.label },
+    signals: [
+      { id: 'moment', met: true },
+      { id: 'cash', met: moment.type === 'maturity' || moment.type === 'knockout' || moment.type === 'exercised' },
+      { id: 'history', met: false },
+      { id: 'headroom', met: heaviest < 21 },
+      { id: 'engaged', met: engaged },
+      { id: 'ideas', met: false },
+    ],
+  };
 }
 
 function countMet(signals: readonly Signal[]): number {

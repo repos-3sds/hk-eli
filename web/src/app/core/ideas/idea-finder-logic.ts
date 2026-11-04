@@ -2,8 +2,9 @@
  * Pure Idea Finder logic: read plain words into filters, apply hard filters, check signals, rank by confluence.
  * Shared by the mock data source and its tests; the gateway does the same work server-side.
  */
+import { BOOK_CONCENTRATION } from '../data/business.fixture';
 import { FixtureClient } from '../data/today.fixture';
-import { ConcentrationEffect, CustomEliSpec, FilterBlocker, IdeaFilters, IdeaMatch, IdeaQuery, NO_FILTERS, ReadIntent, SignalCheck } from './idea-finder.models';
+import { AMBER_SHARE_OF_LIMIT, ConcentrationEffect, CustomEliSpec, LimitState, FilterBlocker, IdeaFilters, IdeaMatch, IdeaQuery, NO_FILTERS, ReadIntent, SignalCheck } from './idea-finder.models';
 import { CONCENTRATION_LIMIT_PCT, DEFAULT_NOTIONAL_USD, IDEA_SIGNALS, WarehouseIdea } from './idea-warehouse.fixture';
 
 const STOP_WORDS = new Set(['a', 'an', 'the', 'for', 'and', 'or', 'with', 'to', 'of', 'in', 'on', 'me', 'my', 'some', 'ideas', 'idea', 'eli', 'elis', 'find', 'show', 'want', 'wants', 'client', 'please', 'around', 'about', 'at', 'least', 'than', 'is', 'he', 'she', 'they', 'that', 'who']);
@@ -161,18 +162,57 @@ export function checkSignal(signalId: string, idea: WarehouseIdea, ctx: { coupon
   }
 }
 
-/** Filters, checks and ranks: ideas within the client's limits first, then most signals met, then the higher coupon. */
+/** Within half a point of a book limit, one more trade could breach it, so the bank-wide check treats it as red. */
+const BOOK_RED_GAP_PCT = 0.5;
+
+/**
+ * The single limit rule (D1). With a client picked it checks where the trade takes the client's heaviest name.
+ * With no client it checks the bank's own book by underlying, because launch users look across the whole business.
+ */
+export function limitCheck(idea: Pick<WarehouseIdea, 'underlyings'>, effect: ConcentrationEffect | null): { state: LimitState; reason: string | null } {
+  if (effect) {
+    const { underlying, toPct, limitPct } = effect;
+    if (toPct > limitPct) {
+      return { state: 'red', reason: `Would take the client's ${underlying} to ${toPct.toFixed(1)}%, over the ${limitPct}% limit.` };
+    }
+    if (toPct >= limitPct * AMBER_SHARE_OF_LIMIT) {
+      return { state: 'amber', reason: `Takes the client's ${underlying} to ${toPct.toFixed(1)}%, close to the ${limitPct}% limit.` };
+    }
+    return { state: 'green', reason: null };
+  }
+  const lines = BOOK_CONCENTRATION.filter((b) => idea.underlyings.includes(b.underlying)).sort((a, b) => b.sharePct / b.limitPct - a.sharePct / a.limitPct);
+  const worst = lines[0];
+  if (!worst) {
+    return { state: 'green', reason: null };
+  }
+  if (worst.sharePct >= worst.limitPct - BOOK_RED_GAP_PCT) {
+    return { state: 'red', reason: `${worst.underlying} is ${worst.sharePct}% of the bank's ELI book, within half a point of the ${worst.limitPct}% name limit.` };
+  }
+  if (worst.sharePct >= worst.limitPct * AMBER_SHARE_OF_LIMIT) {
+    return { state: 'amber', reason: `${worst.underlying} is ${worst.sharePct}% of the bank's ELI book, close to the ${worst.limitPct}% name limit.` };
+  }
+  return { state: 'green', reason: null };
+}
+
+const LIMIT_ORDER: Record<LimitState, number> = { green: 0, amber: 1, red: 2 };
+
+/**
+ * Filters, checks and ranks. Green ideas first, then amber with its reason, each by signals met then coupon.
+ * Red ideas never rank: they go to a separate "Hidden by limits" list.
+ */
 export function rankIdeas(
   warehouse: readonly WarehouseIdea[],
   query: IdeaQuery,
   client: FixtureClient | null,
   pricedAt: string,
-): { matches: IdeaMatch[]; passed: number; notionalUsd: number } {
+): { matches: IdeaMatch[]; hiddenByLimits: IdeaMatch[]; passed: number; notionalUsd: number } {
   const notionalUsd = client && client.maturingUsd > 0 ? client.maturingUsd : DEFAULT_NOTIONAL_USD;
   const ctx = { couponLine: couponLine(warehouse), client, notionalUsd };
   const passed = warehouse.filter((w) => passesFilters(w, query.filters));
   const matches = passed.map((w): IdeaMatch => {
     const checks = query.signalIds.map((id) => checkSignal(id, w, ctx));
+    const effect = client ? concentrationEffect(w, client, notionalUsd) : null;
+    const limit = limitCheck(w, effect);
     return {
       id: w.id,
       title: `${w.underlyings.join(' / ')}${w.underlyings.length > 1 ? ' worst-of' : ''} · ${w.tenorMonths}M`,
@@ -181,14 +221,19 @@ export function rankIdeas(
       terms: { kiPct: w.kiPct, strikePct: w.strikePct, couponPct: w.couponPct },
       checks,
       met: checks.filter((c) => c.met).length,
-      effect: client ? concentrationEffect(w, client, notionalUsd) : null,
+      effect,
       pricedAt,
+      limitState: limit.state,
+      limitReason: limit.reason,
     };
   });
-  // An idea that would take the client over the concentration limit is never offered first, however many signals it meets.
-  const breaches = (m: IdeaMatch) => (m.effect && m.effect.toPct > m.effect.limitPct ? 1 : 0);
-  matches.sort((a, b) => breaches(a) - breaches(b) || b.met - a.met || b.terms.couponPct - a.terms.couponPct);
-  return { matches, passed: passed.length, notionalUsd };
+  matches.sort((a, b) => LIMIT_ORDER[a.limitState] - LIMIT_ORDER[b.limitState] || b.met - a.met || b.terms.couponPct - a.terms.couponPct);
+  return {
+    matches: matches.filter((m) => m.limitState !== 'red'),
+    hiddenByLimits: matches.filter((m) => m.limitState === 'red'),
+    passed: passed.length,
+    notionalUsd,
+  };
 }
 
 export const ALL_TICKERS = [...new Set(['NVDA', 'AMD', 'META', 'MSFT', 'GOOGL', 'AVGO', 'AAPL', 'TSLA', 'AMZN', 'TSM', 'NFLX', 'JPM', 'GS', 'BABA', 'TCEHY'])];

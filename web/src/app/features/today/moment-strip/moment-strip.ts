@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, output, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { MatMenuModule } from '@angular/material/menu';
-import { BOOK_SCOPE_LABELS, BookScope, MOMENT_LABELS, MOMENT_TYPES, Moment, MomentType } from '../../../core/models/today.models';
+import { ScopeSwitch } from '../shared/scope-switch';
+import { MOMENT_LABELS, MOMENT_TYPES, Moment, MomentType } from '../../../core/models/today.models';
 import { MomentChip } from '../shared/moment-chip';
 import { EliDatePipe, OffsetPipe } from '../shared/format';
 import { TodayStore } from '../today.store';
@@ -11,7 +11,7 @@ const CHIPS_PER_DAY = 3;
 /** The next 10 business days of maturities, likely knock-outs, deliveries, idle clients and open RFQs. */
 @Component({
   selector: 'eli-moment-strip',
-  imports: [MatIconModule, MatMenuModule, MomentChip, EliDatePipe, OffsetPipe],
+  imports: [MatIconModule, ScopeSwitch, MomentChip, EliDatePipe, OffsetPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './moment-strip.html',
   styleUrl: './moment-strip.scss',
@@ -23,8 +23,6 @@ export class MomentStrip {
 
   protected readonly types = MOMENT_TYPES;
   protected readonly typeLabels = MOMENT_LABELS;
-  protected readonly scopes = Object.entries(BOOK_SCOPE_LABELS) as [BookScope, string][];
-  protected readonly scopeLabels = BOOK_SCOPE_LABELS;
   protected readonly expandedDays = signal<ReadonlySet<number>>(new Set());
   protected readonly skeletonDays = Array.from({ length: 10 }, (_, i) => i);
 

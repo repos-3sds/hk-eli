@@ -34,14 +34,18 @@ describe('BriefPage', () => {
   it('shows the greeting, the short brief and three ranked rows', async () => {
     const { el } = await render();
     expect(el.querySelector('.salutation')?.textContent).toContain('Kelly');
-    expect(el.querySelector('.greeting')?.textContent).toContain('4 clients need attention today');
+    expect(el.querySelector('.greeting')?.textContent).toContain('USD 11.98m matures in the next 10 business days; 3 pockets are below the rollover line.');
     expect(el.querySelectorAll('eli-brief-row')).toHaveLength(3);
-    expect(el.textContent).toContain('Show 1 more client (Ho S.');
+    expect(el.querySelector('.more')?.textContent).toContain('Show 9 more clients');
+    expect(el.querySelector('eli-scope-switch')?.textContent).toContain('Whole business');
+    expect(el.querySelectorAll('.pocket')).toHaveLength(3);
+    expect(el.querySelector('.pocket')?.textContent).toContain('Kwun Tong · Treasures');
+    expect(el.querySelector('eli-brief-row .meta')?.textContent).toContain('Kwun Tong · RM Srivalli T.');
     expect(el.textContent).toContain('Data as of close Mon 2 Nov');
     expect(el.textContent).toContain('Prices 09:05 HKT today');
     expect(el.textContent).toContain('Internal use only');
     expect(el.querySelector('eli-brief-row .rank')?.textContent).toBe('1');
-    expect(el.querySelector('.summary')?.textContent).toContain('1 maturity, 1 likely knock-out, 1 stock delivery and 1 idle client. Start with Chan Tai Man: matures');
+    expect(el.querySelector('.summary')?.textContent).toContain('12 clients need attention: 6 maturities');
   });
 
   it('puts the ask box and suggestions in the landing, with tabs for the brief and the calendar', async () => {
@@ -88,7 +92,26 @@ describe('BriefPage', () => {
     fixture.detectChanges();
     await TestBed.inject(ApplicationRef).whenStable();
     fixture.detectChanges();
-    expect(el.querySelectorAll('eli-brief-row')).toHaveLength(4);
+    expect(el.querySelectorAll('eli-brief-row')).toHaveLength(12);
+  });
+
+  it('narrows the list to a pocket and clears it', async () => {
+    const { el, fixture } = await render();
+    (el.querySelector('.pocket .eli-link') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(el.querySelector('.pockets')).toBeNull();
+    expect(el.querySelector('.filters')?.textContent).toContain('Showing clients in Kwun Tong · Treasures (rollover 45%)');
+    expect([...el.querySelectorAll('eli-brief-row .name')].map((n) => n.textContent)).toEqual(['Chan Tai Man', 'Lee Mei', 'Fung Ray']);
+    (el.querySelector('.filters .eli-link') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(el.querySelectorAll('.pocket')).toHaveLength(3);
+  });
+
+  it('opens Ideas for a pocket', async () => {
+    const { el } = await render();
+    const spy = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    (el.querySelectorAll('.pocket .eli-link')[1] as HTMLButtonElement).click();
+    expect(spy).toHaveBeenCalledWith(['/ideas'], { queryParams: { pocket: 'p-kt-tr' } });
   });
 
   it('says so when nothing needs the RM', async () => {

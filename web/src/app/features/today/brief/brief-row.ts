@@ -21,7 +21,7 @@ import { callName, momentText } from '../shared/moment-text';
         <span class="rank" aria-hidden="true">{{ rank() }}</span>
         <span class="who">
           <span class="name" [id]="'lead-' + lead().id">{{ lead().clientName }}</span>
-          <span class="meta">{{ lead().segment }} · CIF {{ lead().cifMasked }}</span>
+          <span class="meta">{{ lead().branch }} · {{ lead().ownerRm === 'Digibank' ? 'digibank, self-directed' : 'RM ' + lead().ownerRm }} · {{ lead().segment }}</span>
         </span>
         <eli-moment-chip class="chip" [type]="lead().moment.type">{{ chip() }}</eli-moment-chip>
         <span class="why">{{ lead().summary }}</span>
