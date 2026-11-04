@@ -102,3 +102,22 @@ export interface IdeaResults {
   readonly notionalUsd: number;
   readonly businessDate: string;
 }
+
+/** "Build my own ELI": the terms the RM chose when nothing in the warehouse fits. */
+export interface CustomEliSpec {
+  readonly underlyings: readonly string[];
+  readonly tenorMonths: number;
+  readonly kiPct: number;
+  readonly strikePct: number;
+  readonly clientId: string | null;
+}
+
+/** The coupon solved for those terms, from an indicative price. The desk gives the live one. */
+export interface CustomEliPrice {
+  readonly couponPct: number;
+  /** What moved the coupon, in plain words, biggest first. */
+  readonly drivers: readonly string[];
+  readonly notionalUsd: number;
+  readonly effect: ConcentrationEffect | null;
+  readonly pricedAt: string;
+}

@@ -20,6 +20,7 @@
 .res-head { display: flex; flex-direction: column; gap: var(--eli-space-2); }
 .res-title { margin: 0; color: var(--eli-text-strong); font-size: var(--eli-font-size-l); font-weight: var(--eli-weight-semibold); }
 .res-sub { margin: 0; color: var(--eli-text-muted); font-size: var(--eli-font-size-s); }
+.build { display: inline-flex; align-items: center; gap: var(--eli-space-3); margin-top: var(--eli-space-3); font-size: var(--eli-font-size-s); mat-icon { width: 14px; height: 14px; } }
 .warn { display: flex; align-items: center; gap: var(--eli-space-3); margin: var(--eli-space-2) 0 0; color: var(--eli-accent-orange); font-size: var(--eli-font-size-s); mat-icon { width: 14px; height: 14px; } }
 .list { display: flex; flex-direction: column; gap: var(--eli-space-3); margin: 0; padding: 0; list-style: none; }
 .item { border: 1px solid transparent; border-radius: var(--eli-radius-m); background: var(--eli-bg-surface); &.open { border-color: var(--eli-border); } }

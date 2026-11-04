@@ -3,6 +3,7 @@ import { MatIconRegistry } from '@angular/material/icon';
 import { DomSanitizer } from '@angular/platform-browser';
 import {
   ArrowDown,
+  SlidersHorizontal,
   ArrowLeft,
   CalendarClock,
   Copy,
@@ -52,6 +53,7 @@ export const LUCIDE_ICONS: Record<string, string> = {
   'user-round': UserRound,
   bell: Bell,
   check: Check,
+  sliders: SlidersHorizontal,
   'chevron-down': ChevronDown,
   'chevron-left': ChevronLeft,
   'chevron-right': ChevronRight,

@@ -44,6 +44,7 @@
           @if (store.client(); as c) { Concentration shown for {{ c.name }} with {{ r.notionalUsd | usd }}. }
           Indicative, priced {{ r.businessDate | eliDate: 'long' }} 18:00 HKT.
         </p>
+        <button type="button" class="eli-link build" (click)="openBuilder()"><mat-icon svgIcon="sliders" aria-hidden="true" />Nothing quite fits? Build my own ELI</button>
         @if (store.clientSignalsWithoutClient()) {
           <p class="warn"><mat-icon svgIcon="info" aria-hidden="true" />Some picked signals check fit to a client. Pick a client above, or they count as not met.</p>
         }
@@ -63,6 +64,7 @@
             <span>The idea warehouse has nothing for today yet.</span>
           }
           <button matButton="outlined" type="button" (click)="store.clearFilters()">Clear all filters</button>
+          <button matButton="outlined" type="button" (click)="openBuilder()">Build my own ELI</button>
         </div>
       } @else {
         <ol class="list">

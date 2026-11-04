@@ -4,9 +4,9 @@ import { APP_CONFIG, MockScenario } from '../config/app-config';
 import { FIXTURE_CLIENTS } from '../data/today.fixture';
 import { BusinessClock } from '../time/business-clock';
 import { IdeaFinderDataSource } from './idea-finder-data-source';
-import { IdeaQuery, IdeaResults, ReadIntent } from './idea-finder.models';
-import { ALL_TICKERS, filterBlockers, rankIdeas, readIntent } from './idea-finder-logic';
-import { WAREHOUSE } from './idea-warehouse.fixture';
+import { CustomEliPrice, CustomEliSpec, IdeaQuery, IdeaResults, ReadIntent } from './idea-finder.models';
+import { ALL_TICKERS, concentrationEffect, filterBlockers, rankIdeas, readIntent, solveCoupon } from './idea-finder-logic';
+import { DEFAULT_NOTIONAL_USD, WAREHOUSE } from './idea-warehouse.fixture';
 
 @Injectable()
 export class MockIdeaFinderDataSource extends IdeaFinderDataSource {
@@ -37,6 +37,16 @@ export class MockIdeaFinderDataSource extends IdeaFinderDataSource {
       const warehouse = this.scenario === 'empty' ? [] : WAREHOUSE;
       const { matches, passed, notionalUsd } = rankIdeas(warehouse, query, client, `${this.clock.businessDate()}T18:00:00+08:00`);
       return { matches, passedFilters: passed, blockers: filterBlockers(warehouse, query.filters), warehouseSize: warehouse.length, notionalUsd, businessDate: this.clock.businessDate() };
+    });
+  }
+
+  price(spec: CustomEliSpec): Observable<CustomEliPrice> {
+    return this.respond(() => {
+      const client = FIXTURE_CLIENTS.find((c) => c.id === spec.clientId) ?? null;
+      const notionalUsd = client && client.maturingUsd > 0 ? client.maturingUsd : DEFAULT_NOTIONAL_USD;
+      const { couponPct, drivers } = solveCoupon(spec);
+      const effect = client && spec.underlyings.length ? concentrationEffect(spec, client, notionalUsd) : null;
+      return { couponPct, drivers, notionalUsd, effect, pricedAt: `${this.clock.businessDate()}T18:00:00+08:00` };
     });
   }
 }

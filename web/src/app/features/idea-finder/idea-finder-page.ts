@@ -11,7 +11,8 @@ import { TodayDataSource } from '../../core/data/today-data-source';
 import { FIXTURE_CLIENTS } from '../../core/data/today.fixture';
 import { IdeaMatch } from '../../core/ideas/idea-finder.models';
 import { IDEA_SIGNALS } from '../../core/ideas/idea-warehouse.fixture';
-import { ConfirmQuoteDialog } from './confirm-quote-dialog';
+import { BuildEliDialog, BuildEliData, BuiltEli } from './build-eli-dialog';
+import { ConfirmQuoteDialog, ConfirmQuoteData } from './confirm-quote-dialog';
 import { ConcentrationBar } from '../today/shared/concentration-bar';
 import { EliDatePipe, UsdPipe } from '../today/shared/format';
 import { IdeaFinderStore } from './idea-finder.store';
@@ -71,19 +72,37 @@ export class IdeaFinderPage {
   }
 
   protected requestQuote(match: IdeaMatch): void {
+    this.confirmAndSend({ title: match.title, terms: match.terms }, match.id, false);
+  }
+
+  /** "Build my own ELI": starts from the chips; a request goes through the same confirm step, labelled Custom. */
+  protected openBuilder(): void {
+    const data: BuildEliData = { filters: this.store.filters(), clientName: this.store.client()?.name ?? null };
+    this.dialog
+      .open<BuildEliDialog, BuildEliData, BuiltEli>(BuildEliDialog, { data, width: '880px', maxWidth: 'calc(100vw - 32px)', autoFocus: 'dialog' })
+      .afterClosed()
+      .pipe(filter((built): built is BuiltEli => !!built))
+      .subscribe((built) => {
+        const { kiPct, strikePct } = built.spec;
+        const id = `custom:${built.spec.underlyings.join('-')}:${built.spec.tenorMonths}m:${kiPct}:${strikePct}`;
+        this.confirmAndSend({ title: built.title, terms: { kiPct, strikePct, couponPct: built.price.couponPct } }, id, true);
+      });
+  }
+
+  private confirmAndSend(idea: ConfirmQuoteData['idea'], ideaId: string, custom: boolean): void {
     const client = this.store.client();
     if (!client) {
       return;
     }
     this.dialog
-      .open(ConfirmQuoteDialog, { data: { clientName: client.name, idea: { title: match.title, terms: match.terms } }, width: '520px' })
+      .open(ConfirmQuoteDialog, { data: { clientName: client.name, idea, custom } satisfies ConfirmQuoteData, width: '520px' })
       .afterClosed()
       .pipe(
         filter((ok) => ok === true),
-        switchMap(() => this.today.requestLiveQuote(client.id, match.id)),
+        switchMap(() => this.today.requestLiveQuote(client.id, ideaId)),
       )
       .subscribe({
-        next: (r) => this.snack.open(`Quote request ${r.requestId} sent to the ${r.desk}.`, 'OK', { duration: 6000 }),
+        next: (r) => this.snack.open(`${custom ? 'Custom quote' : 'Quote'} request ${r.requestId} sent to the ${r.desk}.`, 'OK', { duration: 6000 }),
         error: () => this.snack.open('The quote request did not go through. Nothing was sent.', 'OK', { duration: 6000 }),
       });
   }

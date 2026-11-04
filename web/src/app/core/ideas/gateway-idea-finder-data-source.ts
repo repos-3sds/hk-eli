@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, timeout } from 'rxjs';
 import { APP_CONFIG } from '../config/app-config';
 import { IdeaFinderDataSource } from './idea-finder-data-source';
-import { IdeaQuery, IdeaResults, ReadIntent } from './idea-finder.models';
+import { CustomEliPrice, CustomEliSpec, IdeaQuery, IdeaResults, ReadIntent } from './idea-finder.models';
 
 @Injectable()
 export class GatewayIdeaFinderDataSource extends IdeaFinderDataSource {
@@ -16,5 +16,9 @@ export class GatewayIdeaFinderDataSource extends IdeaFinderDataSource {
 
   search(query: IdeaQuery): Observable<IdeaResults> {
     return this.http.post<IdeaResults>(`${this.config.gatewayBaseUrl}/ideas/search`, query).pipe(timeout(this.config.requestTimeoutMs));
+  }
+
+  price(spec: CustomEliSpec): Observable<CustomEliPrice> {
+    return this.http.post<CustomEliPrice>(`${this.config.gatewayBaseUrl}/ideas/price`, spec).pipe(timeout(this.config.requestTimeoutMs));
   }
 }

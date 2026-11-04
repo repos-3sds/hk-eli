@@ -3,7 +3,7 @@
  * Shared by the mock data source and its tests; the gateway does the same work server-side.
  */
 import { FixtureClient } from '../data/today.fixture';
-import { ConcentrationEffect, FilterBlocker, IdeaFilters, IdeaMatch, IdeaQuery, NO_FILTERS, ReadIntent, SignalCheck } from './idea-finder.models';
+import { ConcentrationEffect, CustomEliSpec, FilterBlocker, IdeaFilters, IdeaMatch, IdeaQuery, NO_FILTERS, ReadIntent, SignalCheck } from './idea-finder.models';
 import { CONCENTRATION_LIMIT_PCT, DEFAULT_NOTIONAL_USD, IDEA_SIGNALS, WarehouseIdea } from './idea-warehouse.fixture';
 
 const STOP_WORDS = new Set(['a', 'an', 'the', 'for', 'and', 'or', 'with', 'to', 'of', 'in', 'on', 'me', 'my', 'some', 'ideas', 'idea', 'eli', 'elis', 'find', 'show', 'want', 'wants', 'client', 'please', 'around', 'about', 'at', 'least', 'than', 'is', 'he', 'she', 'they', 'that', 'who']);
@@ -100,7 +100,7 @@ export function filterBlockers(warehouse: readonly WarehouseIdea[], f: IdeaFilte
 }
 
 /** Where the trade would take the client's most affected underlying. */
-export function concentrationEffect(idea: WarehouseIdea, client: FixtureClient, notionalUsd: number): ConcentrationEffect {
+export function concentrationEffect(idea: Pick<WarehouseIdea, 'underlyings'>, client: FixtureClient, notionalUsd: number): ConcentrationEffect {
   const out = client.eliOutstandingUsd;
   const total = out + notionalUsd;
   const per = notionalUsd / idea.underlyings.length;
@@ -192,3 +192,35 @@ export function rankIdeas(
 }
 
 export const ALL_TICKERS = [...new Set(['NVDA', 'AMD', 'META', 'MSFT', 'GOOGL', 'AVGO', 'AAPL', 'TSLA', 'AMZN', 'TSM', 'NFLX', 'JPM', 'GS', 'BABA', 'TCEHY'])];
+
+/** Fictional one-year implied volatility per stock, used only by the demo coupon solver. */
+export const TICKER_VOL: Readonly<Record<string, number>> = {
+  NVDA: 0.52, AMD: 0.55, META: 0.4, MSFT: 0.26, GOOGL: 0.3, AVGO: 0.45, AAPL: 0.25, TSLA: 0.65,
+  AMZN: 0.33, TSM: 0.38, NFLX: 0.42, JPM: 0.24, GS: 0.28, BABA: 0.48, TCEHY: 0.36,
+};
+/** Assumed correlation between any two stocks in a worst-of, for the demo solver. */
+const PAIR_CORRELATION = 0.65;
+const FUNDING_PCT = 4;
+
+/**
+ * Solves the coupon for a custom ELI from a simple indicative model (demo only; the gateway asks the desk's pricer).
+ * More volatility, more stocks in the worst-of, a higher knock-in or a higher strike all mean more risk, so more coupon.
+ */
+export function solveCoupon(spec: Pick<CustomEliSpec, 'underlyings' | 'tenorMonths' | 'kiPct' | 'strikePct'>): { couponPct: number; drivers: string[] } {
+  const n = spec.underlyings.length;
+  if (n === 0) {
+    return { couponPct: 0, drivers: [] };
+  }
+  const vol = spec.underlyings.reduce((sum, t) => sum + (TICKER_VOL[t] ?? 0.35), 0) / n;
+  const worstOf = 1 + (n - 1) * (1 - PAIR_CORRELATION) * 0.6;
+  const shape = 0.55 + ((spec.kiPct - 65) / 100) * 1.5 + ((spec.strikePct - 90) / 100) * 1.2;
+  const tenor = Math.pow(6 / spec.tenorMonths, 0.15);
+  const raw = FUNDING_PCT + vol * worstOf * shape * tenor * 40;
+  const couponPct = Math.round(Math.min(40, Math.max(2, raw)) * 10) / 10;
+
+  const drivers: string[] = [`Volatility averages ${Math.round(vol * 100)}% across ${spec.underlyings.join(', ')}`];
+  if (n > 1) drivers.push(`Worst-of ${n} stocks: the client takes the weakest one, which adds coupon`);
+  drivers.push(spec.kiPct <= 60 ? `Knock-in ${spec.kiPct}% is deep protection, which costs coupon` : spec.kiPct >= 70 ? `Knock-in ${spec.kiPct}% is close, which adds coupon` : `Knock-in ${spec.kiPct}% is in the usual range`);
+  if (spec.strikePct !== 90) drivers.push(spec.strikePct > 90 ? `Strike ${spec.strikePct}% means more downside, which adds coupon` : `Strike ${spec.strikePct}% means less downside, which costs coupon`);
+  return { couponPct, drivers };
+}
