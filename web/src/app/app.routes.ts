@@ -5,6 +5,7 @@ export const routes: Routes = [
   {
     path: 'rm',
     children: [
+      { path: 'maturity', title: 'Maturity workspace · HK ELI', loadComponent: () => import('./features/maturity-flow/maturity-flow').then(m => m.MaturityFlow) },
       { path: '', pathMatch: 'full', redirectTo: 'today' },
       {
         path: 'today',

@@ -7,6 +7,7 @@ export interface WidgetTab {
 }
 
 export const RM_TABS: readonly WidgetTab[] = [
+  { path: 'maturity', label: 'Maturity', icon: 'lightbulb' },
   { path: 'today', label: 'Today', icon: 'sun' },
   { path: 'chat', label: 'Chat', icon: 'message-square' },
   { path: 'ideas', label: 'Ideas', icon: 'lightbulb' },
