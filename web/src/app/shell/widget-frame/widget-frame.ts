@@ -6,6 +6,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { APP_CONFIG } from '../../core/config/app-config';
 import { HandoffOpener } from '../../core/handoff/handoff-opener';
 import { HandoffStore } from '../../core/handoff/handoff.store';
+import { AlertsStore } from '../../core/alerts/alerts.store';
 import { WIDGET_TABS } from './widget-tabs';
 
 /**
@@ -39,8 +40,9 @@ import { WIDGET_TABS } from './widget-tabs';
               <mat-icon [svgIcon]="tab.icon" aria-hidden="true" />
               <span class="tab-label">
                 {{ tab.label }}
-                @if (tab.badge) {
-                  <span class="badge" [attr.aria-label]="tab.badge + ' new'">{{ tab.badge }}</span>
+                @let badge = tab.path === 'alerts' ? alerts.count() : tab.badge;
+                @if (badge) {
+                  <span class="badge" [attr.aria-label]="badge + ' new'">{{ badge }}</span>
                 }
               </span>
             </a>
@@ -60,6 +62,7 @@ export class WidgetFrame {
   protected readonly tabs = WIDGET_TABS;
   protected readonly pinned = signal(false);
   protected readonly handoff = inject(HandoffStore);
+  protected readonly alerts = inject(AlertsStore);
   protected readonly handoffs = inject(HandoffOpener);
 
   protected togglePin(): void {

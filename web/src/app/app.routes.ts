@@ -45,8 +45,7 @@ export const routes: Routes = [
   {
     path: 'alerts',
     title: 'Alerts · HK ELI Chatbot',
-    loadComponent: () => import('./features/placeholder/tab-placeholder').then((m) => m.TabPlaceholder),
-    data: { title: 'Alerts', icon: 'bell', purpose: 'Plain-word rules, quiet hours and hand-off lists.' },
+    loadComponent: () => import('./features/alerts/alerts-page').then((m) => m.AlertsPage),
   },
   // Old RM-first links.
   { path: 'rm', pathMatch: 'full', redirectTo: 'today' },

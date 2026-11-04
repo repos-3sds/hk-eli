@@ -1,0 +1,90 @@
+<header class="top">
+  <div class="titles">
+    <h2 class="title">Alerts</h2>
+    <p class="lede">Rules in plain words that watch the business for you. An alert fires when enough of its conditions are true, and can go straight to a hand-off list.</p>
+  </div>
+  <p class="preview" role="note"><mat-icon svgIcon="eye" aria-hidden="true" />Design preview. Rules are checked against today's demo data; they run on real data in MVP2.</p>
+</header>
+
+<div class="grid">
+  <div class="col">
+    <section class="card" aria-labelledby="now-h">
+      <h3 id="now-h" class="card-h">Firing now <span class="count">{{ store.count() }}</span></h3>
+      @for (r of store.firing(); track r.id) {
+        <article class="alert" [attr.aria-label]="r.name">
+          <div class="a-head">
+            <mat-icon [svgIcon]="r.delivery === 'instant' ? 'bell' : 'clock'" aria-hidden="true" />
+            <span class="a-name">{{ r.name }}</span>
+            <span class="a-meta">{{ met(r) }} of {{ r.conditions.length }} true · {{ r.delivery === 'instant' ? 'sent now' : 'in the ' + store.digestAt() + ' digest' }}</span>
+          </div>
+          <ul class="a-why">
+            @for (c of r.conditions; track c.id) {
+              @if (c.met) { <li><mat-icon svgIcon="check" aria-hidden="true" />{{ c.text }}: <strong>{{ c.evidence }}</strong></li> }
+            }
+          </ul>
+          <div class="a-acts">
+            @if (r.clients.length) {
+              <button matButton="filled" type="button" (click)="makeHandoff(r)"><mat-icon svgIcon="list-plus" />Make hand-off list ({{ r.clients.length }})</button>
+            }
+            <button matButton="outlined" type="button" (click)="open(r)">Open</button>
+            <button matButton type="button" (click)="mute(r)">Mute for today</button>
+          </div>
+        </article>
+      } @empty {
+        <p class="empty">Nothing is firing. Rules that are off, muted or short of their count stay quiet.</p>
+      }
+    </section>
+
+    <section class="card" aria-labelledby="sched-h">
+      <h3 id="sched-h" class="card-h">Quiet hours and digest</h3>
+      <div class="sched">
+        <label class="field">Quiet from <input type="time" class="time" [ngModel]="store.quiet().from" (ngModelChange)="store.quiet.set({ from: $event, to: store.quiet().to })" /></label>
+        <label class="field">to <input type="time" class="time" [ngModel]="store.quiet().to" (ngModelChange)="store.quiet.set({ from: store.quiet().from, to: $event })" /></label>
+        <label class="field">Morning digest at <input type="time" class="time" [ngModel]="store.digestAt()" (ngModelChange)="store.digestAt.set($event)" /></label>
+      </div>
+      @if (store.digestQuiet()) {
+        <p class="warn"><mat-icon svgIcon="triangle-alert" aria-hidden="true" />The digest time falls in quiet hours, so it would not arrive. Move one of them.</p>
+      } @else {
+        <p class="sub">No instant alerts in quiet hours; they wait for the digest. The digest goes out after the overnight refresh and morning pricing.</p>
+      }
+    </section>
+  </div>
+
+  <section class="card rules" aria-labelledby="rules-h">
+    <h3 id="rules-h" class="card-h">Rules</h3>
+    @for (r of store.rules(); track r.id) {
+      <article class="rule" [class.off]="!r.on" [attr.aria-label]="'Rule: ' + r.name">
+        <div class="r-head">
+          <mat-slide-toggle [checked]="r.on" (change)="store.toggle(r.id)" [aria-label]="'Rule on: ' + r.name" />
+          <span class="r-name">{{ r.name }}</span>
+          <span class="role">{{ roleShort[r.forRole] }}</span>
+        </div>
+        <p class="sentence">
+          Fire when
+          <select class="n" [ngModel]="r.needed" (ngModelChange)="store.setNeeded(r.id, +$event)" [attr.aria-label]="'How many conditions for ' + r.name">
+            @for (n of range(r.conditions.length); track n) { <option [value]="n">{{ n }}</option> }
+          </select>
+          of these {{ r.conditions.length }} are true:
+        </p>
+        <ul class="conds">
+          @for (c of r.conditions; track c.id) {
+            <li [class.met]="c.met">
+              <mat-icon [svgIcon]="c.met ? 'check' : 'x'" aria-hidden="true" /><span class="eli-visually-hidden">{{ c.met ? 'True today:' : 'Not true today:' }}</span>
+              <span>{{ c.text }} <span class="ev">· {{ c.evidence }}</span></span>
+            </li>
+          }
+        </ul>
+        <div class="r-foot">
+          <span class="today" [class.fires]="r.on && met(r) >= r.needed">Today: {{ met(r) }} of {{ r.conditions.length }} true, {{ r.on && met(r) >= r.needed ? 'fires' : 'quiet' }}</span>
+          <span class="grow"></span>
+          <mat-button-toggle-group hideSingleSelectionIndicator [value]="r.delivery" (change)="store.setDelivery(r.id, $event.value)" [attr.aria-label]="'Delivery for ' + r.name">
+            <mat-button-toggle value="instant">Instant</mat-button-toggle>
+            <mat-button-toggle value="digest">Digest</mat-button-toggle>
+          </mat-button-toggle-group>
+        </div>
+      </article>
+    }
+  </section>
+</div>
+<eli-feedback class="feedback" topic="Alerts preview" />
+<p class="trust"><mat-icon svgIcon="info" aria-hidden="true" />Conditions are rules on data, not AI. Internal use only.</p>
