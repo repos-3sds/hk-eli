@@ -110,6 +110,10 @@
                     matTooltip="Copies the terms with their price time and the internal-only label. Live quotes come in MVP2.">
                     <mat-icon [svgIcon]="copiedId() === m.id ? 'check' : 'clipboard-copy'" />{{ copiedId() === m.id ? 'Copied' : 'Copy terms' }}
                   </button>
+                  <button matIconButton type="button" class="ho" (click)="addToHandoff(m)" [disabled]="isOnHandoff(m)"
+                    [matTooltip]="isOnHandoff(m) ? 'On the hand-off list' : 'Add to hand-off list'" [attr.aria-label]="(isOnHandoff(m) ? 'On the hand-off list: ' : 'Add to hand-off list: ') + m.title">
+                    <mat-icon [svgIcon]="isOnHandoff(m) ? 'check' : 'list-plus'" />
+                  </button>
                 </span>
               </div>
               @if (store.openRow() === m.id) {

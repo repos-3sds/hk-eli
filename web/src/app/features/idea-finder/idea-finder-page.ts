@@ -10,6 +10,9 @@ import { filter } from 'rxjs';
 import { FreshnessStore } from '../../core/freshness/freshness';
 import { FreshnessClocks } from '../../core/freshness/freshness-clocks';
 import { FIXTURE_CLIENTS } from '../../core/data/today.fixture';
+import { ownerOf } from '../../core/data/business.fixture';
+import { HandoffStore } from '../../core/handoff/handoff.store';
+import { HandoffOpener } from '../../core/handoff/handoff-opener';
 import { IdeaMatch } from '../../core/ideas/idea-finder.models';
 import { IDEA_SIGNALS } from '../../core/ideas/idea-warehouse.fixture';
 import { BuildEliDialog, BuildEliData, BuiltEli } from './build-eli-dialog';
@@ -37,6 +40,8 @@ export class IdeaFinderPage {
   private readonly snack = inject(MatSnackBar);
   protected readonly freshness = inject(FreshnessStore);
   protected readonly copiedId = signal<string | null>(null);
+  protected readonly handoff = inject(HandoffStore);
+  private readonly opener = inject(HandoffOpener);
 
   protected readonly clients = FIXTURE_CLIENTS;
 
@@ -90,6 +95,38 @@ export class IdeaFinderPage {
   protected copyTerms(match: IdeaMatch): void {
     const { couponPct, kiPct, strikePct } = match.terms;
     this.copy(match.id, `${match.title} · coupon ${couponPct}% p.a. · KI ${kiPct}% · strike ${strikePct}%`);
+  }
+
+  /** Whose hand-off list an idea goes to: the client's owner RM, else the pocket's branch, else the desk. */
+  protected handoffTarget(): { clientId: string | null; clientName: string | null; ownerRm: string; branch: string; reason: string } {
+    const client = this.store.client();
+    if (client) {
+      const owner = ownerOf(client.id);
+      return { clientId: client.id, clientName: client.name, ownerRm: owner?.rmName ?? 'Unassigned', branch: owner?.branch ?? 'Unassigned', reason: `Idea for ${client.name}` };
+    }
+    const pocket = this.store.pocket();
+    if (pocket) {
+      return { clientId: null, clientName: null, ownerRm: `${pocket.branch} branch`, branch: pocket.branch, reason: `Idea for the ${pocket.branch} ${pocket.segment} pocket (${pocket.rolloverPct}% rollover)` };
+    }
+    return { clientId: null, clientName: null, ownerRm: 'All RMs', branch: 'Whole business', reason: 'Idea to share' };
+  }
+
+  protected isOnHandoff(match: IdeaMatch): boolean {
+    return this.handoff.has(this.handoffTarget().clientId, match.title);
+  }
+
+  protected addToHandoff(match: IdeaMatch): void {
+    const { couponPct, kiPct, strikePct } = match.terms;
+    const added = this.handoff.add({
+      ...this.handoffTarget(),
+      idea: { title: match.title, terms: `coupon ${couponPct}% p.a. · KI ${kiPct}% · strike ${strikePct}%`, pricedAt: match.pricedAt },
+      underlyings: match.underlyings,
+      from: 'Ideas',
+    });
+    this.snack
+      .open(added ? `${match.title} added to the hand-off list.` : 'Already on the hand-off list.', 'Open list', { duration: 4000 })
+      .onAction()
+      .subscribe(() => this.opener.open());
   }
 
   /** "Build my own ELI": starts from the chips; the solved terms are copied the same way, labelled Custom. */

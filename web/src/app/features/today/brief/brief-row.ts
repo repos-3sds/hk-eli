@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import { LeadActions } from './lead-actions';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
@@ -21,7 +22,7 @@ import { callName, momentText } from '../shared/moment-text';
         <span class="rank" aria-hidden="true">{{ rank() }}</span>
         <span class="who">
           <span class="name" [id]="'lead-' + lead().id">{{ lead().clientName }}</span>
-          <span class="meta">{{ lead().branch }} · {{ lead().ownerRm === 'Digibank' ? 'digibank, self-directed' : 'RM ' + lead().ownerRm }} · {{ lead().segment }}</span>
+          <span class="meta">{{ lead().branch }} · {{ lead().channel === 'digibank' ? 'self-directed' : 'RM ' + lead().ownerRm }} · {{ lead().segment }}</span>
         </span>
         <eli-moment-chip class="chip" [type]="lead().moment.type">{{ chip() }}</eli-moment-chip>
         <span class="why">{{ lead().summary }}</span>
@@ -39,6 +40,9 @@ import { callName, momentText } from '../shared/moment-text';
         <div class="inline-actions">
           <a matButton="filled" routerLink="/ideas" [queryParams]="{ client: lead().clientId }">{{ lead().action.label }}</a>
           <button matButton="outlined" type="button" (click)="ask.emit(lead())">Ask about {{ name() }}</button>
+          <button matButton="outlined" type="button" (click)="actions.addToHandoff(lead())" [disabled]="actions.isHandedOff(lead())">
+            <mat-icon [svgIcon]="actions.isHandedOff(lead()) ? 'check' : 'list-plus'" />{{ actions.isHandedOff(lead()) ? 'On hand-off list' : 'Add to hand-off' }}
+          </button>
           <button matButton type="button" (click)="park.emit(lead())">Mark reviewed</button>
         </div>
       }
@@ -87,6 +91,7 @@ import { callName, momentText } from '../shared/moment-text';
   `,
 })
 export class BriefRow {
+  protected readonly actions = inject(LeadActions);
   readonly lead = input.required<Lead>();
   readonly rank = input.required<number>();
   readonly selected = input(false);

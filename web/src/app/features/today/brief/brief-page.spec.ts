@@ -7,6 +7,7 @@ import { MockTodayDataSource } from '../../../core/data/mock-today-data-source';
 import { TodayDataSource } from '../../../core/data/today-data-source';
 import { TEST_CONFIG } from '../../../testing/test-config';
 import { TodayStore } from '../today.store';
+import { HandoffStore } from '../../../core/handoff/handoff.store';
 import { BriefPage } from './brief-page';
 import { LeadActions } from './lead-actions';
 
@@ -105,6 +106,17 @@ describe('BriefPage', () => {
     (el.querySelector('.filters .eli-link') as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(el.querySelectorAll('.pocket')).toHaveLength(3);
+  });
+
+  it('adds the selected client to the hand-off list for their owner RM, once', async () => {
+    const { el, fixture } = await render();
+    const btn = () => [...el.querySelectorAll('eli-brief-row .inline-actions button')].find((b) => /hand-off/.test(b.textContent ?? '')) as HTMLButtonElement;
+    btn().click();
+    fixture.detectChanges();
+    const handoff = TestBed.inject(HandoffStore);
+    expect(handoff.draft()).toMatchObject([{ clientName: 'Chan Tai Man', ownerRm: 'Srivalli T.', branch: 'Kwun Tong', reason: 'Maturity', from: 'Today' }]);
+    expect(btn().textContent).toContain('On hand-off list');
+    expect(btn().disabled).toBe(true);
   });
 
   it('opens Ideas for a pocket', async () => {

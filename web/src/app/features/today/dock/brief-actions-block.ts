@@ -43,6 +43,9 @@ import { TodayStore } from '../today.store';
           <a matButton="filled" class="primary" routerLink="/ideas" [queryParams]="{ client: lead.clientId }">{{ lead.action.label }}</a>
           <div class="secondary">
             <button matButton="outlined" type="button" (click)="actions.ask(lead)">Ask about {{ name() }}</button>
+            <button matButton="outlined" type="button" (click)="actions.addToHandoff(lead)" [disabled]="actions.isHandedOff(lead)">
+              <mat-icon [svgIcon]="actions.isHandedOff(lead) ? 'check' : 'list-plus'" />{{ actions.isHandedOff(lead) ? 'On hand-off list' : 'Add to hand-off' }}
+            </button>
             <button matButton type="button" (click)="actions.park(lead)">Mark reviewed</button>
           </div>
         </div>

@@ -182,3 +182,9 @@ button {
   scrollbar-color: var(--eli-border) transparent;
   scrollbar-width: thin;
 }
+
+/* Side sheet (hand-off list): flush to the right edge, full height */
+.eli-side-sheet .mat-mdc-dialog-surface {
+  border-radius: 0 !important;
+  border-left: 1px solid var(--eli-border);
+}
