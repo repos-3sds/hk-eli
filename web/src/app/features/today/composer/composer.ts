@@ -31,7 +31,7 @@ import { TodayStore } from '../today.store';
       border: 1px solid var(--eli-border); border-radius: var(--eli-radius-s); background: var(--eli-bg-input);
       &:focus-within { border-color: var(--eli-accent-link); }
     }
-    .box.tall { align-items: flex-start; min-height: 120px; padding: var(--eli-space-7) var(--eli-space-7); border-radius: 14px; }
+    .box.tall { align-items: flex-start; height: 120px; padding: var(--eli-space-7) var(--eli-space-7); border-radius: 14px; }
     .box.tall .send { align-self: flex-end; }
     .ctx {
       display: inline-flex; align-items: center; gap: var(--eli-space-2); flex: none; height: 20px; padding: var(--eli-space-1) var(--eli-space-2) var(--eli-space-1) var(--eli-space-4);
@@ -40,7 +40,7 @@ import { TodayStore } from '../today.store';
       mat-icon { width: 12px; height: 12px; }
     }
     .clear { display: grid; place-items: center; padding: 0; border: 0; background: none; color: var(--eli-text-muted-2); cursor: pointer; }
-    .input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; resize: none; padding: 0; align-self: stretch; color: var(--eli-text-primary); font: inherit; line-height: var(--eli-line-height-m); &::placeholder { color: var(--eli-text-muted); } }
+    .input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; resize: none; padding: 0; align-self: stretch; overflow-y: auto; color: var(--eli-text-primary); font: inherit; line-height: var(--eli-line-height-m); &::placeholder { color: var(--eli-text-muted); } }
     .send { display: grid; place-items: center; padding: 0; border: 0; background: none; color: var(--eli-text-strong); cursor: pointer; &:disabled { color: var(--eli-text-muted); cursor: default; } mat-icon { width: 18px; height: 18px; } }
   `,
 })
