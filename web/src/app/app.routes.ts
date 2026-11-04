@@ -30,8 +30,7 @@ export const routes: Routes = [
   {
     path: 'update',
     title: 'Update · HK ELI Chatbot',
-    loadComponent: () => import('./features/placeholder/tab-placeholder').then((m) => m.TabPlaceholder),
-    data: { title: 'Update', icon: 'file-text', purpose: 'The scheduled Business Update, section by section.' },
+    loadComponent: () => import('./features/update/business-update-page').then((m) => m.BusinessUpdatePage),
   },
   {
     path: 'alerts',

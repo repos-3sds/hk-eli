@@ -1,8 +1,7 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
-import { SCOPE_OPTIONS } from '../../../core/models/today.models';
-import { TodayStore } from '../today.store';
+import { BookScope, SCOPE_OPTIONS, scopeLabel } from '../../../core/models/today.models';
 
 /**
  * Which part of the business Today shows. Launch users see all trades, so the default is the whole business;
@@ -13,17 +12,17 @@ import { TodayStore } from '../today.store';
   imports: [MatIconModule, MatMenuModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <button type="button" class="scope" [matMenuTriggerFor]="menu" [attr.aria-label]="'Showing ' + store.scopeName() + '. Change scope'">
+    <button type="button" class="scope" [matMenuTriggerFor]="menu" [attr.aria-label]="'Showing ' + name() + '. Change scope'">
       <mat-icon svgIcon="layers" aria-hidden="true" />
-      <span class="lbl">Showing</span> {{ store.scopeName() }}
+      <span class="lbl">Showing</span> {{ name() }}
       <mat-icon svgIcon="chevron-down" aria-hidden="true" />
     </button>
     <mat-menu #menu="matMenu">
       @for (g of groups; track g) {
         <div class="group" role="presentation">{{ g }}</div>
         @for (o of byGroup(g); track o.id) {
-          <button mat-menu-item type="button" role="menuitemradio" [attr.aria-checked]="store.scope() === o.id" (click)="store.setScope(o.id)">
-            @if (store.scope() === o.id) { <mat-icon svgIcon="check" aria-hidden="true" /> } @else { <span class="pad"></span> }
+          <button mat-menu-item type="button" role="menuitemradio" [attr.aria-checked]="value() === o.id" (click)="changed.emit(o.id)">
+            @if (value() === o.id) { <mat-icon svgIcon="check" aria-hidden="true" /> } @else { <span class="pad"></span> }
             {{ o.label }}
           </button>
         }
@@ -54,7 +53,9 @@ import { TodayStore } from '../today.store';
   `,
 })
 export class ScopeSwitch {
-  protected readonly store = inject(TodayStore);
+  readonly value = input.required<BookScope>();
+  readonly changed = output<BookScope>();
+  protected readonly name = computed(() => scopeLabel(this.value()));
   protected readonly groups = [...new Set(SCOPE_OPTIONS.map((o) => o.group))];
   protected byGroup(g: string) {
     return SCOPE_OPTIONS.filter((o) => o.group === g);

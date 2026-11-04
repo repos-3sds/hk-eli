@@ -52,9 +52,9 @@ export const ROLLOVER_POCKETS: readonly RolloverPocket[] = [
   { id: 'p-kt-tr', branch: 'Kwun Tong', segment: 'Treasures', rolloverPct: 45, baselinePct: 80, maturingUsd: 3_800_000, maturedThisMonth: 11, rolledThisMonth: 5 },
   { id: 'p-mk-tr', branch: 'Mong Kok', segment: 'Treasures', rolloverPct: 67, baselinePct: 80, maturingUsd: 1_450_000, maturedThisMonth: 9, rolledThisMonth: 6 },
   { id: 'p-tst-tr', branch: 'Tsim Sha Tsui', segment: 'Treasures', rolloverPct: 75, baselinePct: 80, maturingUsd: 980_000, maturedThisMonth: 8, rolledThisMonth: 6 },
-  { id: 'p-cen-tp', branch: 'Central', segment: 'Treasure Private', rolloverPct: 88, baselinePct: 80, maturingUsd: 2_600_000, maturedThisMonth: 17, rolledThisMonth: 15 },
-  { id: 'p-cen-tr', branch: 'Central', segment: 'Treasures', rolloverPct: 86, baselinePct: 80, maturingUsd: 1_900_000, maturedThisMonth: 14, rolledThisMonth: 12 },
-  { id: 'p-dig', branch: 'Digibank', segment: 'Self-directed', rolloverPct: 82, baselinePct: 80, maturingUsd: 1_250_000, maturedThisMonth: 22, rolledThisMonth: 18 },
+  { id: 'p-cen-tp', branch: 'Central', segment: 'Treasure Private', rolloverPct: 88, baselinePct: 80, maturingUsd: 2_600_000, maturedThisMonth: 34, rolledThisMonth: 30 },
+  { id: 'p-cen-tr', branch: 'Central', segment: 'Treasures', rolloverPct: 86, baselinePct: 80, maturingUsd: 1_900_000, maturedThisMonth: 28, rolledThisMonth: 24 },
+  { id: 'p-dig', branch: 'Digibank', segment: 'Self-directed', rolloverPct: 82, baselinePct: 80, maturingUsd: 1_250_000, maturedThisMonth: 50, rolledThisMonth: 41 },
 ];
 
 /** Quotes on digibank and through the desk that did not trade this week (R25). */

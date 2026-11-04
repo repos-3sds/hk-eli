@@ -2,7 +2,7 @@
   @if (store.brief.hasValue()) {
     <div class="hero-top">
       <p class="salutation"><mat-icon svgIcon="sun" aria-hidden="true" />{{ store.salutation() }}</p>
-      <eli-scope-switch />
+      <eli-scope-switch [value]="store.scope()" (changed)="store.setScope($event)" />
     </div>
     <h2 id="hero-h" class="greeting">{{ freshness.runFailed() && !showLastGood() ? 'No new list today.' : store.headline() }}</h2>
     @if (store.briefSummary() && !freshness.runFailed()) {

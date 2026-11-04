@@ -1,7 +1,7 @@
 <section class="strip" aria-labelledby="strip-title">
   <div class="head">
     <h2 id="strip-title" class="title">Next {{ skeletonDays.length }} business days</h2>
-    <eli-scope-switch />
+    <eli-scope-switch [value]="store.scope()" (changed)="store.setScope($event)" />
     <span class="rule" aria-hidden="true"></span>
     <div class="legend" role="group" aria-label="Show moment types">
       @for (t of types; track t) {
