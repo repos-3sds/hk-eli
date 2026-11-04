@@ -1,6 +1,6 @@
 import { FIXTURE_CLIENTS } from '../data/today.fixture';
 import { NO_FILTERS } from './idea-finder.models';
-import { ALL_TICKERS, checkSignal, couponLine, passesFilters, rankIdeas, readIntent } from './idea-finder-logic';
+import { ALL_TICKERS, checkSignal, couponLine, filterBlockers, passesFilters, rankIdeas, readIntent, solveCoupon } from './idea-finder-logic';
 import { WAREHOUSE } from './idea-warehouse.fixture';
 
 const chan = FIXTURE_CLIENTS.find((c) => c.id === 'c-4821')!;
@@ -52,5 +52,39 @@ describe('Idea Finder logic', () => {
     const { matches, notionalUsd } = rankIdeas(WAREHOUSE, { filters: NO_FILTERS, signalIds: ['headroom'] }, chan, '2026-11-04T09:00:00+08:00');
     expect(notionalUsd).toBe(chan.maturingUsd);
     expect(matches.every((m) => m.effect !== null)).toBe(true);
+    const over = (m: (typeof matches)[number]) => m.effect!.toPct > m.effect!.limitPct;
+    const firstOver = matches.findIndex(over);
+    expect(firstOver === -1 || matches.slice(firstOver).every(over)).toBe(true);
+  });
+});
+
+describe('filterBlockers', () => {
+  it('names the filter that keeps the most ideas out, so an empty result can say what to loosen', () => {
+    const f = { ...NO_FILTERS, tenorMonths: 6, minCouponPct: 30 };
+    expect(WAREHOUSE.filter((w) => passesFilters(w, f))).toHaveLength(0);
+    const [top] = filterBlockers(WAREHOUSE, f);
+    expect(top.key).toBe('minCouponPct');
+    expect(top.wouldPass).toBeGreaterThan(0);
+  });
+});
+
+describe('Build my own ELI: coupon solver', () => {
+  const base = { underlyings: ['AMD', 'META'], tenorMonths: 6, kiPct: 65, strikePct: 90 };
+
+  it('pays more for more risk: an extra stock, a closer knock-in, a higher strike', () => {
+    const c = solveCoupon(base).couponPct;
+    expect(solveCoupon({ ...base, underlyings: ['AMD', 'META', 'NVDA'] }).couponPct).toBeGreaterThan(c);
+    expect(solveCoupon({ ...base, kiPct: 75 }).couponPct).toBeGreaterThan(c);
+    expect(solveCoupon({ ...base, strikePct: 100 }).couponPct).toBeGreaterThan(c);
+    expect(solveCoupon({ ...base, kiPct: 55 }).couponPct).toBeLessThan(c);
+  });
+
+  it('explains the coupon in plain words and stays in a sane range', () => {
+    const r = solveCoupon(base);
+    expect(r.couponPct).toBeGreaterThan(2);
+    expect(r.couponPct).toBeLessThan(40);
+    expect(r.drivers[0]).toContain('AMD, META');
+    expect(r.drivers.some((d) => d.startsWith('Worst-of 2'))).toBe(true);
+    expect(solveCoupon({ ...base, underlyings: [] }).couponPct).toBe(0);
   });
 });

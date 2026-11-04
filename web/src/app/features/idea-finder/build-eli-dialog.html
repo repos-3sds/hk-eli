@@ -1,0 +1,86 @@
+<h2 mat-dialog-title>Build my own ELI</h2>
+<mat-dialog-content class="body">
+  <p class="lede">For when nothing in the warehouse fits. Choose the terms and HK ELI works out the coupon from an indicative price. The desk gives the live one.</p>
+
+  <div class="layout">
+  <div class="terms">
+  <div class="field">
+    <span class="label" id="stocks-l">Stocks <span class="muted">(up to {{ maxStocks }}; two or more make a worst-of)</span></span>
+    <div class="chips" role="group" aria-labelledby="stocks-l">
+      @for (t of stocks(); track t) {
+        <span class="chip">{{ t }}<button type="button" class="x" (click)="remove(t)" [attr.aria-label]="'Remove ' + t"><mat-icon svgIcon="x" /></button></span>
+      }
+      @if (stocks().length < maxStocks) {
+        <button type="button" class="chip add" [matMenuTriggerFor]="stockMenu"><mat-icon svgIcon="plus" aria-hidden="true" />Stock</button>
+      }
+    </div>
+    @if (data.filters.exclude.length) {
+      <span class="hint">Leaving out {{ data.filters.exclude.join(', ') }}, as on your chips.</span>
+    }
+  </div>
+  <mat-menu #stockMenu="matMenu">
+    @for (t of addable(); track t) {
+      <button mat-menu-item type="button" (click)="add(t)">{{ t }}</button>
+    }
+  </mat-menu>
+
+    <div class="field">
+      <span class="label" id="tenor-l">Tenor</span>
+      <mat-button-toggle-group hideSingleSelectionIndicator aria-labelledby="tenor-l" [value]="tenor()" (change)="tenor.set($event.value)">
+        @for (t of tenors; track t) { <mat-button-toggle [value]="t">{{ t }}M</mat-button-toggle> }
+      </mat-button-toggle-group>
+    </div>
+    <div class="field">
+      <span class="label" id="ki-l">Knock-in</span>
+      <mat-button-toggle-group hideSingleSelectionIndicator aria-labelledby="ki-l" [value]="ki()" (change)="ki.set($event.value)">
+        @for (k of kis; track k) { <mat-button-toggle [value]="k">{{ k }}%</mat-button-toggle> }
+      </mat-button-toggle-group>
+    </div>
+    <div class="field">
+      <span class="label" id="strike-l">Strike</span>
+      <mat-button-toggle-group hideSingleSelectionIndicator aria-labelledby="strike-l" [value]="strike()" (change)="strike.set($event.value)">
+        @for (s of strikes; track s) { <mat-button-toggle [value]="s">{{ s }}%</mat-button-toggle> }
+      </mat-button-toggle-group>
+    </div>
+  </div>
+
+  <section class="result" aria-live="polite" aria-labelledby="res-l">
+    <span class="label" id="res-l">Indicative coupon</span>
+    @if (!stocks().length) {
+      <p class="empty">Add a stock to see the coupon.</p>
+    } @else if (price.error()) {
+      <p class="empty error">The pricer did not answer in time. <button type="button" class="eli-link" (click)="price.reload()">Try again</button></p>
+    } @else if (price.hasValue()) {
+      @let p = price.value();
+      <div class="coupon" [class.stale]="price.isLoading()">
+        <span class="big">{{ p.couponPct }}%</span><span class="pa">p.a.</span>
+        <span class="what">{{ title() }} · KI {{ ki() }}% · strike {{ strike() }}%</span>
+      </div>
+      <ul class="drivers">
+        @for (d of p.drivers; track d) { <li>{{ d }}</li> }
+      </ul>
+      @if (p.effect; as e) {
+        <div class="conc">
+          <span class="muted">{{ data.clientName }} with {{ p.notionalUsd | usd }}</span>
+          <eli-concentration-bar [underlying]="e.underlying" [fromPct]="e.fromPct" [toPct]="e.toPct" [limitPct]="e.limitPct" />
+        </div>
+      }
+      @if (checks().length) {
+        <ul class="checks">
+          @for (c of checks(); track c.label) {
+            <li [class.no]="!c.met"><mat-icon [svgIcon]="c.met ? 'check' : 'circle-alert'" aria-hidden="true" /><span class="eli-visually-hidden">{{ c.met ? 'Passes:' : 'Does not pass:' }}</span>{{ c.label }}</li>
+          }
+        </ul>
+      }
+    } @else {
+      <div class="eli-skeleton price-wait"></div>
+    }
+  </section>
+  </div>
+  <p class="trust">Demo pricing from a simple model with invented volatilities. Not a price, and not a recommendation.</p>
+</mat-dialog-content>
+<mat-dialog-actions class="actions">
+  @if (blockedBy(); as why) { <span class="why">{{ why }}</span> }
+  <button matButton="outlined" type="button" mat-dialog-close>Cancel</button>
+  <button matButton="filled" type="button" [disabled]="!!blockedBy()" (click)="request()">Request live quote</button>
+</mat-dialog-actions>

@@ -10,15 +10,6 @@
   mat-icon { width: 16px; height: 16px; } }
 .input { flex: 1; min-width: 0; border: 0; outline: 0; resize: none; padding: 0; background: none; color: var(--eli-text-primary); font: inherit; line-height: 20px; &::placeholder { color: var(--eli-text-muted); } }
 
-.focus { display: flex; flex-wrap: wrap; align-items: center; gap: var(--eli-space-4); }
-.focus-label { margin-right: var(--eli-space-2); color: var(--eli-text-muted); font-size: var(--eli-font-size-s); text-transform: uppercase; letter-spacing: 0.04em; }
-.fchip { display: inline-flex; align-items: center; gap: var(--eli-space-3); height: 28px; padding: 0 var(--eli-space-5); border: 1px solid var(--eli-border); border-radius: 14px; background: var(--eli-bg-dock); color: var(--eli-text-muted-2); font: inherit; font-size: var(--eli-font-size-s); cursor: pointer;
-  &.set { border-color: var(--eli-accent-link); background: var(--eli-bg-selected); color: var(--eli-text-strong); }
-  &.neg { border-color: var(--eli-status-negative); }
-  mat-icon { width: 14px; height: 14px; }
-  .chev { width: 12px; height: 12px; } }
-.x { display: grid; place-items: center; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; mat-icon { width: 12px; height: 12px; } }
-.clear { font-size: var(--eli-font-size-s); }
 .note { margin: 0; color: var(--eli-text-muted); font-size: var(--eli-font-size-s); &.error { color: var(--eli-status-negative); } }
 
 .body { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: var(--eli-space-7); flex: 1; min-height: 0; }
@@ -29,6 +20,7 @@
 .res-head { display: flex; flex-direction: column; gap: var(--eli-space-2); }
 .res-title { margin: 0; color: var(--eli-text-strong); font-size: var(--eli-font-size-l); font-weight: var(--eli-weight-semibold); }
 .res-sub { margin: 0; color: var(--eli-text-muted); font-size: var(--eli-font-size-s); }
+.build { display: inline-flex; align-items: center; gap: var(--eli-space-3); margin-top: var(--eli-space-3); font-size: var(--eli-font-size-s); mat-icon { width: 14px; height: 14px; } }
 .warn { display: flex; align-items: center; gap: var(--eli-space-3); margin: var(--eli-space-2) 0 0; color: var(--eli-accent-orange); font-size: var(--eli-font-size-s); mat-icon { width: 14px; height: 14px; } }
 .list { display: flex; flex-direction: column; gap: var(--eli-space-3); margin: 0; padding: 0; list-style: none; }
 .item { border: 1px solid transparent; border-radius: var(--eli-radius-m); background: var(--eli-bg-surface); &.open { border-color: var(--eli-border); } }

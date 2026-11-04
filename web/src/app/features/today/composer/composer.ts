@@ -20,7 +20,7 @@ import { TodayStore } from '../today.store';
       }
       <label class="eli-visually-hidden" for="ask">Ask about a client, an underlying or an idea</label>
       <textarea #input id="ask" name="ask" class="input" autocomplete="off" [rows]="tall() ? 4 : 1"
-        placeholder="Ask about a client, an underlying or an idea…  (Enter to send, Shift+Enter for a new line)"
+        placeholder="Ask about a client, an underlying or an idea"
         [ngModel]="store.composerDraft()" (ngModelChange)="store.composerDraft.set($event)" (keydown.enter)="onEnter($event)"></textarea>
       <button type="submit" class="send" [disabled]="!store.composerDraft().trim()" aria-label="Send question"><mat-icon svgIcon="send" /></button>
     </form>

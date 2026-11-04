@@ -1,0 +1,19 @@
+/* Composer */
+:host { display: block; }
+mat-icon { flex: none; }
+.box { display: flex; flex-direction: column; gap: var(--eli-space-5); padding: var(--eli-space-6) var(--eli-space-7) var(--eli-space-5); border: 1px solid var(--eli-border); border-radius: 14px; background: var(--eli-bg-input); transition: border-color var(--eli-motion-fast); &:focus-within { border-color: var(--eli-accent-link); } }
+.input { field-sizing: content; min-height: 44px; max-height: 160px; border: 0; outline: 0; resize: none; padding: 0; background: none; color: var(--eli-text-primary); font: inherit; font-size: var(--eli-font-size-m); line-height: 22px; &::placeholder { color: var(--eli-text-muted); } }
+.box-foot { display: flex; align-items: center; gap: var(--eli-space-4); }
+.spacer { flex: 1; }
+.ctx { display: inline-flex; align-items: center; gap: var(--eli-space-3); height: 26px; padding: 0 var(--eli-space-4); border: 1px solid transparent; border-radius: 13px; background: var(--eli-bg-selected); color: var(--eli-text-strong); font: inherit; font-size: var(--eli-font-size-s); font-weight: var(--eli-weight-semibold);
+  mat-icon { width: 13px; height: 13px; }
+  &.add { border-color: var(--eli-border); background: none; color: var(--eli-text-muted-2); font-weight: var(--eli-weight-regular); cursor: pointer; &:hover { color: var(--eli-text-strong); } } }
+.ctx-x { display: grid; place-items: center; padding: 0; border: 0; background: none; color: var(--eli-text-muted-2); cursor: pointer; mat-icon { width: 12px; height: 12px; } }
+.send { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: var(--eli-accent-blue); color: var(--eli-text-strong); cursor: pointer;
+  mat-icon { width: 16px; height: 16px; } &:hover { background: var(--eli-accent-blue-hover); }
+  &:disabled { background: var(--eli-bg-surface); color: var(--eli-text-muted); cursor: default; }
+  &.stop { background: var(--eli-bg-surface); } }
+.stop-mark { width: 10px; height: 10px; border-radius: 2px; background: var(--eli-text-strong); }
+.hint { display: flex; justify-content: space-between; gap: var(--eli-space-7); margin: var(--eli-space-3) var(--eli-space-4) 0; color: var(--eli-text-muted); font-size: var(--eli-font-size-xs); }
+
+@container widget (max-width: 760px) { .hint span:first-child { display: none; } }

@@ -1,0 +1,28 @@
+<form (submit)="submit($event)" aria-label="Ask the HK ELI Chatbot">
+  <div class="box">
+    <label class="eli-visually-hidden" for="chat-ask">Ask a question</label>
+    <textarea #input id="chat-ask" name="ask" rows="1" class="input" placeholder="Ask about a client, an underlying or an idea" maxlength="500"
+      [ngModel]="store.draft()" (ngModelChange)="store.draft.set($event)" (keydown)="onKeydown($event)"></textarea>
+    <div class="box-foot">
+      @if (store.clientShortName(); as name) {
+        <span class="ctx"><mat-icon svgIcon="user-round" aria-hidden="true" />{{ name }}
+          <button type="button" class="ctx-x" (click)="pickClient(null)" [attr.aria-label]="'Clear client ' + name" matTooltip="Ask about your whole book"><mat-icon svgIcon="x" /></button>
+        </span>
+      } @else {
+        <button type="button" class="ctx add" [matMenuTriggerFor]="clientMenu"><mat-icon svgIcon="user-round" aria-hidden="true" />Whole book<mat-icon svgIcon="chevron-down" aria-hidden="true" /></button>
+      }
+      <mat-menu #clientMenu="matMenu">
+        @for (c of clients; track c.id) {
+          <button mat-menu-item type="button" (click)="pickClient(c.id)">{{ c.name }}</button>
+        }
+      </mat-menu>
+      <span class="spacer"></span>
+      @if (store.busy()) {
+        <button type="submit" class="send stop" aria-label="Stop the answer" matTooltip="Stop (Esc)"><span class="stop-mark" aria-hidden="true"></span></button>
+      } @else {
+        <button type="submit" class="send" [disabled]="!store.draft().trim()" aria-label="Send question" matTooltip="Send (Enter)"><mat-icon svgIcon="send" /></button>
+      }
+    </div>
+  </div>
+  <p class="hint"><span>Enter to send · Shift+Enter for a new line · ↑ to edit your last question</span><span>Figures from data, wording by AI. Not advice.</span></p>
+</form>

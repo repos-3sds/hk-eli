@@ -13,48 +13,7 @@
     </button>
   </form>
 
-  <div class="focus" aria-label="Narrow your focus">
-    <span class="focus-label">Narrow your focus</span>
-    <button type="button" class="fchip client" [class.set]="store.client()" [matMenuTriggerFor]="clientMenu">
-      {{ store.client() ? 'Client: ' + store.client()!.name : 'Pick a client' }}<mat-icon class="chev" svgIcon="chevron-down" aria-hidden="true" />
-    </button>
-    <mat-menu #clientMenu="matMenu">
-      <button mat-menu-item type="button" (click)="store.setClient(null)">No client (whole warehouse)</button>
-      @for (c of clients; track c.id) {
-        <button mat-menu-item type="button" (click)="store.setClient(c.id)">{{ c.name }} · {{ c.segment }}</button>
-      }
-    </mat-menu>
-
-    <button type="button" class="fchip" [class.set]="store.filters().tenorMonths" [matMenuTriggerFor]="tenorMenu">
-      Tenor: {{ store.filters().tenorMonths ? store.filters().tenorMonths + 'M' : 'any' }}<mat-icon class="chev" svgIcon="chevron-down" aria-hidden="true" />
-    </button>
-    <mat-menu #tenorMenu="matMenu">
-      <button mat-menu-item type="button" (click)="store.patchFilters({ tenorMonths: null })">Any tenor</button>
-      @for (t of tenors; track t) {
-        <button mat-menu-item type="button" (click)="store.patchFilters({ tenorMonths: t })">{{ t }} months</button>
-      }
-    </mat-menu>
-
-    @if (store.filters().minCouponPct !== null) {
-      <span class="fchip set">Coupon ≥ {{ store.filters().minCouponPct }}%
-        <button type="button" class="x" (click)="store.patchFilters({ minCouponPct: null })" aria-label="Remove coupon filter"><mat-icon svgIcon="x" /></button></span>
-    }
-    @if (store.filters().maxKiPct !== null) {
-      <span class="fchip set">KI ≤ {{ store.filters().maxKiPct }}%
-        <button type="button" class="x" (click)="store.patchFilters({ maxKiPct: null })" aria-label="Remove knock-in filter"><mat-icon svgIcon="x" /></button></span>
-    }
-    @for (t of store.filters().include; track t) {
-      <span class="fchip set">On {{ t }}
-        <button type="button" class="x" (click)="store.removeTicker('include', t)" [attr.aria-label]="'Remove ' + t"><mat-icon svgIcon="x" /></button></span>
-    }
-    @for (t of store.filters().exclude; track t) {
-      <span class="fchip set neg">No {{ t }}
-        <button type="button" class="x" (click)="store.removeTicker('exclude', t)" [attr.aria-label]="'Allow ' + t + ' again'"><mat-icon svgIcon="x" /></button></span>
-    }
-    @if (store.filters().minCouponPct !== null || store.filters().maxKiPct !== null || store.filters().tenorMonths !== null || store.filters().include.length || store.filters().exclude.length) {
-      <button type="button" class="eli-link clear" (click)="store.clearFilters()">Clear filters</button>
-    }
-  </div>
+  <eli-focus-chips />
   @if (store.readError()) {
     <p class="note error" role="alert">{{ store.readError() }}</p>
   } @else if (store.lastRead()?.ignored?.length) {
@@ -81,10 +40,11 @@
       <div class="res-head">
         <h3 id="res-h" class="res-title">{{ r.passedFilters }} of {{ r.warehouseSize }} ideas pass your filters</h3>
         <p class="res-sub">
-          Ranked by how many of your {{ store.picked().length }} signals line up, then by coupon.
+          Ranked by how many of your {{ store.picked().length }} signals line up, then by coupon. Ideas that would break a client limit go last.
           @if (store.client(); as c) { Concentration shown for {{ c.name }} with {{ r.notionalUsd | usd }}. }
           Indicative, priced {{ r.businessDate | eliDate: 'long' }} 18:00 HKT.
         </p>
+        <button type="button" class="eli-link build" (click)="openBuilder()"><mat-icon svgIcon="sliders" aria-hidden="true" />Nothing quite fits? Build my own ELI</button>
         @if (store.clientSignalsWithoutClient()) {
           <p class="warn"><mat-icon svgIcon="info" aria-hidden="true" />Some picked signals check fit to a client. Pick a client above, or they count as not met.</p>
         }
@@ -93,8 +53,18 @@
       @if (r.matches.length === 0) {
         <div class="state">
           <mat-icon svgIcon="info" aria-hidden="true" />
-          <span>No ideas pass these filters. Loosen the tenor, coupon or knock-in, or allow a stock you excluded.</span>
-          <button matButton="outlined" type="button" (click)="store.clearFilters()">Clear filters</button>
+          @if (r.blockers[0]; as top) {
+            @if (top.wouldPass > 0) {
+              <span>No ideas pass all your filters. <strong>{{ top.label }}</strong> is the one holding most back: without it, {{ top.wouldPass }} {{ top.wouldPass === 1 ? 'idea passes' : 'ideas pass' }}.</span>
+              <button matButton="filled" type="button" (click)="store.dropFilter(top.key)">Remove {{ top.label }}</button>
+            } @else {
+              <span>No ideas pass, and no single filter is to blame. Several of them together rule everything out.</span>
+            }
+          } @else {
+            <span>The idea warehouse has nothing for today yet.</span>
+          }
+          <button matButton="outlined" type="button" (click)="store.clearFilters()">Clear all filters</button>
+          <button matButton="outlined" type="button" (click)="openBuilder()">Build my own ELI</button>
         </div>
       } @else {
         <ol class="list">

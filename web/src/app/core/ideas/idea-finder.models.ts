@@ -86,10 +86,38 @@ export interface IdeaMatch {
   readonly pricedAt: string;
 }
 
+/** One hard filter, and how many warehouse ideas would pass without it. Used to explain an empty result. */
+export interface FilterBlocker {
+  readonly key: 'tenorMonths' | 'minCouponPct' | 'maxKiPct' | 'include' | 'exclude';
+  readonly label: string;
+  readonly wouldPass: number;
+}
+
 export interface IdeaResults {
   readonly passedFilters: number;
+  /** Filters ranked by how many ideas each one keeps out, most first. */
+  readonly blockers: readonly FilterBlocker[];
   readonly warehouseSize: number;
   readonly matches: readonly IdeaMatch[];
   readonly notionalUsd: number;
   readonly businessDate: string;
+}
+
+/** "Build my own ELI": the terms the RM chose when nothing in the warehouse fits. */
+export interface CustomEliSpec {
+  readonly underlyings: readonly string[];
+  readonly tenorMonths: number;
+  readonly kiPct: number;
+  readonly strikePct: number;
+  readonly clientId: string | null;
+}
+
+/** The coupon solved for those terms, from an indicative price. The desk gives the live one. */
+export interface CustomEliPrice {
+  readonly couponPct: number;
+  /** What moved the coupon, in plain words, biggest first. */
+  readonly drivers: readonly string[];
+  readonly notionalUsd: number;
+  readonly effect: ConcentrationEffect | null;
+  readonly pricedAt: string;
 }
