@@ -176,3 +176,23 @@ export interface QuoteRequestReceipt {
   readonly sentAt: string;
   readonly desk: string;
 }
+
+/**
+ * The two clocks every screen shows (R37). The dataset refreshes overnight (data as of last close);
+ * prices refresh in the morning. Either run can be late or fail, and the screens must say so.
+ */
+export type FreshnessState = 'ready' | 'prices-late' | 'run-failed';
+
+export interface Freshness {
+  readonly state: FreshnessState;
+  /** Close date the data describes. When the overnight run failed, the last good close. */
+  readonly dataAsOf: string;
+  /** When the overnight run finished (ISO with offset), or null when it failed. */
+  readonly dataRefreshedAt: string | null;
+  /** When the prices used were run (ISO with offset). */
+  readonly pricesAsOf: string;
+  /** True when pricesAsOf is from this morning's run. */
+  readonly pricesToday: boolean;
+  /** When this morning's prices are expected, while they are late (ISO with offset). */
+  readonly pricesExpectedAt: string | null;
+}

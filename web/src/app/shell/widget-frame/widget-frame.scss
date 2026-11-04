@@ -24,6 +24,18 @@
   padding: 6px var(--eli-space-2) var(--eli-space-4) var(--eli-space-6);
 }
 
+.internal {
+  margin-left: var(--eli-space-6);
+  padding: 0 var(--eli-space-4);
+  border: 1px solid var(--eli-border);
+  border-radius: var(--eli-radius-pill);
+  color: var(--eli-text-muted-2);
+  font-size: var(--eli-font-size-xs);
+  line-height: 18px;
+  letter-spacing: var(--eli-tracking-eyebrow);
+  text-transform: uppercase;
+}
+
 .title {
   margin: 0;
   color: var(--eli-accent-orange);

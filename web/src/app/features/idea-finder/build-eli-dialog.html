@@ -1,6 +1,6 @@
 <h2 mat-dialog-title>Build my own ELI</h2>
 <mat-dialog-content class="body">
-  <p class="lede">For when nothing in the warehouse fits. Choose the terms and HK ELI works out the coupon from an indicative price. The desk gives the live one.</p>
+  <p class="lede">For when nothing in the warehouse fits. Choose the terms and HK ELI works out the coupon from an indicative price. The desk gives the live one; at launch the terms are copied, with the internal-only label.</p>
 
   <div class="layout">
   <div class="terms">
@@ -82,5 +82,5 @@
 <mat-dialog-actions class="actions">
   @if (blockedBy(); as why) { <span class="why">{{ why }}</span> }
   <button matButton="outlined" type="button" mat-dialog-close>Cancel</button>
-  <button matButton="filled" type="button" [disabled]="!!blockedBy()" (click)="request()">Request live quote</button>
+  <button matButton="filled" type="button" [disabled]="!!blockedBy()" (click)="request()">Copy terms</button>
 </mat-dialog-actions>

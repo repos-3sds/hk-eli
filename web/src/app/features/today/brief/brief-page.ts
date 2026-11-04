@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, ElementRef, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { Router } from '@angular/router';
@@ -6,6 +6,10 @@ import { MOMENT_LABELS, Moment } from '../../../core/models/today.models';
 import { Composer } from '../composer/composer';
 import { MomentStrip } from '../moment-strip/moment-strip';
 import { TrustLine } from '../shared/trust-line';
+import { FeedbackButtons } from '../../../core/feedback/feedback-buttons';
+import { FreshnessClocks } from '../../../core/freshness/freshness-clocks';
+import { FreshnessStore } from '../../../core/freshness/freshness';
+import { EliDatePipe } from '../shared/format';
 import { clockTime } from '../shared/format';
 import { TodayStore } from '../today.store';
 import { BriefRow } from './brief-row';
@@ -17,7 +21,7 @@ import { LeadActions } from './lead-actions';
  */
 @Component({
   selector: 'eli-brief-page',
-  imports: [MatButtonModule, MatIconModule, Composer, MomentStrip, BriefRow, TrustLine],
+  imports: [MatButtonModule, MatIconModule, Composer, MomentStrip, BriefRow, TrustLine, FreshnessClocks, FeedbackButtons, EliDatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './brief-page.html',
   styleUrl: './brief-page.scss',
@@ -25,10 +29,13 @@ import { LeadActions } from './lead-actions';
 export class BriefPage {
   protected readonly store = inject(TodayStore);
   protected readonly actions = inject(LeadActions);
+  protected readonly freshness = inject(FreshnessStore);
+  /** After a failed overnight run, the user can still look at the last good list, clearly labelled. */
+  protected readonly showLastGood = signal(false);
+  protected readonly clock = clockTime;
   private readonly host = inject(ElementRef<HTMLElement>);
   private readonly router = inject(Router);
 
-  protected readonly preparedAt = computed(() => (this.store.brief.hasValue() ? clockTime(this.store.brief.value().preparedAt) : ''));
 
   protected readonly moreLabel = computed(() => {
     const hidden = this.store.hiddenLeads();
@@ -41,7 +48,7 @@ export class BriefPage {
   /** A suggested question goes straight to Chat, with the client in focus. */
   protected askNow(question: string): void {
     const client = this.store.pickedClientId() ?? this.store.openLeads()[0]?.clientId;
-    void this.router.navigate(['/rm/chat'], { queryParams: { q: question, client } });
+    void this.router.navigate(['/chat'], { queryParams: { q: question, client } });
   }
 
   /** Arrow keys move between the two tabs. */

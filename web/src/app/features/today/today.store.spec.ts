@@ -36,11 +36,12 @@ describe('TodayStore', () => {
     expect(store.visibleLeads()).toHaveLength(4);
   });
 
-  it('greets with the count of clients still needing the RM', async () => {
+  it('greets the launch user and counts the clients still needing attention', async () => {
     const store = await setup();
-    expect(store.greeting()).toMatch(/, Srivalli\. 4 clients need you today\.$/);
+    expect(store.salutation()).toMatch(/, Kelly$/);
+    expect(store.headline()).toBe('4 clients need attention today.');
     store.parkLead(store.allLeads()[0]);
-    expect(store.greeting()).toContain('3 clients need you today');
+    expect(store.headline()).toBe('3 clients need attention today.');
     expect(store.visibleLeads().some((l) => l.clientId === 'c-4821')).toBe(false);
   });
 
@@ -73,8 +74,8 @@ describe('TodayStore', () => {
 
   it('builds the landing headline and suggestions from the open leads', async () => {
     const store = await setup();
-    expect(store.headline()).toBe('4 clients need you today.');
-    expect(store.suggestions()[0]).toBe('Prepare me for my call with Chan');
+    expect(store.headline()).toBe('4 clients need attention today.');
+    expect(store.suggestions()[0]).toBe('Brief me on Chan');
   });
 
   it('undoes Not today', async () => {

@@ -3,6 +3,7 @@ import {
   BookScope,
   ClientContext,
   EvidenceRow,
+  Freshness,
   MomentStrip,
   MorningBrief,
   QuoteRequestReceipt,
@@ -14,6 +15,8 @@ import {
  * gateway (Stork AI services behind the API gateway) both implement it, chosen by config.
  */
 export abstract class TodayDataSource {
+  /** The two clocks: data as of last close, prices as of this morning, and whether either run is late or failed. */
+  abstract getFreshness(): Observable<Freshness>;
   abstract getMomentStrip(scope: BookScope): Observable<MomentStrip>;
   abstract getMorningBrief(scope: BookScope): Observable<MorningBrief>;
   abstract getClientContext(clientId: string): Observable<ClientContext>;

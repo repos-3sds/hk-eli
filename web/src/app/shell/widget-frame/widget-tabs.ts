@@ -1,4 +1,4 @@
-/** The HK ELI Chatbot tabs for the RM view (Moment Console). */
+/** The HK ELI Chatbot tabs for the launch users (Moment Console). */
 export interface WidgetTab {
   readonly path: string;
   readonly label: string;
@@ -6,7 +6,7 @@ export interface WidgetTab {
   readonly badge?: number;
 }
 
-export const RM_TABS: readonly WidgetTab[] = [
+export const WIDGET_TABS: readonly WidgetTab[] = [
   { path: 'today', label: 'Today', icon: 'sun' },
   { path: 'chat', label: 'Chat', icon: 'message-square' },
   { path: 'ideas', label: 'Ideas', icon: 'lightbulb' },

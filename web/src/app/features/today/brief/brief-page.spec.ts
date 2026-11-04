@@ -33,11 +33,13 @@ async function render(scenario: 'normal' | 'empty' | 'error' = 'normal') {
 describe('BriefPage', () => {
   it('shows the greeting, the short brief and three ranked rows', async () => {
     const { el } = await render();
-    expect(el.querySelector('.salutation')?.textContent).toContain('Srivalli');
-    expect(el.querySelector('.greeting')?.textContent).toContain('4 clients need you today');
+    expect(el.querySelector('.salutation')?.textContent).toContain('Kelly');
+    expect(el.querySelector('.greeting')?.textContent).toContain('4 clients need attention today');
     expect(el.querySelectorAll('eli-brief-row')).toHaveLength(3);
     expect(el.textContent).toContain('Show 1 more client (Ho S.');
-    expect(el.textContent).toContain('Business date 2 Nov 2026');
+    expect(el.textContent).toContain('Data as of close Mon 2 Nov');
+    expect(el.textContent).toContain('Prices 09:05 HKT today');
+    expect(el.textContent).toContain('Internal use only');
     expect(el.querySelector('eli-brief-row .rank')?.textContent).toBe('1');
     expect(el.querySelector('.summary')?.textContent).toContain('1 maturity, 1 likely knock-out, 1 stock delivery and 1 idle client. Start with Chan Tai Man: matures');
   });
@@ -45,7 +47,7 @@ describe('BriefPage', () => {
   it('puts the ask box and suggestions in the landing, with tabs for the brief and the calendar', async () => {
     const { el, fixture } = await render();
     expect(el.querySelector('.hero eli-composer')).not.toBeNull();
-    expect(el.querySelector('.chip')?.textContent).toContain('Prepare me for my call with Chan');
+    expect(el.querySelector('.chip')?.textContent).toContain('Brief me on Chan');
     expect(el.querySelector('eli-moment-strip')).toBeNull();
     (el.querySelector('#tab-calendar') as HTMLButtonElement).click();
     fixture.detectChanges();
@@ -58,7 +60,7 @@ describe('BriefPage', () => {
     const router = TestBed.inject(Router);
     const spy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     (el.querySelector('.chip') as HTMLButtonElement).click();
-    expect(spy).toHaveBeenCalledWith(['/rm/chat'], { queryParams: { q: 'Prepare me for my call with Chan', client: 'c-4821' } });
+    expect(spy).toHaveBeenCalledWith(['/chat'], { queryParams: { q: 'Brief me on Chan', client: 'c-4821' } });
   });
 
   it('marks the client in the panel as selected and moves the selection on a press', async () => {
@@ -99,5 +101,26 @@ describe('BriefPage', () => {
     const { el } = await render('error');
     expect(el.querySelector('[role="alert"]')?.textContent).toContain('could not be loaded');
     expect(el.textContent).toContain('Try again');
+  });
+
+  it('after a failed overnight run shows no new list, and the last good one only on request, clearly labelled', async () => {
+    window.history.replaceState(null, '', '/?freshness=failed');
+    try {
+      const { el, fixture } = await render();
+      expect(el.textContent).toContain('No new list today');
+      expect(el.querySelector('eli-brief-row')).toBeNull();
+      expect(el.querySelector('.summary')).toBeNull();
+      ([...el.querySelectorAll('button')].find((b) => b.textContent?.includes('Show the last good list')) as HTMLButtonElement).click();
+      fixture.detectChanges();
+      expect(el.textContent).toContain('Last good list, from close 30 Oct 2026. Not new today.');
+      expect(el.querySelectorAll('eli-brief-row').length).toBeGreaterThan(0);
+    } finally {
+      window.history.replaceState(null, '', '/');
+    }
+  });
+
+  it('asks for feedback on the list', async () => {
+    const { el } = await render();
+    expect(el.querySelector('eli-feedback')?.textContent).toContain("Was today's list useful?");
   });
 });

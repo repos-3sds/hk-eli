@@ -16,7 +16,7 @@ export interface BuildEliData {
   readonly clientName: string | null;
 }
 
-/** What the dialog hands back when the RM asks for a live quote on the custom terms. */
+/** What the dialog hands back when the user copies the custom terms. */
 export interface BuiltEli {
   readonly spec: CustomEliSpec;
   readonly price: CustomEliPrice;
@@ -31,9 +31,9 @@ interface Check {
 export const MAX_STOCKS = 3;
 
 /**
- * "Build my own ELI": for when nothing in the warehouse fits. Starts from the RM's chips, solves the coupon from an
- * indicative price as the terms change, checks the client's filters and concentration, then hands back for the
- * same confirm step as any other quote.
+ * "Build my own ELI": for when nothing in the warehouse fits. Starts from the user's chips, solves the coupon from an
+ * indicative price as the terms change, checks the client's filters and concentration, then hands the terms back
+ * to be copied with the internal-only label (live quotes come in MVP2).
  */
 @Component({
   selector: 'eli-build-eli-dialog',
@@ -101,10 +101,9 @@ export class BuildEliDialog {
     return !!p?.effect && p.effect.toPct > p.effect.limitPct;
   });
 
-  /** Why the quote button is off, or null when it can be pressed. */
+  /** Why the copy button is off, or null when it can be pressed. */
   protected readonly blockedBy = computed(() => {
     if (!this.stocks().length) return 'Add at least one stock.';
-    if (!this.data.filters.clientId) return 'Pick a client on the Ideas tab to request a quote.';
     if (!this.price.hasValue()) return 'Waiting for the indicative price.';
     if (this.overLimit()) return 'These terms would take the client over a concentration limit. Change a stock to go on.';
     return null;

@@ -46,3 +46,7 @@
   mat-icon { flex: none; width: 20px; height: 20px; color: var(--eli-text-muted-2); } span { flex: 1; }
   &.error { border-left: 3px solid var(--eli-status-negative); } }
 .trust { display: flex; align-items: center; gap: var(--eli-space-3); margin: var(--eli-space-4) 0 0; color: var(--eli-text-muted); font-size: var(--eli-font-size-s); mat-icon { width: 14px; height: 14px; flex: none; } }
+
+.clocks {
+  margin-top: var(--eli-space-4);
+}

@@ -3,7 +3,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Lead } from '../../../core/models/today.models';
 import { TodayStore } from '../today.store';
 
-/** What the RM can do with a brief lead. Shared by the brief rows and the right-hand panel, so both behave the same. */
+/** What a launch user can do with a brief lead. Shared by the brief rows and the right-hand panel, so both behave the same. */
 @Injectable()
 export class LeadActions {
   private readonly store = inject(TodayStore);
@@ -14,7 +14,7 @@ export class LeadActions {
     this.store.askAbout(lead.clientName);
   }
 
-  /** "Not today", with undo. If the lead was in the panel, the panel moves on to the next lead. */
+  /** "Mark reviewed", with undo. If the lead was in the panel, the panel moves on to the next lead. */
   park(lead: Lead): void {
     const wasFocused = this.store.focusedLead()?.id === lead.id;
     const open = this.store.openLeads();
@@ -24,7 +24,7 @@ export class LeadActions {
       this.store.pickClient(next.clientId);
     }
     this.snack
-      .open(`${lead.clientName} parked for today. It stays in the outcome window.`, 'Undo', { duration: 6000 })
+      .open(`${lead.clientName} marked reviewed for today. It stays in the outcome window.`, 'Undo', { duration: 6000 })
       .onAction()
       .subscribe(() => {
         this.store.unparkLead(lead);

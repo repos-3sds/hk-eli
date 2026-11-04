@@ -32,10 +32,10 @@
     @if (store.turns().length === 0) {
       <section class="empty" aria-labelledby="chat-hello">
         <p class="hello"><mat-icon svgIcon="sun" aria-hidden="true" />{{ greeting() }}</p>
-        <h2 id="chat-hello" class="title">What do you need to know about your book?</h2>
-        <p class="lede">Ask in plain words. Figures come straight from the blotter, fixings and RFQ log; only the wording is written by AI.</p>
+        <h2 id="chat-hello" class="title">Ask anything about the HK ELI business</h2>
+        <p class="lede">Ask in plain words, about the whole business, a branch, an underlying or one client. Figures come from last night's blotter, fixings and RFQ log and this morning's prices; only the wording is written by AI.</p>
         <div class="starters">
-          @for (s of starters; track s.title) {
+          @for (s of starters(); track s.title) {
             <button type="button" class="starter" (click)="ask(s.question)">
               <mat-icon class="s-icon" [svgIcon]="s.icon" aria-hidden="true" />
               <span class="s-title">{{ s.title }}</span>

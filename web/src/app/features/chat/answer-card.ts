@@ -37,7 +37,7 @@ import { UsdPipe } from '../today/shared/format';
                     <eli-moment-chip [type]="r.type">{{ r.when }}</eli-moment-chip>
                     <span class="note">{{ r.note }}</span>
                     <span class="amt">{{ r.amountUsd ? (r.amountUsd | usd) : '' }}</span>
-                    <button matButton type="button" class="ask" (click)="followUp.emit('Prepare me for my call with ' + r.name.split(' ')[0])">Prepare call</button>
+                    <button matButton type="button" class="ask" (click)="followUp.emit('Brief me on ' + r.name.split(' ')[0])">Brief me</button>
                   </li>
                 }
               </ul>
@@ -66,7 +66,25 @@ import { UsdPipe } from '../today/shared/format';
                   </li>
                 }
               </ol>
-              <a matButton="outlined" class="open" routerLink="/rm/ideas" [queryParams]="{ client: b.clientId }">See why in Ideas and request a live quote<mat-icon svgIcon="chevron-right" iconPositionEnd /></a>
+              <a matButton="outlined" class="open" routerLink="/ideas" [queryParams]="{ client: b.clientId }">See why in Ideas<mat-icon svgIcon="chevron-right" iconPositionEnd /></a>
+            </section>
+          }
+          @case ('table') {
+            <section class="block">
+              <h4 class="block-title">{{ b.title }}</h4>
+              <div class="table-wrap">
+                <table class="table">
+                  <thead><tr>@for (c of b.columns; track $index) {<th scope="col" [class.num]="b.numeric.includes($index)">{{ c }}</th>}</tr></thead>
+                  <tbody>
+                    @for (r of b.rows; track $index; let ri = $index) {
+                      <tr [class.flag]="b.flagged?.includes(ri)">
+                        @for (cell of r; track $index) {<td [class.num]="b.numeric.includes($index)">{{ cell }}</td>}
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+              @if (b.flagged?.length) {<p class="table-note"><span class="flag-mark" aria-hidden="true"></span>Below the baseline</p>}
             </section>
           }
           @case ('bullets') {
@@ -113,6 +131,15 @@ import { UsdPipe } from '../today/shared/format';
     .terms, .conc { color: var(--eli-text-muted-2); font-size: var(--eli-font-size-s); font-variant-numeric: tabular-nums; }
     .open { align-self: flex-start; }
     .bullets { display: flex; flex-direction: column; gap: var(--eli-space-4); padding-left: var(--eli-space-7); list-style: disc; color: var(--eli-text-primary); }
+    .table-wrap { overflow-x: auto; }
+    .table { width: 100%; border-collapse: collapse; font-size: var(--eli-font-size-s); font-variant-numeric: tabular-nums; }
+    .table th { padding: var(--eli-space-3) var(--eli-space-4); border-bottom: 1px solid var(--eli-border); color: var(--eli-text-muted); font-weight: var(--eli-weight-semibold); text-align: left; white-space: nowrap; }
+    .table td { padding: var(--eli-space-4); border-bottom: 1px solid var(--eli-separator); color: var(--eli-text-primary); }
+    .table .num { text-align: right; }
+    .table tr.flag td:first-child { box-shadow: inset 3px 0 0 var(--eli-accent-orange); }
+    .table tr.flag td { color: var(--eli-text-strong); }
+    .table-note { display: flex; align-items: center; gap: var(--eli-space-3); margin: 0; color: var(--eli-text-muted); font-size: var(--eli-font-size-s); }
+    .flag-mark { width: 3px; height: 12px; background: var(--eli-accent-orange); }
     .follow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--eli-space-4); padding-top: var(--eli-space-6); border-top: 1px solid var(--eli-separator); }
     .follow-label { margin-right: var(--eli-space-2); color: var(--eli-text-muted); font-size: var(--eli-font-size-s); }
     .chip { display: inline-flex; align-items: center; gap: var(--eli-space-3); height: 28px; padding: 0 var(--eli-space-6); border: 1px solid var(--eli-border); border-radius: 14px; background: var(--eli-bg-dock); color: var(--eli-text-primary); font: inherit; font-size: var(--eli-font-size-s); cursor: pointer; &:hover { border-color: var(--eli-accent-link); color: var(--eli-text-strong); } mat-icon { width: 13px; height: 13px; color: var(--eli-accent-link); } }

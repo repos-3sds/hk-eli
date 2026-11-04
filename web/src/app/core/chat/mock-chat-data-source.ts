@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, forkJoin, map, of, switchMap } from 'rxjs';
+import { BOOK_CONCENTRATION, ROLLOVER_BASELINE_PCT, ROLLOVER_POCKETS, UNMET_DEMAND } from '../data/business.fixture';
 import { FIXTURE_CLIENTS } from '../data/today.fixture';
 import { TodayDataSource } from '../data/today-data-source';
 import { MomentStrip } from '../models/today.models';
@@ -8,7 +9,7 @@ import { ChatDataSource } from './chat-data-source';
 import { AnswerBlock, ChatAnswer, ChatQuestion, ClientRowsBlock } from './chat.models';
 
 const SOURCES = ['EQD master', 'outstanding stock', 'RFQ log'];
-const FALLBACK_FOLLOW_UPS = ['Who matures this week?', 'Which knock-outs are close to the barrier?', 'Prepare me for my call with Chan'];
+const FALLBACK_FOLLOW_UPS = ['Who matures this week?', 'Which knock-outs are close to the barrier?', 'Brief me on Chan'];
 
 /**
  * Answers a few kinds of question from the same Today data the screens use, so the demo stays consistent:
@@ -30,6 +31,15 @@ export class MockChatDataSource extends ChatDataSource {
     if (/\b(prepare|prep|before i call|know about|call with|tell me about|brief me)\b/.test(text) && (named ?? question.clientId)) {
       return this.callPrep(id, (named ?? question.clientId)!);
     }
+    if (/rollover/.test(text) && /(below|under|ratio|pocket|baseline)/.test(text)) {
+      return this.rollover(id);
+    }
+    if (/concentrat|against limit|limits?\b/.test(text)) {
+      return this.concentration(id);
+    }
+    if (/not traded|quoted and not|unmet|demand/.test(text)) {
+      return this.unmetDemand(id);
+    }
     if (/matur/.test(text)) {
       return this.byType(id, 'maturity', text.includes('next week') ? 'next' : 'this');
     }
@@ -45,9 +55,75 @@ export class MockChatDataSource extends ChatDataSource {
         fallback: true,
         businessDate: brief.businessDate,
         sources: SOURCES,
-        blocks: [{ kind: 'text', text: 'I can only answer a few kinds of question in this demo: a call prep for one client, maturities this week or next, and knock-outs close to the barrier. Try one of these.' }],
+        blocks: [{ kind: 'text', text: 'I can only answer a few kinds of question in this demo: a brief on one client, maturities this week or next, and knock-outs close to the barrier. Try one of these.' }],
         followUps: FALLBACK_FOLLOW_UPS,
       })),
+    );
+  }
+
+  private businessAnswer(id: string, blocks: AnswerBlock[], followUps: string[], sources: string[]): Observable<ChatAnswer> {
+    return this.today.getMorningBrief('team').pipe(map((brief) => ({ id, fallback: false, businessDate: brief.businessDate, sources, blocks, followUps })));
+  }
+
+  private rollover(id: string): Observable<ChatAnswer> {
+    const pockets = [...ROLLOVER_POCKETS].sort((a, b) => a.rolloverPct - b.rolloverPct);
+    const below = pockets.filter((p) => p.rolloverPct < ROLLOVER_BASELINE_PCT);
+    const low = below[0];
+    return this.businessAnswer(
+      id,
+      [
+        {
+          kind: 'text',
+          text: below.length
+            ? `Rollover is above the ${ROLLOVER_BASELINE_PCT}% baseline overall, but ${below.length} ${below.length === 1 ? 'pocket is' : 'pockets are'} below it this month. ${low.branch} · ${low.segment} is lowest at ${low.rolloverPct}% (${low.rolledThisMonth} of ${low.maturedThisMonth} rolled), with ${usd(low.maturingUsd)} maturing in the next 10 business days.`
+            : `Every pocket is at or above the ${ROLLOVER_BASELINE_PCT}% rollover baseline this month.`,
+        },
+        {
+          kind: 'table',
+          title: 'Rollover this month, by branch and segment',
+          columns: ['Branch', 'Segment', 'Rolled', 'Rollover', 'Maturing next 10 days'],
+          numeric: [2, 3, 4],
+          rows: pockets.map((p) => [p.branch, p.segment, `${p.rolledThisMonth} of ${p.maturedThisMonth}`, `${p.rolloverPct}%`, usd(p.maturingUsd)]),
+          flagged: pockets.map((p, i) => (p.rolloverPct < ROLLOVER_BASELINE_PCT ? i : -1)).filter((i) => i >= 0),
+        },
+      ],
+      ['Who matures this week?', 'What was quoted and not traded this week?'],
+      ['EQD master', 'trades this month'],
+    );
+  }
+
+  private concentration(id: string): Observable<ChatAnswer> {
+    const top = BOOK_CONCENTRATION[0];
+    return this.businessAnswer(
+      id,
+      [
+        { kind: 'text', text: `${top.underlying} is ${top.sharePct}% of all ELI outstanding against a ${top.limitPct}% limit, the closest name to its limit. Ideas that add ${top.underlying} rank lower and say why.` },
+        { kind: 'concentration', title: 'Share of all ELI outstanding, by underlying', lines: BOOK_CONCENTRATION.map((c) => ({ ...c })) },
+      ],
+      ['What was quoted and not traded this week?', 'Who matures this week?'],
+      ['EQD master', 'outstanding stock', 'name limits'],
+    );
+  }
+
+  private unmetDemand(id: string): Observable<ChatAnswer> {
+    const rows = [...UNMET_DEMAND].sort((a, b) => b.quotes - b.traded - (a.quotes - a.traded));
+    const digibank = UNMET_DEMAND.filter((d) => d.channel === 'digibank');
+    const digiQuotes = digibank.reduce((s, d) => s + d.quotes, 0);
+    const digiTraded = digibank.reduce((s, d) => s + d.traded, 0);
+    return this.businessAnswer(
+      id,
+      [
+        { kind: 'text', text: `${rows[0].underlying} had the most quotes that did not trade this week (${rows[0].quotes - rows[0].traded}). On digibank, ${digiQuotes} quotes led to ${digiTraded} trades; most asked for short tenors with high coupons.` },
+        {
+          kind: 'table',
+          title: 'Quoted and not traded this week',
+          columns: ['Underlying', 'Channel', 'Quotes', 'Traded', 'Most asked for'],
+          numeric: [2, 3],
+          rows: rows.map((d) => [d.underlying, d.channel === 'digibank' ? 'Digibank' : 'Advisory', String(d.quotes), String(d.traded), d.topAsk]),
+        },
+      ],
+      ['Top concentrations against limit', 'Where is rollover below 80% this month?'],
+      ['RFQ log', 'digibank quote log', 'blotter'],
     );
   }
 
@@ -65,7 +141,7 @@ export class MockChatDataSource extends ChatDataSource {
             kind: 'text',
             text: lead
               ? `${context.name} is in today's brief: ${lead.summary} ${lead.signals.filter((s) => s.met).length} of ${lead.signals.length} signals agree.`
-              : `${context.name} is not in today's brief, so there is no dated reason to call today. Here is the book before you do.`,
+              : `${context.name} is not in today's brief, so there is no dated moment today. Here is the client's book.`,
           },
           {
             kind: 'facts',
@@ -95,7 +171,7 @@ export class MockChatDataSource extends ChatDataSource {
             })),
           });
           if (ideas.callPrep.length > 0) {
-            blocks.push({ kind: 'bullets', title: 'Talking points', items: ideas.callPrep });
+            blocks.push({ kind: 'bullets', title: 'Points for the owning RM', items: ideas.callPrep });
           }
         }
         return {
@@ -128,7 +204,7 @@ export class MockChatDataSource extends ChatDataSource {
         if (rfqs.length) {
           blocks.push({ kind: 'bullets', title: 'Recent RFQs', items: rfqs });
         }
-        return { id, fallback: false, businessDate: brief.businessDate, sources: SOURCES, blocks, followUps: [`Prepare me for my call with ${first}`, 'Who matures this week?'] };
+        return { id, fallback: false, businessDate: brief.businessDate, sources: SOURCES, blocks, followUps: [`Brief me on ${first}`, 'Who matures this week?'] };
       }),
     );
   }
@@ -168,14 +244,14 @@ export class MockChatDataSource extends ChatDataSource {
             kind: 'text',
             text:
               rows.length === 0
-                ? `No ${label} in your book.`
+                ? `No ${label} across the business.`
                 : `${leadIn}${rows.length} ${rows.length === 1 ? label.replace('maturities', 'maturity').replace('knock-outs', 'knock-out') : label}${total ? `, ${usd(total)} in all` : ''}. ${rows[0].name} is first, ${rows[0].when.split(' · ')[0]}.`,
           },
         ];
         if (rows.length > 0) {
           blocks.push({ kind: 'clients', title: type === 'maturity' ? 'Maturing' : 'Close to the barrier', rows });
         }
-        const followUps = rows.slice(0, 2).map((r) => `Prepare me for my call with ${r.name.split(' ')[0]}`);
+        const followUps = rows.slice(0, 2).map((r) => `Brief me on ${r.name.split(' ')[0]}`);
         followUps.push(type === 'maturity' ? 'Which knock-outs are close to the barrier?' : 'Who matures this week?');
         return { id, fallback: false, businessDate: brief.businessDate, sources: SOURCES, blocks, followUps };
       }),

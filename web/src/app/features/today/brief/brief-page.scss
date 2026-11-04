@@ -201,6 +201,27 @@
   &.error {
     border-left: 3px solid var(--eli-status-negative);
   }
+
+  &.warn {
+    border-left: 3px solid var(--eli-accent-orange);
+
+    > mat-icon {
+      color: var(--eli-accent-orange);
+    }
+  }
+}
+
+.warn-text {
+  color: var(--eli-accent-orange);
+}
+
+.clocks {
+  align-items: center;
+  margin-top: var(--eli-space-2);
+}
+
+.feedback {
+  margin-top: var(--eli-space-4);
 }
 
 .state-title {

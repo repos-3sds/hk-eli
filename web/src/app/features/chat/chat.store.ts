@@ -28,7 +28,7 @@ export interface PastConversation {
   readonly turns: readonly ChatTurn[];
 }
 
-/** What the RM sees while an answer is being put together, step by step. */
+/** What the user sees while an answer is being put together, step by step. */
 export const ANSWER_STAGES = ['Finding the client and the question', 'Reading the blotter, fixings and RFQ log', 'Writing the answer'] as const;
 const STAGE_DELAYS_MS = [350, 900];
 
@@ -126,7 +126,7 @@ export class ChatStore {
       },
       error: () => {
         this.finish(turnId);
-        this.patch(turnId, { status: 'error', error: 'The answer did not come back in time. Nothing was sent to the client.' });
+        this.patch(turnId, { status: 'error', error: 'The answer did not come back in time. Nothing was sent anywhere.' });
       },
     });
   }

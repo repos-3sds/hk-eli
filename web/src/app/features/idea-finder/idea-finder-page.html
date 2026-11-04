@@ -1,10 +1,11 @@
 <header class="top">
   <div class="titles">
     <h2 class="title">Find ideas that line up</h2>
-    <p class="lede">Say what the client wants. Pick the signals that matter. Ideas that meet more of them rank higher; there is no AI score.</p>
+    <p class="lede">Say what the RM or branch asked for. Pick the signals that matter. Ideas that meet more of them rank higher; there is no AI score.</p>
+    <eli-freshness-clocks class="clocks" />
   </div>
-  <form class="ask" (submit)="$event.preventDefault(); store.read()" aria-label="Describe what the client wants">
-    <label class="eli-visually-hidden" for="idea-ask">What does the client want?</label>
+  <form class="ask" (submit)="$event.preventDefault(); store.read()" aria-label="Describe what the RM or branch asked for">
+    <label class="eli-visually-hidden" for="idea-ask">What did the RM or branch ask for?</label>
     <textarea id="idea-ask" name="ask" rows="2" class="input"
       placeholder="e.g. Rollover for Chan, 6M, coupon 15%, KI 65 or lower, no more NVDA  (Enter to read)"
       [ngModel]="store.text()" (ngModelChange)="store.text.set($event)" (keydown.enter)="onEnter($event)"></textarea>
@@ -42,7 +43,7 @@
         <p class="res-sub">
           Ranked by how many of your {{ store.picked().length }} signals line up, then by coupon. Ideas that would break a client limit go last.
           @if (store.client(); as c) { Concentration shown for {{ c.name }} with {{ r.notionalUsd | usd }}. }
-          Indicative, priced {{ r.businessDate | eliDate: 'long' }} 18:00 HKT.
+          Indicative. {{ freshness.priceClock() ?? 'Prices loading' }}.
         </p>
         <button type="button" class="eli-link build" (click)="openBuilder()"><mat-icon svgIcon="sliders" aria-hidden="true" />Nothing quite fits? Build my own ELI</button>
         @if (store.clientSignalsWithoutClient()) {
@@ -91,9 +92,10 @@
                 </span>
                 <span class="acts">
                   <button matButton type="button" (click)="toggleRow(m.id)" [attr.aria-expanded]="store.openRow() === m.id">Why<mat-icon class="chev" svgIcon="chevron-down" /></button>
-                  <span [matTooltip]="store.client() ? '' : 'Pick a client first'">
-                    <button matButton="outlined" type="button" [disabled]="!store.client()" (click)="requestQuote(m)">Live quote</button>
-                  </span>
+                  <button matButton="outlined" type="button" (click)="copyTerms(m)"
+                    matTooltip="Copies the terms with their price time and the internal-only label. Live quotes come in MVP2.">
+                    <mat-icon [svgIcon]="copiedId() === m.id ? 'check' : 'clipboard-copy'" />{{ copiedId() === m.id ? 'Copied' : 'Copy terms' }}
+                  </button>
                 </span>
               </div>
               @if (store.openRow() === m.id) {
@@ -121,7 +123,7 @@
           </button>
         }
       }
-      <p class="trust"><mat-icon svgIcon="info" aria-hidden="true" />Figures from the idea warehouse, blotter, RFQ log and EQD master. Signals are rules on data, not AI. Not a recommendation; check suitability before you call.</p>
+      <p class="trust"><mat-icon svgIcon="info" aria-hidden="true" />Figures from the idea warehouse, blotter, RFQ log and EQD master. Signals are rules on data, not AI. Internal use only. Not a recommendation; the owning RM checks suitability before any conversation.</p>
     }
   </section>
 </div>

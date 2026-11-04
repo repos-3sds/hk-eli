@@ -5,6 +5,7 @@ import {
   BookScope,
   ClientContext,
   EvidenceRow,
+  Freshness,
   Idea,
   Lead,
   Moment,
@@ -14,7 +15,7 @@ import {
   RolloverIdeas,
   Signal,
 } from '../models/today.models';
-import { addBusinessDays, addDays, longDate, nextBusinessDays, weekdayName } from '../time/business-calendar';
+import { addBusinessDays, addDays, longDate, nextBusinessDays, previousBusinessDay, weekdayName } from '../time/business-calendar';
 import { BusinessClock } from '../time/business-clock';
 import { TodayDataSource } from './today-data-source';
 import {
@@ -83,6 +84,23 @@ export class MockTodayDataSource extends TodayDataSource {
 
   private signal(id: SignalId, met: boolean, caveat?: string): Signal {
     return { id, met, ...SIGNAL_CATALOGUE[id], ...(caveat ? { caveat } : {}) };
+  }
+
+  /** ?freshness=late shows this morning's prices not in yet; ?freshness=failed shows the overnight run failed. */
+  getFreshness(): Observable<Freshness> {
+    return this.respond(() => {
+      const today = this.clock.today();
+      const close = this.clock.businessDate();
+      const prevClose = previousBusinessDay(close, this.clock.holidays);
+      const mode = new URLSearchParams(this.document.location?.search ?? '').get('freshness');
+      if (mode === 'failed') {
+        return { state: 'run-failed', dataAsOf: prevClose, dataRefreshedAt: null, pricesAsOf: `${today}T09:05:00+08:00`, pricesToday: true, pricesExpectedAt: null };
+      }
+      if (mode === 'late') {
+        return { state: 'prices-late', dataAsOf: close, dataRefreshedAt: `${today}T05:40:00+08:00`, pricesAsOf: `${close}T09:05:00+08:00`, pricesToday: false, pricesExpectedAt: `${today}T09:30:00+08:00` };
+      }
+      return { state: 'ready', dataAsOf: close, dataRefreshedAt: `${today}T05:40:00+08:00`, pricesAsOf: `${today}T09:05:00+08:00`, pricesToday: true, pricesExpectedAt: null };
+    });
   }
 
   getMomentStrip(scope: BookScope): Observable<MomentStrip> {

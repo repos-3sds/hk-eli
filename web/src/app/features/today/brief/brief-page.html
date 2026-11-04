@@ -1,10 +1,11 @@
 <section class="hero" aria-labelledby="hero-h">
   @if (store.brief.hasValue()) {
     <p class="salutation"><mat-icon svgIcon="sun" aria-hidden="true" />{{ store.salutation() }}</p>
-    <h2 id="hero-h" class="greeting">{{ store.headline() }}</h2>
-    @if (store.briefSummary()) {
+    <h2 id="hero-h" class="greeting">{{ freshness.runFailed() && !showLastGood() ? 'No new list today.' : store.headline() }}</h2>
+    @if (store.briefSummary() && !freshness.runFailed()) {
       <p class="summary">{{ store.briefSummary() }}</p>
     }
+    <eli-freshness-clocks class="clocks" />
   } @else if (!store.brief.error()) {
     <div aria-busy="true" class="hero-skeleton">
       <div class="eli-skeleton" style="height: 16px; width: 180px"></div>
@@ -38,8 +39,8 @@
     Next 10 business days @if (store.strip.hasValue()) {<span class="count">{{ store.strip.value().moments.length }}</span>}
   </button>
   <span class="grow"></span>
-  @if (store.brief.hasValue()) {
-    <span class="ready">Ready {{ preparedAt() }} · {{ store.brief.value().preparedFrom }}</span>
+  @if (store.brief.hasValue() && freshness.value()?.dataRefreshedAt; as refreshed) {
+    <span class="ready">Refreshed {{ clock(refreshed) }} · {{ store.brief.value().preparedFrom }}</span>
   }
 </div>
 
@@ -62,18 +63,30 @@
       @for (i of skeletons; track i) {
         <div class="eli-skeleton row-skeleton"></div>
       }
-      <span class="eli-visually-hidden" role="status">Loading your morning brief</span>
+      <span class="eli-visually-hidden" role="status">Loading today's list</span>
     } @else if (store.brief.hasValue()) {
-      @if (store.allLeads().length === 0) {
+      @if (freshness.runFailed() && !showLastGood()) {
+        <section class="state warn" role="status">
+          <mat-icon svgIcon="triangle-alert" aria-hidden="true" />
+          <div>
+            <h3 class="state-title">No new list today</h3>
+            <p class="state-text">Last night's refresh did not finish, so nothing here is new. The last good list is from close {{ freshness.value()!.dataAsOf | eliDate: 'long' }}.</p>
+          </div>
+          <button matButton="outlined" type="button" (click)="showLastGood.set(true)">Show the last good list</button>
+        </section>
+      } @else if (store.allLeads().length === 0) {
         <section class="state">
           <mat-icon svgIcon="check" aria-hidden="true" />
           <div>
             <h3 class="state-title">Nothing needs you urgently today</h3>
-            <p class="state-text">No maturities, likely knock-outs, deliveries, idle clients or open RFQs in the next {{ store.strip.hasValue() ? store.strip.value().days.length : '' }} business days for this book.</p>
+            <p class="state-text">No maturities, likely knock-outs, deliveries, idle clients or open RFQs in the next {{ store.strip.hasValue() ? store.strip.value().days.length : '' }} business days for this scope.</p>
           </div>
         </section>
       } @else {
-        <p class="list-sub">Sorted by how many signals agree. Pick a client to work on them.</p>
+        @if (freshness.runFailed()) {
+          <p class="list-sub warn-text">Last good list, from close {{ freshness.value()!.dataAsOf | eliDate: 'long' }}. Not new today.</p>
+        }
+        <p class="list-sub">Sorted by how many signals agree. Pick a client to see their book, owning RM and ideas.</p>
         @if (store.filtersActive()) {
           <p class="filters">Filtered by the calendar. <button type="button" class="eli-link" (click)="store.clearFilters()">Show everything</button></p>
         }
@@ -98,6 +111,7 @@
           <button type="button" class="eli-link more" (click)="store.showAllLeads.set(false)">Show fewer</button>
         }
       }
+      <eli-feedback class="feedback" topic="Today's list" />
       <eli-trust-line [businessDate]="store.brief.value().businessDate" [sources]="store.brief.value().sources" />
     }
   </div>

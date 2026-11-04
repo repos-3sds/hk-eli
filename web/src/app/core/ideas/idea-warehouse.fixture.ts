@@ -54,7 +54,7 @@ export const SIGNAL_GROUPS: readonly SignalGroup[] = [
 ];
 
 export const IDEA_SIGNALS: readonly IdeaSignal[] = [
-  { id: 'top-coupon', group: 'coupon', name: 'Top-quartile coupon', rule: 'Coupon is in the top 25% of today’s warehouse.', why: 'The client gets paid well for the risk compared with what else is on offer today.', caveat: 'A high coupon usually means more risk, not a bargain.', source: 'Idea warehouse, 18:00 pricing', needsClient: false },
+  { id: 'top-coupon', group: 'coupon', name: 'Top-quartile coupon', rule: 'Coupon is in the top 25% of today’s warehouse.', why: 'The client gets paid well for the risk compared with what else is on offer today.', caveat: 'A high coupon usually means more risk, not a bargain.', source: 'Idea warehouse, morning pricing', needsClient: false },
   { id: 'coupon-up', group: 'coupon', name: 'Coupon up this week', rule: 'Coupon is at least 0.5 points higher than last week.', why: 'A reason to call now: the same idea pays more than it did.', caveat: 'It may be higher because volatility rose.', source: 'Idea warehouse, week-on-week', needsClient: false },
   { id: 'vol-rich', group: 'coupon', name: 'Volatility is rich', rule: 'Implied volatility is in the top 30% of its one-year range.', why: 'Selling volatility pays more when it is high, which lifts the coupon.', caveat: 'High volatility can stay high; the knock-in is more likely.', source: 'Fixings, implied vol', needsClient: false },
   { id: 'rm-traded', group: 'desk', name: 'Other RMs traded it', rule: 'At least 3 HK RMs traded it this week.', why: 'Peers found clients who wanted it; easier to explain.', caveat: 'Popular is not the same as suitable for this client.', source: 'Blotter, this week', needsClient: false },

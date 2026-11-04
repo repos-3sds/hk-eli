@@ -15,12 +15,12 @@ import { TodayStore } from '../today.store';
       @if (store.pickedShortName(); as name) {
         <span class="ctx">
           Client: {{ name }}
-          <button type="button" class="clear" (click)="store.clearPickedClient()" [attr.aria-label]="'Clear client ' + name" matTooltip="Clear: ask about your whole book"><mat-icon svgIcon="x" /></button>
+          <button type="button" class="clear" (click)="store.clearPickedClient()" [attr.aria-label]="'Clear client ' + name" matTooltip="Clear: ask about the whole business"><mat-icon svgIcon="x" /></button>
         </span>
       }
-      <label class="eli-visually-hidden" for="ask">Ask about a client, an underlying or an idea</label>
+      <label class="eli-visually-hidden" for="ask">Ask about the business, a client, an underlying or an idea</label>
       <textarea #input id="ask" name="ask" class="input" autocomplete="off" [rows]="tall() ? 4 : 1"
-        placeholder="Ask about a client, an underlying or an idea"
+        placeholder="Ask about the business, a client, an underlying or an idea"
         [ngModel]="store.composerDraft()" (ngModelChange)="store.composerDraft.set($event)" (keydown.enter)="onEnter($event)"></textarea>
       <button type="submit" class="send" [disabled]="!store.composerDraft().trim()" aria-label="Send question"><mat-icon svgIcon="send" /></button>
     </form>
@@ -52,7 +52,7 @@ export class Composer {
   private readonly input = viewChild.required<ElementRef<HTMLTextAreaElement>>('input');
 
   constructor() {
-    // When a card fills the box ("Ask about Chan"), put the cursor there so the RM can edit or send.
+    // When a card fills the box ("Ask about Chan"), put the cursor there so the user can edit or send.
     effect(() => {
       if (this.store.composerDraft()) {
         this.input().nativeElement.focus();
@@ -77,6 +77,6 @@ export class Composer {
     }
     const client = this.store.pickedClientId() ?? undefined;
     this.store.composerDraft.set('');
-    void this.router.navigate(['/rm/chat'], { queryParams: { q: question, client } });
+    void this.router.navigate(['/chat'], { queryParams: { q: question, client } });
   }
 }

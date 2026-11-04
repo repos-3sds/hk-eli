@@ -10,7 +10,7 @@
     <header class="who" [attr.aria-busy]="store.client.isLoading()">
       <div class="who-text">
         <h2 class="name">{{ c.name }}</h2>
-        <p class="meta">{{ c.segment }} · RM {{ c.rmName }} · CIF {{ c.cifMasked }} · risk profile {{ c.riskProfile }}</p>
+        <p class="meta">{{ c.segment }} · owner RM {{ c.rmName }} · CIF {{ c.cifMasked }} · risk profile {{ c.riskProfile }}</p>
       </div>
       <button matIconButton type="button" class="close" aria-label="Close the client panel" matTooltip="Close panel" (click)="store.dockOpen.set(false)">
         <mat-icon svgIcon="x" />
@@ -72,11 +72,11 @@
           <mat-icon svgIcon="link" aria-hidden="true" />Send {{ c.shortName }} to linked widgets
         </button>
       </span>
-      <p class="advice"><mat-icon svgIcon="sparkles" aria-hidden="true" />AI-generated words. Not a recommendation or suitability advice; check the client profile before you call.</p>
+      <p class="advice"><mat-icon svgIcon="sparkles" aria-hidden="true" />Internal use only. AI-generated words. Not a recommendation or suitability advice; the owning RM checks the client profile before any conversation.</p>
     </div>
   } @else {
     <div class="who">
-      <p class="empty who-text">Pick a client in the strip or the brief to see their book here.</p>
+      <p class="empty who-text">Pick a client in the strip or the brief to see their book and owning RM here.</p>
       <button matIconButton type="button" class="close" aria-label="Close the client panel" matTooltip="Close panel" (click)="store.dockOpen.set(false)">
         <mat-icon svgIcon="x" />
       </button>

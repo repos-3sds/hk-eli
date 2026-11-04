@@ -29,7 +29,7 @@ export class TodayStore {
   private readonly clock = inject(BusinessClock);
   private readonly session = inject(SessionService);
 
-  // What the RM has chosen
+  // What the user has chosen
   readonly scope = signal<BookScope>('my-book');
   readonly activeTypes = signal<ReadonlySet<MomentType>>(new Set(MOMENT_TYPES));
   readonly focusedDay = signal<number | null>(null);
@@ -92,31 +92,28 @@ export class TodayStore {
     return `${part}, ${this.session.user().firstName}`;
   });
 
-  /** The landing headline: how many clients still need the RM today. */
+  /** The landing headline: how many clients need attention across the scope today. */
   readonly headline = computed(() => {
     const count = this.openLeads().length;
     if (count === 0) {
-      return 'Nobody needs you urgently today.';
+      return 'Nothing needs attention urgently today.';
     }
-    return `${count} ${count === 1 ? 'client needs' : 'clients need'} you today.`;
+    return `${count} ${count === 1 ? 'client needs' : 'clients need'} attention today.`;
   });
 
-  /** Ready-made questions under the ask box. The first one names the top lead. */
+  /** Ready-made questions under the ask box, by launch role. The first one for WMS names the top lead. */
   readonly suggestions = computed(() => {
-    const top = this.openLeads()[0];
-    const list = top ? [`Prepare me for my call with ${top.clientName.split(' ')[0]}`] : [];
-    return [...list, 'Who matures this week?', 'Which knock-outs are close to the barrier?'];
-  });
-
-  readonly greeting = computed(() => {
-    const hour = this.clock.hour();
-    const part = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
-    const count = this.allLeads().filter((l) => !this.parkedLeadIds().has(l.id)).length;
-    const name = this.session.user().firstName;
-    if (count === 0) {
-      return `${part}, ${name}. Nobody needs you urgently today.`;
+    switch (this.session.role()) {
+      case 'pm':
+        return ['Top concentrations against limit', 'What was quoted and not traded this week?', 'Who matures this week?'];
+      case 'tsm':
+        return ['Where is rollover below 80% this month?', 'Who matures this week?', 'Which knock-outs are close to the barrier?'];
+      default: {
+        const top = this.openLeads()[0];
+        const list = top ? [`Brief me on ${top.clientName.split(' ')[0]}`] : [];
+        return [...list, 'Who matures this week?', 'Which knock-outs are close to the barrier?'];
+      }
     }
-    return `${part}, ${name}. ${count} ${count === 1 ? 'client needs' : 'clients need'} you today.`;
   });
 
   /** The brief lead for the client in the dock, if that client is in today's brief and not parked. */
@@ -199,7 +196,7 @@ export class TodayStore {
     this.linkedContext.set(null);
   }
 
-  /** "Not today": parks the lead for today and records it, so the outcome window knows it was seen. */
+  /** "Mark reviewed": takes the lead off today's list and records it, so the outcome window knows it was seen. */
   parkLead(lead: Lead): void {
     this.parkedLeadIds.update((s) => new Set(s).add(lead.id));
     this.data.recordNotToday(lead.id).subscribe({ error: () => this.unparkLead(lead) });
@@ -226,7 +223,7 @@ export class TodayStore {
   }
 
   askAbout(clientName: string): void {
-    this.composerDraft.set(`What should I know about ${clientName} before I call?`);
+    this.composerDraft.set(`What should I know about ${clientName}?`);
   }
 
   toggleCallNote(ideaId: string): void {

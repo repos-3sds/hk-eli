@@ -15,7 +15,7 @@ import { RouterLink } from '@angular/router';
       @if (q()) {
         <p class="question">Your question is kept for when Chat is built: <q>{{ q() }}</q></p>
       }
-      <a class="eli-link" routerLink="/rm/today">Back to Today</a>
+      <a class="eli-link" routerLink="/today">Back to Today</a>
     </section>
   `,
   styles: `

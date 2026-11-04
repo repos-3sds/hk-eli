@@ -59,7 +59,19 @@ export interface BulletsBlock {
   readonly items: readonly string[];
 }
 
-export type AnswerBlock = TextBlock | FactsBlock | ClientRowsBlock | ConcentrationBlock | IdeasBlock | BulletsBlock;
+/** A breakdown table, so answers line up with the Tableau views the launch users know (R36). */
+export interface TableBlock {
+  readonly kind: 'table';
+  readonly title: string;
+  readonly columns: readonly string[];
+  /** Columns holding numbers, right-aligned. */
+  readonly numeric: readonly number[];
+  readonly rows: readonly (readonly string[])[];
+  /** Row indexes to flag, e.g. pockets below baseline. */
+  readonly flagged?: readonly number[];
+}
+
+export type AnswerBlock = TextBlock | FactsBlock | ClientRowsBlock | ConcentrationBlock | IdeasBlock | BulletsBlock | TableBlock;
 
 export interface ChatAnswer {
   readonly id: string;

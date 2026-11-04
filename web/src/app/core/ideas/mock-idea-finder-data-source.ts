@@ -35,7 +35,7 @@ export class MockIdeaFinderDataSource extends IdeaFinderDataSource {
     return this.respond(() => {
       const client = FIXTURE_CLIENTS.find((c) => c.id === query.filters.clientId) ?? null;
       const warehouse = this.scenario === 'empty' ? [] : WAREHOUSE;
-      const { matches, passed, notionalUsd } = rankIdeas(warehouse, query, client, `${this.clock.businessDate()}T18:00:00+08:00`);
+      const { matches, passed, notionalUsd } = rankIdeas(warehouse, query, client, `${this.clock.today()}T09:05:00+08:00`);
       return { matches, passedFilters: passed, blockers: filterBlockers(warehouse, query.filters), warehouseSize: warehouse.length, notionalUsd, businessDate: this.clock.businessDate() };
     });
   }
@@ -46,7 +46,7 @@ export class MockIdeaFinderDataSource extends IdeaFinderDataSource {
       const notionalUsd = client && client.maturingUsd > 0 ? client.maturingUsd : DEFAULT_NOTIONAL_USD;
       const { couponPct, drivers } = solveCoupon(spec);
       const effect = client && spec.underlyings.length ? concentrationEffect(spec, client, notionalUsd) : null;
-      return { couponPct, drivers, notionalUsd, effect, pricedAt: `${this.clock.businessDate()}T18:00:00+08:00` };
+      return { couponPct, drivers, notionalUsd, effect, pricedAt: `${this.clock.today()}T09:05:00+08:00` };
     });
   }
 }
