@@ -1,0 +1,118 @@
+<header class="bar">
+  <div class="bar-title">
+    @if (store.title(); as title) {
+      <h2 class="conv" [title]="title">{{ title }}</h2>
+      <span class="count">{{ store.turns().length }} {{ store.turns().length === 1 ? 'question' : 'questions' }}</span>
+    } @else {
+      <h2 class="conv muted">New conversation</h2>
+    }
+  </div>
+  <div class="bar-actions">
+    <button matButton type="button" [matMenuTriggerFor]="historyMenu" [disabled]="store.history().length === 0"
+      [matTooltip]="store.history().length ? '' : 'Earlier conversations from this session show here'">
+      <mat-icon svgIcon="history" />History @if (store.history().length) {<span class="badge">{{ store.history().length }}</span>}
+    </button>
+    <button matButton="outlined" type="button" (click)="store.newChat()" [disabled]="store.turns().length === 0">
+      <mat-icon svgIcon="square-pen" />New chat
+    </button>
+  </div>
+  <mat-menu #historyMenu="matMenu" xPosition="before">
+    <div class="menu-head" mat-menu-item disabled>This session only. Nothing is stored.</div>
+    @for (c of store.history(); track c.id) {
+      <button mat-menu-item type="button" (click)="store.reopen(c.id)">
+        <span class="menu-title">{{ c.title }}</span>
+        <span class="menu-time">{{ time(c.startedAt) }} · {{ c.turns.length }} {{ c.turns.length === 1 ? 'question' : 'questions' }}</span>
+      </button>
+    }
+  </mat-menu>
+</header>
+
+<div class="scroll eli-scroll" #scroller (scroll)="onScroll()">
+  <div class="column">
+    @if (store.turns().length === 0) {
+      <section class="empty" aria-labelledby="chat-hello">
+        <p class="hello"><mat-icon svgIcon="sun" aria-hidden="true" />{{ greeting() }}</p>
+        <h2 id="chat-hello" class="title">What do you need to know about your book?</h2>
+        <p class="lede">Ask in plain words. Figures come straight from the blotter, fixings and RFQ log; only the wording is written by AI.</p>
+        <div class="starters">
+          @for (s of starters; track s.title) {
+            <button type="button" class="starter" (click)="ask(s.question)">
+              <mat-icon class="s-icon" [svgIcon]="s.icon" aria-hidden="true" />
+              <span class="s-title">{{ s.title }}</span>
+              <span class="s-q">“{{ s.question }}”</span>
+            </button>
+          }
+        </div>
+      </section>
+    } @else {
+      <ol class="thread" aria-live="polite" aria-label="Conversation">
+        @for (t of store.turns(); track t.id; let last = $last) {
+          <li class="turn">
+            <div class="q-row">
+              <div class="q-meta">
+                @if (t.clientId) {<span class="q-client"><mat-icon svgIcon="user-round" aria-hidden="true" />{{ clientName(t.clientId) }}</span>}
+                <span>{{ time(t.askedAt) }}</span>
+              </div>
+              <p class="question">{{ t.question }}</p>
+            </div>
+
+            <div class="a-row">
+              <span class="avatar" aria-hidden="true">ELI</span>
+              <div class="a-body">
+                <div class="a-meta"><span class="a-name">HK ELI Chatbot</span>
+                  @if (t.status === 'done') {<span>· {{ time(t.answeredAt ?? t.askedAt) }}</span>}
+                </div>
+                @switch (t.status) {
+                  @case ('pending') {
+                    <ol class="steps" role="status" aria-label="Working on the answer">
+                      @for (s of stages; track s; let i = $index) {
+                        <li class="step" [class.done]="i < t.stage" [class.now]="i === t.stage">
+                          <span class="mark" aria-hidden="true">
+                            @if (i < t.stage) {<mat-icon svgIcon="check" />} @else if (i === t.stage) {<span class="eli-spinner"></span>} @else {<span class="ring"></span>}
+                          </span>{{ s }}
+                        </li>
+                      }
+                    </ol>
+                  }
+                  @case ('stopped') {
+                    <div class="note-line">
+                      <span class="stop-mark" aria-hidden="true"></span>Stopped. Nothing was sent.
+                      <button matButton type="button" (click)="store.retry(t.id)">Ask again</button>
+                    </div>
+                  }
+                  @case ('error') {
+                    <div class="error" role="alert">
+                      <mat-icon svgIcon="circle-alert" aria-hidden="true" />
+                      <span>{{ t.error }}</span>
+                      <button matButton="outlined" type="button" (click)="store.retry(t.id)"><mat-icon svgIcon="refresh-cw" />Try again</button>
+                    </div>
+                  }
+                  @case ('done') {
+                    <eli-answer-card [answer]="t.answer!" [showFollowUps]="last" (followUp)="ask($event)" />
+                    <div class="a-actions">
+                      <button type="button" class="act" [matTooltip]="copiedId() === t.id ? 'Copied' : 'Copy answer'" aria-label="Copy answer"
+                        (click)="copy(t.id, t.answer!)">
+                        <mat-icon [svgIcon]="copiedId() === t.id ? 'check' : 'copy'" />
+                      </button>
+                      <button type="button" class="act" [class.on]="t.feedback === 'up'" matTooltip="Helpful" aria-label="Helpful"
+                        [attr.aria-pressed]="t.feedback === 'up'" (click)="store.rate(t.id, t.feedback === 'up' ? null : 'up')"><mat-icon svgIcon="thumbs-up" /></button>
+                      <button type="button" class="act" [class.on]="t.feedback === 'down'" matTooltip="Not helpful" aria-label="Not helpful"
+                        [attr.aria-pressed]="t.feedback === 'down'" (click)="store.rate(t.id, t.feedback === 'down' ? null : 'down')"><mat-icon svgIcon="thumbs-down" /></button>
+                      @if (t.feedback) {<span class="thanks">Thanks. This helps tune the answers.</span>}
+                    </div>
+                  }
+                }
+              </div>
+            </div>
+          </li>
+        }
+      </ol>
+    }
+  </div>
+</div>
+
+@if (awayFromBottom()) {
+  <button type="button" class="jump" (click)="toBottom()"><mat-icon svgIcon="arrow-down" aria-hidden="true" />Latest answer</button>
+}
+
+<eli-chat-composer class="composer" />

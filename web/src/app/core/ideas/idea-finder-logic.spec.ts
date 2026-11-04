@@ -1,6 +1,6 @@
 import { FIXTURE_CLIENTS } from '../data/today.fixture';
 import { NO_FILTERS } from './idea-finder.models';
-import { ALL_TICKERS, checkSignal, couponLine, passesFilters, rankIdeas, readIntent } from './idea-finder-logic';
+import { ALL_TICKERS, checkSignal, couponLine, filterBlockers, passesFilters, rankIdeas, readIntent } from './idea-finder-logic';
 import { WAREHOUSE } from './idea-warehouse.fixture';
 
 const chan = FIXTURE_CLIENTS.find((c) => c.id === 'c-4821')!;
@@ -52,5 +52,18 @@ describe('Idea Finder logic', () => {
     const { matches, notionalUsd } = rankIdeas(WAREHOUSE, { filters: NO_FILTERS, signalIds: ['headroom'] }, chan, '2026-11-04T09:00:00+08:00');
     expect(notionalUsd).toBe(chan.maturingUsd);
     expect(matches.every((m) => m.effect !== null)).toBe(true);
+    const over = (m: (typeof matches)[number]) => m.effect!.toPct > m.effect!.limitPct;
+    const firstOver = matches.findIndex(over);
+    expect(firstOver === -1 || matches.slice(firstOver).every(over)).toBe(true);
+  });
+});
+
+describe('filterBlockers', () => {
+  it('names the filter that keeps the most ideas out, so an empty result can say what to loosen', () => {
+    const f = { ...NO_FILTERS, tenorMonths: 6, minCouponPct: 30 };
+    expect(WAREHOUSE.filter((w) => passesFilters(w, f))).toHaveLength(0);
+    const [top] = filterBlockers(WAREHOUSE, f);
+    expect(top.key).toBe('minCouponPct');
+    expect(top.wouldPass).toBeGreaterThan(0);
   });
 });

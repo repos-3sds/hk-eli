@@ -11,7 +11,7 @@ import { TodayDataSource } from '../../core/data/today-data-source';
 import { FIXTURE_CLIENTS } from '../../core/data/today.fixture';
 import { IdeaMatch } from '../../core/ideas/idea-finder.models';
 import { IDEA_SIGNALS } from '../../core/ideas/idea-warehouse.fixture';
-import { ConfirmQuoteDialog } from '../today/ideas/confirm-quote-dialog';
+import { ConfirmQuoteDialog } from './confirm-quote-dialog';
 import { ConcentrationBar } from '../today/shared/concentration-bar';
 import { EliDatePipe, UsdPipe } from '../today/shared/format';
 import { IdeaFinderStore } from './idea-finder.store';

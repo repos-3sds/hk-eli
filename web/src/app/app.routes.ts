@@ -12,11 +12,8 @@ export const routes: Routes = [
         loadComponent: () => import('./features/today/today-layout').then((m) => m.TodayLayout),
         children: [
           { path: '', loadComponent: () => import('./features/today/brief/brief-page').then((m) => m.BriefPage) },
-          {
-            path: 'ideas/:clientId',
-            title: 'Ideas · HK ELI Chatbot',
-            loadComponent: () => import('./features/today/ideas/ideas-page').then((m) => m.IdeasPage),
-          },
+          // Older links to a client's ideas now open the Ideas tab with that client picked.
+          { path: 'ideas/:clientId', redirectTo: ({ params }) => `/rm/ideas?client=${encodeURIComponent(params['clientId'])}` },
         ],
       },
       {

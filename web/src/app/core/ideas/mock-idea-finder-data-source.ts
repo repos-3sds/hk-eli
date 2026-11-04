@@ -5,7 +5,7 @@ import { FIXTURE_CLIENTS } from '../data/today.fixture';
 import { BusinessClock } from '../time/business-clock';
 import { IdeaFinderDataSource } from './idea-finder-data-source';
 import { IdeaQuery, IdeaResults, ReadIntent } from './idea-finder.models';
-import { ALL_TICKERS, rankIdeas, readIntent } from './idea-finder-logic';
+import { ALL_TICKERS, filterBlockers, rankIdeas, readIntent } from './idea-finder-logic';
 import { WAREHOUSE } from './idea-warehouse.fixture';
 
 @Injectable()
@@ -36,7 +36,7 @@ export class MockIdeaFinderDataSource extends IdeaFinderDataSource {
       const client = FIXTURE_CLIENTS.find((c) => c.id === query.filters.clientId) ?? null;
       const warehouse = this.scenario === 'empty' ? [] : WAREHOUSE;
       const { matches, passed, notionalUsd } = rankIdeas(warehouse, query, client, `${this.clock.businessDate()}T18:00:00+08:00`);
-      return { matches, passedFilters: passed, warehouseSize: warehouse.length, notionalUsd, businessDate: this.clock.businessDate() };
+      return { matches, passedFilters: passed, blockers: filterBlockers(warehouse, query.filters), warehouseSize: warehouse.length, notionalUsd, businessDate: this.clock.businessDate() };
     });
   }
 }

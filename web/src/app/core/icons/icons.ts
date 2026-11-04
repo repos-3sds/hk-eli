@@ -2,7 +2,17 @@ import { inject, provideAppInitializer, EnvironmentProviders } from '@angular/co
 import { MatIconRegistry } from '@angular/material/icon';
 import { DomSanitizer } from '@angular/platform-browser';
 import {
+  ArrowDown,
   ArrowLeft,
+  CalendarClock,
+  Copy,
+  History,
+  ShieldAlert,
+  Square,
+  SquarePen,
+  ThumbsDown,
+  ThumbsUp,
+  UserRound,
   Bell,
   Check,
   ChevronDown,
@@ -28,7 +38,17 @@ import {
 
 /** Lucide icons the app uses, drawn through Angular Material's icon component. */
 export const LUCIDE_ICONS: Record<string, string> = {
+  'arrow-down': ArrowDown,
   'arrow-left': ArrowLeft,
+  'calendar-clock': CalendarClock,
+  copy: Copy,
+  history: History,
+  'shield-alert': ShieldAlert,
+  square: Square,
+  'square-pen': SquarePen,
+  'thumbs-down': ThumbsDown,
+  'thumbs-up': ThumbsUp,
+  'user-round': UserRound,
   bell: Bell,
   check: Check,
   'chevron-down': ChevronDown,

@@ -93,8 +93,17 @@
       @if (r.matches.length === 0) {
         <div class="state">
           <mat-icon svgIcon="info" aria-hidden="true" />
-          <span>No ideas pass these filters. Loosen the tenor, coupon or knock-in, or allow a stock you excluded.</span>
-          <button matButton="outlined" type="button" (click)="store.clearFilters()">Clear filters</button>
+          @if (r.blockers[0]; as top) {
+            @if (top.wouldPass > 0) {
+              <span>No ideas pass all your filters. <strong>{{ top.label }}</strong> is the one holding most back: without it, {{ top.wouldPass }} {{ top.wouldPass === 1 ? 'idea passes' : 'ideas pass' }}.</span>
+              <button matButton="filled" type="button" (click)="store.dropFilter(top.key)">Remove {{ top.label }}</button>
+            } @else {
+              <span>No ideas pass, and no single filter is to blame. Several of them together rule everything out.</span>
+            }
+          } @else {
+            <span>The idea warehouse has nothing for today yet.</span>
+          }
+          <button matButton="outlined" type="button" (click)="store.clearFilters()">Clear all filters</button>
         </div>
       } @else {
         <ol class="list">

@@ -40,7 +40,7 @@ import { TodayStore } from '../today.store';
           }
         </div>
         <div class="actions">
-          <a matButton="filled" class="primary" [routerLink]="['/rm/today/ideas', lead.clientId]">{{ lead.action.label }}</a>
+          <a matButton="filled" class="primary" routerLink="/rm/ideas" [queryParams]="{ client: lead.clientId }">{{ lead.action.label }}</a>
           <div class="secondary">
             <button matButton="outlined" type="button" (click)="actions.ask(lead)">Ask about {{ name() }}</button>
             <button matButton type="button" (click)="actions.park(lead)">Not today</button>

@@ -37,7 +37,7 @@ import { callName, momentText } from '../shared/moment-text';
       </button>
       @if (selected()) {
         <div class="inline-actions">
-          <a matButton="filled" [routerLink]="['/rm/today/ideas', lead().clientId]">{{ lead().action.label }}</a>
+          <a matButton="filled" routerLink="/rm/ideas" [queryParams]="{ client: lead().clientId }">{{ lead().action.label }}</a>
           <button matButton="outlined" type="button" (click)="ask.emit(lead())">Ask about {{ name() }}</button>
           <button matButton type="button" (click)="park.emit(lead())">Not today</button>
         </div>

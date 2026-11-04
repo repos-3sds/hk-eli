@@ -169,14 +169,14 @@ export class MockChatDataSource extends ChatDataSource {
             text:
               rows.length === 0
                 ? `No ${label} in your book.`
-                : `${leadIn}${rows.length} ${rows.length === 1 ? label.replace('maturities', 'maturity').replace('knock-outs', 'knock-out') : label}${total ? `, USD ${Math.round(total / 1000)}k in all` : ''}. ${rows[0].name} is first, ${rows[0].when.split(' · ')[0]}.`,
+                : `${leadIn}${rows.length} ${rows.length === 1 ? label.replace('maturities', 'maturity').replace('knock-outs', 'knock-out') : label}${total ? `, ${usd(total)} in all` : ''}. ${rows[0].name} is first, ${rows[0].when.split(' · ')[0]}.`,
           },
         ];
         if (rows.length > 0) {
           blocks.push({ kind: 'clients', title: type === 'maturity' ? 'Maturing' : 'Close to the barrier', rows });
         }
         const followUps = rows.slice(0, 2).map((r) => `Prepare me for my call with ${r.name.split(' ')[0]}`);
-        followUps.push(type === 'maturity' ? (window === 'next' ? 'Who matures this week?' : 'Who matures next week?') : 'Who matures this week?');
+        followUps.push(type === 'maturity' ? 'Which knock-outs are close to the barrier?' : 'Who matures this week?');
         return { id, fallback: false, businessDate: brief.businessDate, sources: SOURCES, blocks, followUps };
       }),
     );

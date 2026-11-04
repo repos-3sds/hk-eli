@@ -2,7 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { FIXTURE_CLIENTS } from '../../core/data/today.fixture';
 import { IdeaFinderDataSource } from '../../core/ideas/idea-finder-data-source';
-import { IdeaFilters, NO_FILTERS, ReadIntent } from '../../core/ideas/idea-finder.models';
+import { FilterBlocker, IdeaFilters, NO_FILTERS, ReadIntent } from '../../core/ideas/idea-finder.models';
 import { IDEA_SIGNALS, MAX_SIGNALS, STARTER_PACKS } from '../../core/ideas/idea-warehouse.fixture';
 
 /** State for the Ideas tab: plain words, hard filters, picked signals and the ranked results. */
@@ -82,6 +82,11 @@ export class IdeaFinderStore {
 
   removeTicker(kind: 'include' | 'exclude', ticker: string): void {
     this.filters.update((f) => ({ ...f, [kind]: f[kind].filter((t) => t !== ticker) }));
+  }
+
+  /** Removes one hard filter, for example the one an empty result names. */
+  dropFilter(key: FilterBlocker['key']): void {
+    this.patchFilters(key === 'include' || key === 'exclude' ? { [key]: [] } : { [key]: null });
   }
 
   clearFilters(): void {

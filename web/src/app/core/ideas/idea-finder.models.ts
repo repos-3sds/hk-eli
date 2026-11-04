@@ -86,8 +86,17 @@ export interface IdeaMatch {
   readonly pricedAt: string;
 }
 
+/** One hard filter, and how many warehouse ideas would pass without it. Used to explain an empty result. */
+export interface FilterBlocker {
+  readonly key: 'tenorMonths' | 'minCouponPct' | 'maxKiPct' | 'include' | 'exclude';
+  readonly label: string;
+  readonly wouldPass: number;
+}
+
 export interface IdeaResults {
   readonly passedFilters: number;
+  /** Filters ranked by how many ideas each one keeps out, most first. */
+  readonly blockers: readonly FilterBlocker[];
   readonly warehouseSize: number;
   readonly matches: readonly IdeaMatch[];
   readonly notionalUsd: number;

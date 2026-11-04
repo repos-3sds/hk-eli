@@ -15,7 +15,6 @@ import { UsdPipe } from '../today/shared/format';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <article class="card" [class.fallback]="answer().fallback">
-      <div class="who"><mat-icon svgIcon="sparkles" aria-hidden="true" />HK ELI Chatbot</div>
       @for (b of answer().blocks; track $index) {
         @switch (b.kind) {
           @case ('text') {
@@ -67,7 +66,7 @@ import { UsdPipe } from '../today/shared/format';
                   </li>
                 }
               </ol>
-              <a matButton="outlined" class="open" [routerLink]="['/rm/today/ideas', b.clientId]">Open ideas and request a live quote</a>
+              <a matButton="outlined" class="open" routerLink="/rm/ideas" [queryParams]="{ client: b.clientId }">See why in Ideas and request a live quote<mat-icon svgIcon="chevron-right" iconPositionEnd /></a>
             </section>
           }
           @case ('bullets') {
@@ -83,41 +82,45 @@ import { UsdPipe } from '../today/shared/format';
         }
       }
       <eli-trust-line [businessDate]="answer().businessDate" [sources]="answer().sources" reference="chat" />
-      @if (answer().followUps.length) {
-        <div class="follow" aria-label="Ask next">
+      @if (showFollowUps() && answer().followUps.length) {
+        <div class="follow" role="group" aria-label="Ask next">
+          <span class="follow-label">Ask next</span>
           @for (q of answer().followUps; track q) {
-            <button type="button" class="chip" (click)="followUp.emit(q)">{{ q }}</button>
+            <button type="button" class="chip" (click)="followUp.emit(q)"><mat-icon svgIcon="sparkles" aria-hidden="true" />{{ q }}</button>
           }
         </div>
       }
     </article>
   `,
   styles: `
-    .card { display: flex; flex-direction: column; gap: var(--eli-space-7); padding: var(--eli-space-7) var(--eli-space-8); border: 1px solid var(--eli-border); border-radius: var(--eli-radius-m); background: var(--eli-bg-canvas); }
-    .who { display: flex; align-items: center; gap: var(--eli-space-3); color: var(--eli-accent-orange); font-size: var(--eli-font-size-s); font-weight: var(--eli-weight-semibold); text-transform: uppercase; letter-spacing: 0.04em; mat-icon { width: 14px; height: 14px; } }
+    .card { display: flex; flex-direction: column; gap: var(--eli-space-7); padding: var(--eli-space-7) var(--eli-space-8); border: 1px solid var(--eli-separator); border-radius: var(--eli-radius-m); background: var(--eli-bg-dock); }
+    .card.fallback { border-left: 3px solid var(--eli-accent-link); }
     .text { margin: 0; color: var(--eli-text-primary); font-size: var(--eli-font-size-m); line-height: 22px; }
     .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--eli-space-4); margin: 0; }
-    .fact { padding: var(--eli-space-5) var(--eli-space-6); border-radius: var(--eli-radius-s); background: var(--eli-bg-dock); dt { color: var(--eli-text-muted); font-size: var(--eli-font-size-s); } dd { margin: var(--eli-space-2) 0 0; color: var(--eli-text-strong); font-size: var(--eli-font-size-l); font-weight: var(--eli-weight-semibold); } }
-    .block { display: flex; flex-direction: column; gap: var(--eli-space-5); padding-top: var(--eli-space-6); border-top: 1px solid var(--eli-border); }
-    .block-title { margin: 0; color: var(--eli-text-strong); font-size: var(--eli-font-size-s); font-weight: var(--eli-weight-semibold); }
+    .fact { padding: var(--eli-space-5) var(--eli-space-6); border-radius: var(--eli-radius-s); background: var(--eli-bg-canvas); dt { color: var(--eli-text-muted); font-size: var(--eli-font-size-s); } dd { margin: var(--eli-space-2) 0 0; color: var(--eli-text-strong); font-size: var(--eli-font-size-l); font-weight: var(--eli-weight-semibold); } }
+    .block { display: flex; flex-direction: column; gap: var(--eli-space-5); padding-top: var(--eli-space-6); border-top: 1px solid var(--eli-separator); }
+    .block-title { margin: 0; color: var(--eli-text-muted-2); font-size: var(--eli-font-size-xs); font-weight: var(--eli-weight-semibold); letter-spacing: 0.06em; text-transform: uppercase; }
     .rows, .ideas, .bullets { margin: 0; padding: 0; list-style: none; }
-    .row { display: grid; grid-template-columns: minmax(120px, 1fr) auto minmax(0, 1fr) 90px auto; gap: var(--eli-space-6); align-items: center; padding: var(--eli-space-4) 0; border-bottom: 1px solid var(--eli-border); &:last-child { border-bottom: 0; } }
+    .row { display: grid; grid-template-columns: minmax(120px, 1fr) auto minmax(0, 1fr) 90px auto; gap: var(--eli-space-6); align-items: center; padding: var(--eli-space-4) 0; border-bottom: 1px solid var(--eli-separator); &:last-child { border-bottom: 0; } }
     .name { color: var(--eli-text-strong); font-weight: var(--eli-weight-semibold); }
     .note { color: var(--eli-text-muted); font-size: var(--eli-font-size-s); }
     .amt { color: var(--eli-text-strong); text-align: right; font-variant-numeric: tabular-nums; }
     .bars { display: flex; flex-direction: column; gap: var(--eli-space-6); max-width: 420px; }
     .bar { max-width: none; }
-    .idea { display: grid; grid-template-columns: 20px minmax(0, 1.4fr) auto auto; gap: var(--eli-space-6); align-items: baseline; padding: var(--eli-space-4) 0; border-bottom: 1px solid var(--eli-border); &:last-child { border-bottom: 0; } }
+    .idea { display: grid; grid-template-columns: 20px minmax(0, 1.4fr) auto auto; gap: var(--eli-space-6); align-items: baseline; padding: var(--eli-space-4) 0; border-bottom: 1px solid var(--eli-separator); &:last-child { border-bottom: 0; } }
     .rank { color: var(--eli-accent-orange); font-weight: var(--eli-weight-semibold); }
     .idea-title { color: var(--eli-text-strong); font-weight: var(--eli-weight-semibold); }
     .terms, .conc { color: var(--eli-text-muted-2); font-size: var(--eli-font-size-s); font-variant-numeric: tabular-nums; }
     .open { align-self: flex-start; }
     .bullets { display: flex; flex-direction: column; gap: var(--eli-space-4); padding-left: var(--eli-space-7); list-style: disc; color: var(--eli-text-primary); }
-    .follow { display: flex; flex-wrap: wrap; gap: var(--eli-space-4); }
-    .chip { height: 28px; padding: 0 var(--eli-space-6); border: 1px solid var(--eli-border); border-radius: 14px; background: var(--eli-bg-dock); color: var(--eli-text-primary); font: inherit; font-size: var(--eli-font-size-s); cursor: pointer; &:hover { border-color: var(--eli-accent-link); color: var(--eli-text-strong); } }
+    .follow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--eli-space-4); padding-top: var(--eli-space-6); border-top: 1px solid var(--eli-separator); }
+    .follow-label { margin-right: var(--eli-space-2); color: var(--eli-text-muted); font-size: var(--eli-font-size-s); }
+    .chip { display: inline-flex; align-items: center; gap: var(--eli-space-3); height: 28px; padding: 0 var(--eli-space-6); border: 1px solid var(--eli-border); border-radius: 14px; background: var(--eli-bg-dock); color: var(--eli-text-primary); font: inherit; font-size: var(--eli-font-size-s); cursor: pointer; &:hover { border-color: var(--eli-accent-link); color: var(--eli-text-strong); } mat-icon { width: 13px; height: 13px; color: var(--eli-accent-link); } }
   `,
 })
 export class AnswerCard {
   readonly answer = input.required<ChatAnswer>();
+  /** Only the newest answer offers follow-up questions, so older ones stay quiet. */
+  readonly showFollowUps = input(true);
   readonly followUp = output<string>();
 }

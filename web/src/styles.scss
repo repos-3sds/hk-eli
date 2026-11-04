@@ -154,8 +154,26 @@ button {
   }
 }
 
+/* A small "working on it" ring, for a step that is in progress. */
+.eli-spinner {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid var(--eli-accent-link);
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: eli-spin 0.8s linear infinite;
+}
+
+@keyframes eli-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .eli-skeleton {
+  .eli-skeleton,
+  .eli-spinner {
     animation: none;
   }
 }
