@@ -1,38 +1,37 @@
 # HK ELI Chatbot · web
 
-Angular 21 front end for the HK ELI Chatbot widget inside the Digimarkets workspace. It starts with the RM flow, tab 1 (Today).
+Angular 21 front end for the HK ELI Chatbot widget inside the Digimarkets workspace. Launch users are GFM WMS specialists, CBG Product Managers and CBG Treasury Sales Managers, who see the whole business. Internal use only until feedback is good.
 
 ## Run it
 
 ```bash
 npm ci            # .npmrc sets legacy-peer-deps (works around an npm 10 bug with jsdom's optional canvas peer)
-npm start         # http://localhost:4200/rm/today
+npm start         # http://localhost:4200 (opens on the role's start view)
 npm test          # Vitest, single run
 npm run build     # production build in dist/web
 ```
 
-To see the other states without a back end, add one of these to the URL: `?scenario=empty`, `?scenario=error` or `?scenario=slow`.
+URL switches for demos, no back end needed:
 
-## What the Today flow does
+| Switch | Effect |
+| --- | --- |
+| `?role=wms`, `?role=pm`, `?role=tsm` | Demo user and start view (PM opens on Shelf; WMS and TSM on Today). The header role menu does the same. |
+| `?scenario=empty`, `error`, `slow` | Loading, error and empty states |
+| `?freshness=late`, `?freshness=failed` | Prices not in yet, or the overnight refresh failed |
+| `/update?scope=branch:Kwun%20Tong` | Business Update for one branch, segment (`segment:Treasures`) or `channel:digibank` |
 
-```mermaid
-flowchart LR
-  A[Today: moment strip + morning brief] -->|press a client chip| B[Client dock follows the client; brief scrolls to the lead]
-  A -->|legend chip / day header| A2[Brief filtered by moment type or day]
-  A -->|My book ▾| A3[Strip and brief reload for My team]
-  A -->|Show rollover ideas| C[Ideas for the client: ranked ideas, ranked lower, outcome, call prep]
-  C -->|Request live quote| D{Confirm dialog}
-  D -->|Send request| E[Request sent to the SPE desk, receipt shown]
-  C -->|Add to call notes| C
-  C -->|Back to morning brief| A
-  A -->|Not today| F[Lead parked, Undo in the snack bar]
-  A -->|Ask about Chan| G[Composer filled and focused]
-  G -->|Send| H[Chat tab with the question kept]
-  A -->|n of 6 signals agree| I[Signal panel: rule, why it matters, caveat, source]
-  A -->|View rows| J[Rows behind the figures]
-```
+## The tabs
 
-Every view has its loading, error and empty state. "Nothing is sent outside the chatbot" until the RM confirms (the live-quote request).
+| Tab | What it does |
+| --- | --- |
+| Today | Business headline (notional maturing, pockets below the 80% rollover line), scope switch, pocket cards that open their clients or ideas, ranked clients with owner RM and branch, the 10-day calendar, Add to hand-off. |
+| Chat | Questions about the whole business; answers with tables, sources and both clocks. |
+| Ideas | Plain words to filters, signals that line up, the single limit rule (green ranks, amber ranks lower with a reason, red goes to Hidden by limits), Copy terms, Add to hand-off, Build my own ELI, packs published by the product team. |
+| Shelf | PM console: demand next to concentration, tomorrow's shelf before the pricing cut-off, publish starter packs, digibank quote funnel. |
+| Update | The Business Update in 14 sections, sliced by scope, each stamped with its data date. |
+| Alerts | Design preview: plain-word rules ("fire when 2 of these 4 are true"), instant or digest, quiet hours, Make hand-off list. |
+
+The Hand-off list (title bar) groups items by owner RM, copies for Teams or downloads CSV with the internal-only label, records each hand-off, and shows linked conversion against clients with no hand-off (linked, not caused).
 
 ## Layout
 
@@ -46,7 +45,13 @@ Every view has its loading, error and empty state. "Nothing is sent outside the 
 | `src/app/core/time/` | Business-day maths (weekends and configured holidays) and the clock. |
 | `src/app/core/trace/` | Adds one W3C `traceparent` to every request for OpenTelemetry. |
 | `src/app/features/chat/` | The Chat tab: `ChatStore`, thread, answer cards (typed blocks + trust line), follow-ups. Data via `ChatDataSource` (mock answers from Today data, or the gateway). |
-| `src/app/features/today/` | The Today tab: `TodayStore` (signals), strip, brief list (ranked rows), ideas, dock (with the brief actions block), composer. |
+| `src/app/features/today/` | The Today tab: `TodayStore` (signals), scope switch, pockets, strip, brief list, dock, composer. |
+| `src/app/core/freshness/` | The two clocks (data as of close, prices this morning) and their late and failed states. |
+| `src/app/core/handoff/` | Hand-off list, records, linked conversion, the side sheet. |
+| `src/app/core/update/`, `features/update/` | Business Update sections (pure functions over the business data) and the tab. |
+| `src/app/core/shelf/`, `features/shelf/` | PM shelf console logic, store and tab. |
+| `src/app/core/alerts/`, `features/alerts/` | Alert rules, quiet hours, digest, and the preview tab. |
+| `src/app/core/data/business.fixture.ts` | Demo business data: owners, rollover pockets, demand, book concentration. All invented. |
 
 ## Configuration (`public/config/app-config.json`)
 
