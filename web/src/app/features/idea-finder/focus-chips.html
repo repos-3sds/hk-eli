@@ -1,0 +1,70 @@
+<span class="focus-label" id="focus-label">Narrow your focus</span>
+
+<button type="button" class="fchip" [class.set]="store.client()" [matMenuTriggerFor]="clientMenu" aria-describedby="focus-label">
+  {{ store.client() ? 'Client: ' + store.client()!.name : 'Pick a client' }}<mat-icon class="chev" svgIcon="chevron-down" aria-hidden="true" />
+</button>
+<mat-menu #clientMenu="matMenu">
+  <button mat-menu-item type="button" (click)="store.setClient(null)">No client (whole warehouse)</button>
+  @for (c of clients; track c.id) {
+    <button mat-menu-item type="button" (click)="store.setClient(c.id)">{{ c.name }} · {{ c.segment }}</button>
+  }
+</mat-menu>
+
+<button type="button" class="fchip" [class.set]="f().tenorMonths" [matMenuTriggerFor]="tenorMenu">
+  Tenor: {{ f().tenorMonths ? f().tenorMonths + 'M' : 'any' }}<mat-icon class="chev" svgIcon="chevron-down" aria-hidden="true" />
+</button>
+<mat-menu #tenorMenu="matMenu">
+  <button mat-menu-item type="button" (click)="store.patchFilters({ tenorMonths: null })">Any tenor</button>
+  @for (t of tenors; track t) {
+    <button mat-menu-item type="button" (click)="store.patchFilters({ tenorMonths: t })">{{ t }} months</button>
+  }
+</mat-menu>
+
+<button type="button" class="fchip" [class.set]="f().minCouponPct !== null" [matMenuTriggerFor]="couponMenu">
+  Coupon: {{ f().minCouponPct !== null ? '≥ ' + f().minCouponPct + '%' : 'any' }}<mat-icon class="chev" svgIcon="chevron-down" aria-hidden="true" />
+</button>
+<mat-menu #couponMenu="matMenu">
+  <button mat-menu-item type="button" (click)="store.patchFilters({ minCouponPct: null })">Any coupon</button>
+  @for (c of coupons; track c) {
+    <button mat-menu-item type="button" (click)="store.patchFilters({ minCouponPct: c })">At least {{ c }}% p.a.</button>
+  }
+</mat-menu>
+
+<button type="button" class="fchip" [class.set]="f().maxKiPct !== null" [matMenuTriggerFor]="kiMenu">
+  Knock-in: {{ f().maxKiPct !== null ? '≤ ' + f().maxKiPct + '%' : 'any' }}<mat-icon class="chev" svgIcon="chevron-down" aria-hidden="true" />
+</button>
+<mat-menu #kiMenu="matMenu">
+  <button mat-menu-item type="button" (click)="store.patchFilters({ maxKiPct: null })">Any knock-in</button>
+  @for (k of kis; track k) {
+    <button mat-menu-item type="button" (click)="store.patchFilters({ maxKiPct: k })">{{ k }}% or lower</button>
+  }
+</mat-menu>
+
+@for (t of f().include; track t) {
+  <span class="fchip set">Only {{ t }}
+    <button type="button" class="x" (click)="store.removeTicker('include', t)" [attr.aria-label]="'Remove ' + t"><mat-icon svgIcon="x" /></button></span>
+}
+@for (t of f().exclude; track t) {
+  <span class="fchip set neg">No {{ t }}
+    <button type="button" class="x" (click)="store.removeTicker('exclude', t)" [attr.aria-label]="'Allow ' + t + ' again'"><mat-icon svgIcon="x" /></button></span>
+}
+
+<button type="button" class="fchip add" [matMenuTriggerFor]="stockMenu"><mat-icon svgIcon="plus" aria-hidden="true" />Stock</button>
+<mat-menu #stockMenu="matMenu">
+  <button mat-menu-item type="button" [matMenuTriggerFor]="onlyMenu">Only ideas on…</button>
+  <button mat-menu-item type="button" [matMenuTriggerFor]="outMenu">Leave out…</button>
+</mat-menu>
+<mat-menu #onlyMenu="matMenu">
+  @for (t of tickers; track t) {
+    <button mat-menu-item type="button" (click)="store.addTicker('include', t)">{{ t }}</button>
+  }
+</mat-menu>
+<mat-menu #outMenu="matMenu">
+  @for (t of tickers; track t) {
+    <button mat-menu-item type="button" (click)="store.addTicker('exclude', t)">{{ t }}</button>
+  }
+</mat-menu>
+
+@if (anySet()) {
+  <button type="button" class="eli-link clear" (click)="store.clearFilters()">Clear filters</button>
+}

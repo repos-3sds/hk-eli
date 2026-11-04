@@ -13,48 +13,7 @@
     </button>
   </form>
 
-  <div class="focus" aria-label="Narrow your focus">
-    <span class="focus-label">Narrow your focus</span>
-    <button type="button" class="fchip client" [class.set]="store.client()" [matMenuTriggerFor]="clientMenu">
-      {{ store.client() ? 'Client: ' + store.client()!.name : 'Pick a client' }}<mat-icon class="chev" svgIcon="chevron-down" aria-hidden="true" />
-    </button>
-    <mat-menu #clientMenu="matMenu">
-      <button mat-menu-item type="button" (click)="store.setClient(null)">No client (whole warehouse)</button>
-      @for (c of clients; track c.id) {
-        <button mat-menu-item type="button" (click)="store.setClient(c.id)">{{ c.name }} · {{ c.segment }}</button>
-      }
-    </mat-menu>
-
-    <button type="button" class="fchip" [class.set]="store.filters().tenorMonths" [matMenuTriggerFor]="tenorMenu">
-      Tenor: {{ store.filters().tenorMonths ? store.filters().tenorMonths + 'M' : 'any' }}<mat-icon class="chev" svgIcon="chevron-down" aria-hidden="true" />
-    </button>
-    <mat-menu #tenorMenu="matMenu">
-      <button mat-menu-item type="button" (click)="store.patchFilters({ tenorMonths: null })">Any tenor</button>
-      @for (t of tenors; track t) {
-        <button mat-menu-item type="button" (click)="store.patchFilters({ tenorMonths: t })">{{ t }} months</button>
-      }
-    </mat-menu>
-
-    @if (store.filters().minCouponPct !== null) {
-      <span class="fchip set">Coupon ≥ {{ store.filters().minCouponPct }}%
-        <button type="button" class="x" (click)="store.patchFilters({ minCouponPct: null })" aria-label="Remove coupon filter"><mat-icon svgIcon="x" /></button></span>
-    }
-    @if (store.filters().maxKiPct !== null) {
-      <span class="fchip set">KI ≤ {{ store.filters().maxKiPct }}%
-        <button type="button" class="x" (click)="store.patchFilters({ maxKiPct: null })" aria-label="Remove knock-in filter"><mat-icon svgIcon="x" /></button></span>
-    }
-    @for (t of store.filters().include; track t) {
-      <span class="fchip set">On {{ t }}
-        <button type="button" class="x" (click)="store.removeTicker('include', t)" [attr.aria-label]="'Remove ' + t"><mat-icon svgIcon="x" /></button></span>
-    }
-    @for (t of store.filters().exclude; track t) {
-      <span class="fchip set neg">No {{ t }}
-        <button type="button" class="x" (click)="store.removeTicker('exclude', t)" [attr.aria-label]="'Allow ' + t + ' again'"><mat-icon svgIcon="x" /></button></span>
-    }
-    @if (store.filters().minCouponPct !== null || store.filters().maxKiPct !== null || store.filters().tenorMonths !== null || store.filters().include.length || store.filters().exclude.length) {
-      <button type="button" class="eli-link clear" (click)="store.clearFilters()">Clear filters</button>
-    }
-  </div>
+  <eli-focus-chips />
   @if (store.readError()) {
     <p class="note error" role="alert">{{ store.readError() }}</p>
   } @else if (store.lastRead()?.ignored?.length) {

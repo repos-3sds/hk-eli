@@ -1,3 +1,18 @@
+  @if (store.myPacks.packs().length) {
+    <section class="packs" aria-labelledby="mypacks-h">
+      <h3 id="mypacks-h" class="section-title">My packs</h3>
+      @for (p of store.myPacks.packs(); track p.id) {
+        <div class="mine">
+          <button type="button" class="pack" [class.on]="store.activeMyPackId() === p.id" [attr.aria-pressed]="store.activeMyPackId() === p.id" (click)="store.chooseMyPack(p)">
+            <span class="pack-name">{{ p.name }}</span>
+            <span class="pack-blurb">{{ p.signalIds.length }} signals{{ describe(p) }}</span>
+          </button>
+          <button type="button" class="del" (click)="remove(p.id)" [attr.aria-label]="'Delete pack ' + p.name" matTooltip="Delete pack"><mat-icon svgIcon="x" /></button>
+        </div>
+      }
+    </section>
+  }
+
   <section class="packs" aria-labelledby="packs-h">
     <h3 id="packs-h" class="section-title">Starter packs</h3>
     @for (p of packs; track p.id) {
@@ -12,6 +27,19 @@
     <h3 class="section-title">Signals</h3>
     <span class="picked-count" [class.max]="store.atMax()">{{ store.picked().length }} of {{ maxSignals }} picked</span>
   </div>
+  @if (saving()) {
+    <form class="save" (submit)="$event.preventDefault(); save()" aria-label="Save as my pack">
+      <label class="save-label" for="pack-name">Name this pack</label>
+      <input id="pack-name" #nameBox class="save-input" maxlength="40" [value]="draftName()" (input)="draftName.set(nameBox.value)" (keydown.escape)="saving.set(false)" />
+      <span class="save-hint">Saves your signals and filters, not the client.</span>
+      <div class="save-acts">
+        <button matButton="filled" type="submit" [disabled]="!draftName().trim()">Save pack</button>
+        <button matButton type="button" (click)="saving.set(false)">Cancel</button>
+      </div>
+    </form>
+  } @else if (store.canSavePack()) {
+    <button type="button" class="eli-link save-open" (click)="startSave()"><mat-icon svgIcon="plus" aria-hidden="true" />Save as my pack</button>
+  }
   @for (g of groups; track g.id) {
     <section class="group" [attr.aria-label]="g.question">
       <h4 class="question">{{ g.question }}</h4>

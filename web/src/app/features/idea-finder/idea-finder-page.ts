@@ -15,6 +15,7 @@ import { ConfirmQuoteDialog } from './confirm-quote-dialog';
 import { ConcentrationBar } from '../today/shared/concentration-bar';
 import { EliDatePipe, UsdPipe } from '../today/shared/format';
 import { IdeaFinderStore } from './idea-finder.store';
+import { FocusChips } from './focus-chips';
 import { SignalPicker } from './signal-picker';
 
 /**
@@ -23,7 +24,7 @@ import { SignalPicker } from './signal-picker';
  */
 @Component({
   selector: 'eli-idea-finder-page',
-  imports: [FormsModule, MatButtonModule, MatIconModule, MatMenuModule, MatTooltipModule, ConcentrationBar, EliDatePipe, UsdPipe, SignalPicker],
+  imports: [FormsModule, MatButtonModule, MatIconModule, MatMenuModule, MatTooltipModule, ConcentrationBar, EliDatePipe, UsdPipe, SignalPicker, FocusChips],
   providers: [IdeaFinderStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './idea-finder-page.html',
@@ -36,7 +37,6 @@ export class IdeaFinderPage {
   private readonly today = inject(TodayDataSource);
 
   protected readonly clients = FIXTURE_CLIENTS;
-  protected readonly tenors = [3, 6, 9, 12];
 
   /** ?client=… from Today or Chat. */
   readonly client = input<string | undefined>();

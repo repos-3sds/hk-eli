@@ -4,11 +4,13 @@ import { FIXTURE_CLIENTS } from '../../core/data/today.fixture';
 import { IdeaFinderDataSource } from '../../core/ideas/idea-finder-data-source';
 import { FilterBlocker, IdeaFilters, NO_FILTERS, ReadIntent } from '../../core/ideas/idea-finder.models';
 import { IDEA_SIGNALS, MAX_SIGNALS, STARTER_PACKS } from '../../core/ideas/idea-warehouse.fixture';
+import { MyPack, MyPacksStore } from './my-packs.store';
 
 /** State for the Ideas tab: plain words, hard filters, picked signals and the ranked results. */
 @Injectable()
 export class IdeaFinderStore {
   private readonly data = inject(IdeaFinderDataSource);
+  readonly myPacks = inject(MyPacksStore);
 
   readonly text = signal('');
   readonly reading = signal(false);
@@ -29,6 +31,18 @@ export class IdeaFinderStore {
     const picked = new Set(this.picked());
     return STARTER_PACKS.find((p) => p.signalIds.length === picked.size && p.signalIds.every((id) => picked.has(id)))?.id ?? null;
   });
+  /** The saved pack whose signals and filters match what is on screen, if any. */
+  readonly activeMyPackId = computed(() => {
+    const picked = new Set(this.picked());
+    const { clientId: _c, ...f } = this.filters();
+    return (
+      this.myPacks.packs().find(
+        (p) => p.signalIds.length === picked.size && p.signalIds.every((id) => picked.has(id)) && JSON.stringify(sortedFilters(p.filters)) === JSON.stringify(sortedFilters(f)),
+      )?.id ?? null
+    );
+  });
+  /** Offer "Save as my pack" only when what is on screen is not already a pack. */
+  readonly canSavePack = computed(() => this.picked().length > 0 && !this.activePackId() && !this.activeMyPackId());
   readonly atMax = computed(() => this.picked().length >= MAX_SIGNALS);
   readonly topMatches = computed(() => (this.results.hasValue() ? this.results.value().matches.slice(0, this.showAll() ? undefined : 5) : []));
   readonly hiddenCount = computed(() => (this.results.hasValue() ? Math.max(0, this.results.value().matches.length - 5) : 0));
@@ -68,6 +82,17 @@ export class IdeaFinderStore {
     }
   }
 
+  /** Applies a saved pack: its signals and its filters. The client picked stays as it is. */
+  chooseMyPack(pack: MyPack): void {
+    this.picked.set(pack.signalIds);
+    this.filters.set({ ...pack.filters, clientId: this.filters().clientId });
+    this.showAll.set(false);
+  }
+
+  saveMyPack(name: string): MyPack {
+    return this.myPacks.save(name, this.picked(), this.filters());
+  }
+
   toggleSignal(id: string): void {
     this.picked.update((list) => (list.includes(id) ? list.filter((x) => x !== id) : list.length >= MAX_SIGNALS ? list : [...list, id]));
   }
@@ -78,6 +103,12 @@ export class IdeaFinderStore {
 
   patchFilters(change: Partial<IdeaFilters>): void {
     this.filters.update((f) => ({ ...f, ...change }));
+  }
+
+  /** Adds a stock as "only these" or "leave out"; a stock is never in both lists. */
+  addTicker(kind: 'include' | 'exclude', ticker: string): void {
+    const other = kind === 'include' ? 'exclude' : 'include';
+    this.filters.update((f) => ({ ...f, [kind]: f[kind].includes(ticker) ? f[kind] : [...f[kind], ticker], [other]: f[other].filter((t) => t !== ticker) }));
   }
 
   removeTicker(kind: 'include' | 'exclude', ticker: string): void {
@@ -93,4 +124,8 @@ export class IdeaFinderStore {
     this.filters.set({ ...NO_FILTERS, clientId: this.filters().clientId });
     this.lastRead.set(null);
   }
+}
+
+function sortedFilters(f: Omit<IdeaFilters, 'clientId'>) {
+  return { ...f, include: [...f.include].sort(), exclude: [...f.exclude].sort() };
 }
