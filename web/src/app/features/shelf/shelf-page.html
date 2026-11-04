@@ -1,0 +1,115 @@
+<header class="top">
+  <div class="titles">
+    <h2 class="title">Shelf</h2>
+    <p class="lede">What clients ask for, next to how full the book is. Pick tomorrow's shelf before the pricing cut-off, publish starter packs, and see where digibank clients stop.</p>
+    <eli-freshness-clocks class="clocks" />
+  </div>
+</header>
+
+<div class="grid">
+  <div class="col">
+    <section class="card demand" aria-labelledby="dem-h">
+      <h3 id="dem-h" class="card-h">Demand and concentration</h3>
+      <p class="sub">Quotes this week across advisory and digibank, against each name's share of the bank's ELI book.</p>
+      <div class="table-wrap">
+        <table class="tbl">
+          <caption class="eli-visually-hidden">Demand by underlying against concentration</caption>
+          <thead><tr><th scope="col">Underlying</th><th scope="col" class="num">Quotes</th><th scope="col" class="num">Traded</th><th scope="col" class="num">Quote to trade</th><th scope="col" class="num">Digibank</th><th scope="col">Most asked</th><th scope="col">Book share</th></tr></thead>
+          <tbody>
+            @for (d of demand; track d.underlying) {
+              <tr [attr.data-limit]="d.limitState">
+                <td class="name">{{ d.underlying }}</td>
+                <td class="num">{{ d.quotes }}</td>
+                <td class="num">{{ d.traded }}</td>
+                <td class="num">{{ d.quoteToTradePct }}%</td>
+                <td class="num">{{ d.digibankShare }}%</td>
+                <td>{{ d.topAsk }}</td>
+                <td>
+                  @if (d.bookSharePct !== null) {
+                    <span class="share"><span class="sbar"><span class="sfill" [style.width.%]="(d.bookSharePct / d.limitPct) * 100"></span></span>{{ d.bookSharePct }}% of {{ d.limitPct }}%</span>
+                    @if (d.limitState === 'red') { <span class="flag">At the limit: shelf ideas on it are blocked</span> }
+                  } @else { <span class="muted">Not in the top book names</span> }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+    <section class="card funnel" aria-labelledby="fun-h">
+      <h3 id="fun-h" class="card-h">Digibank quote funnel, this week</h3>
+      <p class="sub">Self-directed clients, about 90% of digibank trades. The biggest drop is from "{{ drop.from }}" to "{{ drop.to }}": {{ drop.lostPct }}% stop there.</p>
+      <ol class="stages">
+        @for (s of funnel; track s.stage) {
+          <li class="stage">
+            <span class="slabel">{{ s.stage }}</span>
+            <span class="sbar2" aria-hidden="true"><span class="sfill2" [style.width.%]="barWidth(s.count)"></span></span>
+            <span class="scount">{{ s.count.toLocaleString('en-GB') }}</span>
+          </li>
+        }
+      </ol>
+      <div class="table-wrap">
+        <table class="tbl">
+          <caption class="eli-visually-hidden">Digibank parameter sets</caption>
+          <thead><tr><th scope="col">Parameter set</th><th scope="col" class="num">Priced</th><th scope="col" class="num">Traded</th><th scope="col">Where most stopped</th></tr></thead>
+          <tbody>
+            @for (p of sets; track p.set) {
+              <tr><td class="name">{{ p.set }}</td><td class="num">{{ p.priced }}</td><td class="num">{{ p.traded }}</td><td>{{ p.dropOff }}</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+  <div class="col">
+    <section class="card shelf" aria-labelledby="shelf-h">
+      <div class="card-head">
+        <h3 id="shelf-h" class="card-h">Shelf for {{ forDate() }}</h3>
+        <span class="cut" [class.passed]="cutoff().passed"><mat-icon svgIcon="clock" aria-hidden="true" />{{ cutoff().text }}</span>
+      </div>
+      <p class="sub">Tick the ideas to bulk price before opening. Busiest in RFQs first. Ideas on a name at its limit cannot be picked. Cut-off time to be confirmed by the desk.</p>
+      <ul class="cands">
+        @for (c of store.candidates; track c.id) {
+          <li class="cand" [class.blocked]="c.limitState === 'red'">
+            <mat-checkbox [checked]="store.picked().has(c.id)" [disabled]="c.limitState === 'red'" (change)="store.toggle(c.id)">
+              <span class="ctitle">{{ c.title }}</span>
+            </mat-checkbox>
+            <span class="cterms">{{ c.terms }} · {{ c.rfqs5d }} RFQs in 5 days</span>
+            @if (c.limitReason) { <span class="creason" [attr.data-limit]="c.limitState">{{ c.limitReason }}</span> }
+          </li>
+        }
+      </ul>
+      <div class="actions">
+        <span class="count">{{ store.picked().size }} picked</span>
+        <span class="grow"></span>
+        <button matButton="outlined" type="button" (click)="copyRequest()" [disabled]="!store.picked().size"><mat-icon svgIcon="clipboard-copy" />Copy request for the desk</button>
+        <button matButton="filled" type="button" (click)="markRequested()" [disabled]="!store.picked().size">Mark as sent to the desk</button>
+      </div>
+      @for (r of store.requests(); track r.id) {
+        <p class="sent"><mat-icon svgIcon="circle-check" aria-hidden="true" />Sent {{ r.ideaIds.length }} ideas for {{ r.forDate }} · {{ r.sentBy }}</p>
+      }
+    </section>
+    <section class="card packs" aria-labelledby="packs-h">
+      <h3 id="packs-h" class="card-h">Starter packs for everyone</h3>
+      <p class="sub">A published pack shows in every launch user's Ideas tab, under "From the product team".</p>
+      <ul class="plist">
+        @for (p of publishable(); track p.name) {
+          <li class="prow">
+            <div class="ptext"><span class="pname">{{ p.name }}</span><span class="pblurb">{{ p.blurb }}</span></div>
+            @if (store.isPublished(p.name)) {
+              <span class="live"><mat-icon svgIcon="circle-check" aria-hidden="true" />Published</span>
+              <button matButton type="button" (click)="store.unpublish(p.name)">Unpublish</button>
+            } @else {
+              <button matButton="outlined" type="button" (click)="store.publish(p)">Publish</button>
+            }
+          </li>
+        }
+      </ul>
+    </section>
+  </div>
+
+
+
+</div>
+<eli-feedback class="feedback" topic="Shelf console" />
+<p class="trust"><mat-icon svgIcon="info" aria-hidden="true" />Demo figures from the RFQ log, digibank quote log, outstanding stock and idea warehouse. Internal use only.</p>

@@ -1,12 +1,17 @@
 import { inject } from '@angular/core';
 import { Router, Routes } from '@angular/router';
+import { START_VIEWS, SessionService } from './core/session/session.service';
 
 /**
  * The widget's tabs. Launch users are GFM WMS, CBG PM and CBG TSM, so routes no longer carry an "rm" prefix.
  * Old /rm/... links (walkthroughs, bookmarks) redirect to the same tab, keeping their query.
  */
 export const routes: Routes = [
-  { path: '', pathMatch: 'full', redirectTo: 'today' },
+  {
+    path: '',
+    pathMatch: 'full',
+    redirectTo: ({ queryParams }) => inject(Router).createUrlTree(['/', START_VIEWS[inject(SessionService).role()]], { queryParams }),
+  },
   {
     path: 'today',
     title: 'Today · HK ELI Chatbot',
@@ -26,6 +31,11 @@ export const routes: Routes = [
     path: 'ideas',
     title: 'Ideas · HK ELI Chatbot',
     loadComponent: () => import('./features/idea-finder/idea-finder-page').then((m) => m.IdeaFinderPage),
+  },
+  {
+    path: 'shelf',
+    title: 'Shelf · HK ELI Chatbot',
+    loadComponent: () => import('./features/shelf/shelf-page').then((m) => m.ShelfPage),
   },
   {
     path: 'update',

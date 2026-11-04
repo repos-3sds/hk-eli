@@ -13,6 +13,18 @@
     </section>
   }
 
+  @if (shelf.published().length) {
+    <section class="packs" aria-labelledby="pub-h">
+      <h3 id="pub-h" class="section-title">From the product team</h3>
+      @for (p of shelf.published(); track p.id) {
+        <button type="button" class="pack" (click)="store.picked.set(p.signalIds)">
+          <span class="pack-name">{{ p.name }}</span>
+          <span class="pack-blurb">{{ p.blurb }} · {{ p.signalIds.length }} signals · {{ p.publishedBy }}</span>
+        </button>
+      }
+    </section>
+  }
+
   <section class="packs" aria-labelledby="packs-h">
     <h3 id="packs-h" class="section-title">Starter packs</h3>
     @for (p of packs; track p.id) {

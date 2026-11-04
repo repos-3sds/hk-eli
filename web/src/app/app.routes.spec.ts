@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { routes } from './app.routes';
+import { SessionService } from './core/session/session.service';
 
 @Component({ template: '' })
 class Blank {}
@@ -10,8 +11,9 @@ class Blank {}
 const testRoutes = routes.map((r) => (r.loadComponent ? { ...r, loadComponent: undefined, component: Blank, children: r.children?.map((c) => (c.loadComponent ? { ...c, loadComponent: undefined, component: Blank } : c)) } : r));
 
 describe('routes', () => {
-  async function go(url: string): Promise<string> {
+  async function go(url: string, role?: 'wms' | 'pm' | 'tsm'): Promise<string> {
     TestBed.configureTestingModule({ providers: [provideRouter(testRoutes)] });
+    if (role) TestBed.inject(SessionService).switchRole(role);
     const router = TestBed.inject(Router);
     await router.navigateByUrl(url);
     return router.url;
@@ -19,6 +21,14 @@ describe('routes', () => {
 
   it('opens on Today without an rm prefix', async () => {
     expect(await go('/')).toBe('/today');
+  });
+
+  it('opens the Product Manager on the shelf console', async () => {
+    expect(await go('/', 'pm')).toBe('/shelf');
+  });
+
+  it('opens the Treasury Sales Manager on Today', async () => {
+    expect(await go('/', 'tsm')).toBe('/today');
   });
 
   it('redirects old RM links to the same tab, keeping the query', async () => {

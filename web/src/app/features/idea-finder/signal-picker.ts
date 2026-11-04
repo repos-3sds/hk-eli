@@ -6,6 +6,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { IDEA_SIGNALS, MAX_SIGNALS, SIGNAL_GROUPS, STARTER_PACKS } from '../../core/ideas/idea-warehouse.fixture';
 import { IdeaFinderStore } from './idea-finder.store';
 import { MyPack } from './my-packs.store';
+import { ShelfStore } from '../../core/shelf/shelf.store';
 
 /**
  * The left column of Ideas: the RM's own packs, the starter packs, then signals grouped by plain questions,
@@ -22,6 +23,7 @@ import { MyPack } from './my-packs.store';
 })
 export class SignalPicker {
   protected readonly store = inject(IdeaFinderStore);
+  protected readonly shelf = inject(ShelfStore);
   private readonly snack = inject(MatSnackBar);
   protected readonly groups = SIGNAL_GROUPS;
   protected readonly packs = STARTER_PACKS;

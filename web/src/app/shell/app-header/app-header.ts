@@ -2,7 +2,8 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { LAUNCH_ROLES, ROLE_LABELS, SessionService } from '../../core/session/session.service';
+import { Router } from '@angular/router';
+import { LAUNCH_ROLES, LaunchRole, ROLE_LABELS, START_VIEWS, SessionService } from '../../core/session/session.service';
 
 /** The Digimarkets top bar: logo, workspace tabs, greeting and platform actions (HK ELI Figma 1:11321). */
 @Component({
@@ -29,7 +30,7 @@ import { LAUNCH_ROLES, ROLE_LABELS, SessionService } from '../../core/session/se
         </button>
         <mat-menu #roleMenu="matMenu">
           @for (r of roles; track r) {
-            <button mat-menu-item type="button" (click)="session.switchRole(r)" [attr.aria-current]="r === session.role() ? 'true' : null">
+            <button mat-menu-item type="button" (click)="switchRole(r)" [attr.aria-current]="r === session.role() ? 'true' : null">
               {{ roleLabels[r] }}
             </button>
           }
@@ -78,6 +79,13 @@ import { LAUNCH_ROLES, ROLE_LABELS, SessionService } from '../../core/session/se
 })
 export class AppHeader {
   protected readonly session = inject(SessionService);
+  private readonly router = inject(Router);
+
+  /** Demo: switching role opens that role's start view, as signing in would. */
+  protected switchRole(role: LaunchRole): void {
+    this.session.switchRole(role);
+    void this.router.navigate(['/', START_VIEWS[role]]);
+  }
   protected readonly workspaces = ['My Workspace 1', 'My Workspace 2'];
   protected readonly activeWorkspace = signal(this.workspaces[0]);
   protected readonly roles = LAUNCH_ROLES;

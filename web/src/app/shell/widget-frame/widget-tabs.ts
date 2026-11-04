@@ -10,6 +10,7 @@ export const WIDGET_TABS: readonly WidgetTab[] = [
   { path: 'today', label: 'Today', icon: 'sun' },
   { path: 'chat', label: 'Chat', icon: 'message-square' },
   { path: 'ideas', label: 'Ideas', icon: 'lightbulb' },
+  { path: 'shelf', label: 'Shelf', icon: 'package' },
   { path: 'update', label: 'Update', icon: 'file-text' },
   { path: 'alerts', label: 'Alerts', icon: 'bell', badge: 3 },
 ];
