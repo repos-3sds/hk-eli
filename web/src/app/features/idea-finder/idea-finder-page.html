@@ -81,7 +81,7 @@
       <div class="res-head">
         <h3 id="res-h" class="res-title">{{ r.passedFilters }} of {{ r.warehouseSize }} ideas pass your filters</h3>
         <p class="res-sub">
-          Ranked by how many of your {{ store.picked().length }} signals line up, then by coupon.
+          Ranked by how many of your {{ store.picked().length }} signals line up, then by coupon. Ideas that would break a client limit go last.
           @if (store.client(); as c) { Concentration shown for {{ c.name }} with {{ r.notionalUsd | usd }}. }
           Indicative, priced {{ r.businessDate | eliDate: 'long' }} 18:00 HKT.
         </p>
