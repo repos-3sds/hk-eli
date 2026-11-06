@@ -3,6 +3,7 @@ import { rxResource } from '@angular/core/rxjs-interop';
 import { of } from 'rxjs';
 import { APP_CONFIG } from '../../core/config/app-config';
 import { TodayDataSource } from '../../core/data/today-data-source';
+import { aggregatesCover } from '../../core/models/scope';
 import { BookScope, Lead, MOMENT_TYPES, MomentType, Pocket, scopeLabel } from '../../core/models/today.models';
 import { usdCompact } from './shared/format';
 import { BusinessClock } from '../../core/time/business-clock';
@@ -103,6 +104,9 @@ export class TodayStore {
 
   readonly scopeName = computed(() => scopeLabel(this.scope()));
 
+  /** Pockets are kept by branch and segment, so an RM or underlying scope has none to show. */
+  readonly pocketsCovered = computed(() => aggregatesCover(this.scope()));
+
   /** The landing headline: the business picture for the scope, then how many clients need attention. */
   readonly headline = computed(() => {
     const brief = this.brief.hasValue() ? this.brief.value() : null;
@@ -110,8 +114,11 @@ export class TodayStore {
     if (!brief || (count === 0 && brief.maturingUsd === 0)) {
       return 'Nothing needs attention urgently today.';
     }
-    const below = this.pocketsBelow().length;
     const matures = `${usdCompact(brief.maturingUsd)} matures in the next 10 business days`;
+    if (!this.pocketsCovered()) {
+      return `${matures} for clients in ${this.scopeName().replace(/^Holds /, 'holders of ')}.`;
+    }
+    const below = this.pocketsBelow().length;
     const pockets = below === 0 ? 'rollover is at or above the line everywhere' : `${below} ${below === 1 ? 'pocket is' : 'pockets are'} below the rollover line`;
     return `${matures}; ${pockets}.`;
   });

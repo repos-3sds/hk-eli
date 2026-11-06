@@ -16,32 +16,8 @@ export const MOMENT_LABELS: Record<MomentType, string> = {
   rfq: 'Open RFQ',
 };
 
-/**
- * Which part of the business the strip and the list cover. Launch users see all trades (R38),
- * so the default is the whole business; they narrow by branch, segment or the digibank channel.
- */
-export type BookScope = 'all' | `branch:${string}` | `segment:${string}` | 'channel:digibank';
-
-export interface ScopeOption {
-  readonly id: BookScope;
-  readonly label: string;
-  readonly group: 'Business' | 'Branch' | 'Segment' | 'Channel';
-}
-
-export const SCOPE_OPTIONS: readonly ScopeOption[] = [
-  { id: 'all', label: 'Whole business', group: 'Business' },
-  { id: 'branch:Central', label: 'Central', group: 'Branch' },
-  { id: 'branch:Kwun Tong', label: 'Kwun Tong', group: 'Branch' },
-  { id: 'branch:Mong Kok', label: 'Mong Kok', group: 'Branch' },
-  { id: 'branch:Tsim Sha Tsui', label: 'Tsim Sha Tsui', group: 'Branch' },
-  { id: 'segment:Treasures', label: 'Treasures', group: 'Segment' },
-  { id: 'segment:Treasure Private', label: 'Treasure Private', group: 'Segment' },
-  { id: 'channel:digibank', label: 'Digibank (self-directed)', group: 'Channel' },
-];
-
-export function scopeLabel(scope: BookScope): string {
-  return SCOPE_OPTIONS.find((o) => o.id === scope)?.label ?? 'Whole business';
-}
+export type { BookScope, ScopeOption, ScopeGroup } from './scope';
+export { SCOPE_OPTIONS, scopeLabel } from './scope';
 
 /** One business day in the strip. `offset` 0 is today; T-n means n business days from today. */
 export interface BusinessDay {

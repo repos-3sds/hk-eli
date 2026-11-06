@@ -10,6 +10,7 @@ import { FreshnessStore } from '../../core/freshness/freshness';
 import { HandoffStore } from '../../core/handoff/handoff.store';
 import { BookScope, SCOPE_OPTIONS } from '../../core/models/today.models';
 import { BusinessClock } from '../../core/time/business-clock';
+import { SessionService } from '../../core/session/session.service';
 import { longDate } from '../../core/time/business-calendar';
 import { buildBusinessUpdate, updateAsText } from '../../core/update/business-update';
 import { ScopeSwitch } from '../today/shared/scope-switch';
@@ -32,6 +33,9 @@ export class BusinessUpdatePage {
   private readonly snack = inject(MatSnackBar);
   private readonly host = inject(ElementRef<HTMLElement>);
   protected readonly freshness = inject(FreshnessStore);
+  private readonly session = inject(SessionService);
+  /** The TSM opens here (R41): point straight at team performance and the lists. */
+  protected readonly isTsm = computed(() => this.session.role() === 'tsm');
 
   /** ?scope=… so a link can open the update for one branch, segment or digibank. */
   readonly scopeParam = input<string | undefined>(undefined, { alias: 'scope' });

@@ -12,8 +12,8 @@ export const ROLE_LABELS: Record<LaunchRole, string> = {
 };
 
 /** The short name used in tight places such as the header chip. */
-/** Each launch role opens on its own first view: the PM on the shelf console, WMS and TSM on Today. */
-export const START_VIEWS: Record<LaunchRole, string> = { wms: 'today', pm: 'shelf', tsm: 'today' };
+/** Each launch role opens on its own first view (R41): WMS on Today, the PM on the shelf console, the TSM on the Business Update (team performance and hand-off lists). */
+export const START_VIEWS: Record<LaunchRole, string> = { wms: 'today', pm: 'shelf', tsm: 'update' };
 
 export const ROLE_SHORT: Record<LaunchRole, string> = { wms: 'GFM WMS', pm: 'CBG PM', tsm: 'CBG TSM' };
 

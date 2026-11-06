@@ -6,6 +6,7 @@
 import { BOOK_CONCENTRATION, ROLLOVER_BASELINE_PCT, ROLLOVER_POCKETS, UNMET_DEMAND, ownerOf } from '../data/business.fixture';
 import { FIXTURE_CLIENTS, FIXTURE_MOMENTS } from '../data/today.fixture';
 import { BookScope, scopeLabel } from '../models/today.models';
+import { aggregatesCover, matchesAggregate, matchesScope } from '../models/scope';
 import { LinkedConversion } from '../handoff/handoff.models';
 
 export interface BusinessRow {
@@ -85,25 +86,21 @@ export interface BusinessUpdate {
 }
 
 export function rowsInScope(scope: BookScope): BusinessRow[] {
-  const [kind, value] = scope.split(':') as [string, string | undefined];
-  return BUSINESS_ROWS.filter((r) =>
-    kind === 'branch' ? r.branch === value : kind === 'segment' ? r.segment === value : kind === 'channel' ? r.channel === 'digibank' : true,
-  );
+  return BUSINESS_ROWS.filter((r) => matchesAggregate(r, scope));
 }
 
 function pocketsInScope(scope: BookScope) {
-  const [kind, value] = scope.split(':') as [string, string | undefined];
-  return ROLLOVER_POCKETS.filter((p) =>
-    kind === 'branch' ? p.branch === value : kind === 'segment' ? p.segment === value : kind === 'channel' ? p.branch === 'Digibank' : true,
-  );
+  return ROLLOVER_POCKETS.filter((p) => matchesAggregate(p, scope));
 }
 
 function momentsInScope(scope: BookScope) {
-  const [kind, value] = scope.split(':') as [string, string | undefined];
   return FIXTURE_MOMENTS.filter((m) => {
     const owner = ownerOf(m.clientId);
     const client = FIXTURE_CLIENTS.find((c) => c.id === m.clientId);
-    return kind === 'branch' ? owner?.branch === value : kind === 'segment' ? client?.segment === value : kind === 'channel' ? owner?.channel === 'digibank' : true;
+    return matchesScope(
+      { branch: owner?.branch, segment: client?.segment, channel: owner?.channel, rmName: owner?.rmName, underlyings: client?.concentration.map((c) => c.underlying) },
+      scope,
+    );
   });
 }
 
@@ -120,7 +117,10 @@ const sum = (rows: readonly BusinessRow[], k: keyof BusinessRow) => rows.reduce(
 export function buildBusinessUpdate(scope: BookScope, dataDate: string, conversion: LinkedConversion): BusinessUpdate {
   const rows = rowsInScope(scope);
   const name = scopeLabel(scope);
-  const where = scope === 'all' ? 'the whole business' : name;
+  // RM and underlying scopes can't cut figures kept by branch and segment: those sections show the whole business.
+  const coarse = !aggregatesCover(scope);
+  const clientWhere = scope === 'all' ? 'the whole business' : name;
+  const where = coarse ? 'the whole business' : clientWhere;
   const notional = sum(rows, 'notionalMtdUsd');
   const prev = sum(rows, 'notionalPrevUsd');
   const change = prev ? Math.round(((notional - prev) / prev) * 100) : 0;
@@ -152,7 +152,7 @@ export function buildBusinessUpdate(scope: BookScope, dataDate: string, conversi
         { label: 'Maturing, 10 days', value: usdM(maturing) },
       ],
       source: 'Blotter, RFQ log, EQD master',
-      wholeBusinessOnly: false,
+      wholeBusinessOnly: coarse,
       ask: `Summarise this month for ${where}`,
     },
     {
@@ -165,7 +165,7 @@ export function buildBusinessUpdate(scope: BookScope, dataDate: string, conversi
         { label: 'Average ticket', value: usdM(trades ? notional / trades : 0) },
       ],
       source: 'Blotter',
-      wholeBusinessOnly: false,
+      wholeBusinessOnly: coarse,
       ask: `How does traded notional compare with last month in ${where}?`,
     },
     {
@@ -181,7 +181,7 @@ export function buildBusinessUpdate(scope: BookScope, dataDate: string, conversi
         flagged: [...pockets].sort((a, b) => a.rolloverPct - b.rolloverPct).map((p, i) => (p.rolloverPct < p.baselinePct ? i : -1)).filter((i) => i >= 0),
       },
       source: 'Blotter, maturity schedule',
-      wholeBusinessOnly: false,
+      wholeBusinessOnly: coarse,
       ask: `Where is rollover below ${ROLLOVER_BASELINE_PCT}% this month?`,
     },
     {
@@ -194,7 +194,7 @@ export function buildBusinessUpdate(scope: BookScope, dataDate: string, conversi
         rows: [...pockets].sort((a, b) => b.maturingUsd - a.maturingUsd).map((p) => [`${p.branch} · ${p.segment}`, usdM(p.maturingUsd), `${p.rolloverPct}%`]),
       },
       source: 'Maturity schedule',
-      wholeBusinessOnly: false,
+      wholeBusinessOnly: coarse,
       ask: 'Who matures this week?',
     },
     {
@@ -210,7 +210,7 @@ export function buildBusinessUpdate(scope: BookScope, dataDate: string, conversi
         }),
       },
       source: 'RFQ log',
-      wholeBusinessOnly: false,
+      wholeBusinessOnly: coarse,
       ask: 'What was quoted and not traded this week?',
     },
     {
@@ -242,7 +242,7 @@ export function buildBusinessUpdate(scope: BookScope, dataDate: string, conversi
           .map((x) => [x.b, usdM(x.n), String(x.t), `${x.ro}%`]),
       },
       source: 'Blotter, EQD master',
-      wholeBusinessOnly: false,
+      wholeBusinessOnly: coarse,
       ask: `Rank the branches by notional this month`,
     },
     {
@@ -259,7 +259,7 @@ export function buildBusinessUpdate(scope: BookScope, dataDate: string, conversi
         }),
       },
       source: 'EQD master',
-      wholeBusinessOnly: false,
+      wholeBusinessOnly: coarse,
       ask: 'How does digibank compare with advisory this month?',
     },
     {
@@ -288,7 +288,7 @@ export function buildBusinessUpdate(scope: BookScope, dataDate: string, conversi
     {
       id: 'events',
       title: 'Knock-outs and deliveries ahead',
-      summary: `In the next 10 business days: ${count('knockout')} likely ${count('knockout') === 1 ? 'knock-out' : 'knock-outs'} and ${count('exercised')} expected stock ${count('exercised') === 1 ? 'delivery' : 'deliveries'} in ${where} (sample clients).`,
+      summary: `In the next 10 business days: ${count('knockout')} likely ${count('knockout') === 1 ? 'knock-out' : 'knock-outs'} and ${count('exercised')} expected stock ${count('exercised') === 1 ? 'delivery' : 'deliveries'} in ${clientWhere} (sample clients).`,
       figures: [
         { label: 'Likely knock-outs', value: String(count('knockout')) },
         { label: 'Stock deliveries', value: String(count('exercised')) },
@@ -308,7 +308,7 @@ export function buildBusinessUpdate(scope: BookScope, dataDate: string, conversi
         { label: 'Idle share', value: `${pct(idle, active)}%` },
       ],
       source: 'Blotter, client master',
-      wholeBusinessOnly: false,
+      wholeBusinessOnly: coarse,
       ask: `Who has been idle longest in ${where}?`,
     },
     {

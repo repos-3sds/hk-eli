@@ -89,6 +89,9 @@
         @if (freshness.runFailed()) {
           <p class="list-sub warn-text">Last good list, from close {{ freshness.value()!.dataAsOf | eliDate: 'long' }}. Not new today.</p>
         }
+        @if (!store.pocketsCovered() && !store.pocketFilter()) {
+          <p class="list-sub pockets-note">Rollover pockets are kept by branch and segment, so none show for {{ store.scopeName() }}. Pick a branch or segment to see them.</p>
+        }
         @if (store.pocketsBelow().length && !store.pocketFilter()) {
           <section class="pockets" aria-labelledby="pockets-h">
             <h3 id="pockets-h" class="pockets-h">Below the {{ store.pocketsBelow()[0].baselinePct }}% rollover line this month</h3>

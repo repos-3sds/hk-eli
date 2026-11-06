@@ -3,6 +3,14 @@
     <h2 class="title">Business Update</h2>
     <p class="lede">The monthly Tableau routine, section by section, for {{ update().scopeName === 'Whole business' ? 'the whole business' : update().scopeName }}. Figures are computed from data; nothing here is written by AI.</p>
     <eli-freshness-clocks class="clocks" />
+    @if (isTsm()) {
+      <div class="start" role="group" aria-label="Start here">
+        <span class="start-lbl">Start here</span>
+        <button type="button" class="start-btn" (click)="go('branches')"><mat-icon svgIcon="layers" aria-hidden="true" />Team performance by branch</button>
+        <button type="button" class="start-btn" (click)="go('handoffs')"><mat-icon svgIcon="clipboard-list" aria-hidden="true" />Hand-off lists and linked conversion</button>
+        <button type="button" class="start-btn" (click)="go('rollover')"><mat-icon svgIcon="refresh-cw" aria-hidden="true" />Pockets below the rollover line</button>
+      </div>
+    }
   </div>
   <div class="tools">
     <eli-scope-switch [value]="scope()" (changed)="scope.set($event)" />

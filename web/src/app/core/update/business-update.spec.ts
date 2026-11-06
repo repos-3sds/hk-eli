@@ -26,6 +26,16 @@ describe('Business Update', () => {
     expect(rollover.table!.flagged).toEqual([0, 1, 2]);
   });
 
+  it('cuts client-level sections by RM and shows aggregate sections for the whole business, saying so', () => {
+    const u = buildBusinessUpdate('rm:Jason Yu', '3 Nov 2026', conv);
+    const byId = (id: string) => u.sections.find((s) => s.id === id)!;
+    expect(byId('headline').wholeBusinessOnly).toBe(true);
+    expect(byId('headline').summary).toContain('the whole business');
+    expect(byId('events').wholeBusinessOnly).toBe(false);
+    expect(byId('events').summary).toContain('Jason Yu');
+    expect(rowsInScope('district:Kowloon').map((r) => r.branch).sort()).toEqual(['Kwun Tong', 'Mong Kok', 'Tsim Sha Tsui']);
+  });
+
   it('slices by scope, and marks book-level sections as whole business', () => {
     expect(rowsInScope('branch:Central').map((r) => r.segment)).toEqual(['Treasure Private', 'Treasures']);
     expect(rowsInScope('channel:digibank').map((r) => r.branch)).toEqual(['Digibank']);

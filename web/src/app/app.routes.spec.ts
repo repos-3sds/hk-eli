@@ -28,7 +28,7 @@ describe('routes', () => {
   });
 
   it('opens the Treasury Sales Manager on Today', async () => {
-    expect(await go('/', 'tsm')).toBe('/today');
+    expect(await go('/', 'tsm')).toBe('/update');
   });
 
   it('redirects old RM links to the same tab, keeping the query', async () => {

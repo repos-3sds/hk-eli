@@ -31,6 +31,20 @@ describe('MockTodayDataSource', () => {
     expect(dig.moments.map((m) => m.clientId).sort()).toEqual(['c-4402', 'c-5502']);
   });
 
+  it('narrows by district, RM and underlying, and keeps pockets to scopes they can answer', async () => {
+    const ds = setup();
+    const kowloon = await firstValueFrom(ds.getMorningBrief('district:Kowloon'));
+    expect(kowloon.leads.every((l) => ['Kwun Tong', 'Mong Kok', 'Tsim Sha Tsui'].includes(l.branch!))).toBe(true);
+    expect(kowloon.pockets.map((p) => p.id).sort()).toEqual(['p-kt-tr', 'p-mk-tr', 'p-tst-tr']);
+    const jason = await firstValueFrom(ds.getMorningBrief('rm:Jason Yu'));
+    expect(jason.leads.map((l) => l.clientId).sort()).toEqual(['c-1093', 'c-6618']);
+    expect(jason.pockets).toEqual([]);
+    expect(jason.maturingUsd).toBeGreaterThan(0);
+    const nvda = await firstValueFrom(ds.getMomentStrip('underlying:NVDA'));
+    expect(nvda.moments.length).toBeGreaterThan(0);
+    expect(nvda.moments.some((m) => m.clientId === 'c-4821')).toBe(true);
+  });
+
   it('gives every lead its owner RM, branch and channel, and a lead for every moment', async () => {
     const brief = await firstValueFrom(setup().getMorningBrief('all'));
     expect(brief.leads).toHaveLength(12);

@@ -30,6 +30,7 @@ import {
   FixtureLead,
 } from './today.fixture';
 import { ROLLOVER_POCKETS, ownerOf } from './business.fixture';
+import { aggregatesCover, matchesAggregate, matchesScope } from '../models/scope';
 
 const SIGNAL_ORDER: readonly SignalId[] = ['moment', 'cash', 'history', 'headroom', 'engaged', 'ideas'];
 
@@ -57,30 +58,30 @@ export class MockTodayDataSource extends TodayDataSource {
 
   /** Launch users see all trades; a scope narrows to a branch, a segment or the digibank channel. */
   private inScope(clientId: string, scope: BookScope): boolean {
-    if (scope === 'all') {
-      return true;
-    }
     const owner = ownerOf(clientId);
-    const [kind, value] = scope.split(':') as [string, string];
-    switch (kind) {
-      case 'branch':
-        return owner?.branch === value;
-      case 'segment':
-        return this.client(clientId).segment === value;
-      case 'channel':
-        return owner?.channel === value;
-      default:
-        return false;
-    }
+    const client = this.client(clientId);
+    return matchesScope(
+      { branch: owner?.branch, segment: client.segment, channel: owner?.channel, rmName: owner?.rmName, underlyings: client.concentration.map((c) => c.underlying) },
+      scope,
+    );
   }
 
+  /** Pockets are kept by branch and segment, so an RM or underlying scope shows none (the page says why). */
   private pocketsInScope(scope: BookScope) {
-    const [kind, value] = scope.split(':') as [string, string | undefined];
-    return ROLLOVER_POCKETS.filter((p) =>
-      kind === 'branch' ? p.branch === value : kind === 'segment' ? p.segment === value : kind === 'channel' ? p.branch === 'Digibank' : true,
-    )
+    if (!aggregatesCover(scope)) {
+      return [];
+    }
+    return ROLLOVER_POCKETS.filter((p) => matchesAggregate(p, scope))
       .map((p) => ({ ...p }))
       .sort((a, b) => a.rolloverPct - b.rolloverPct);
+  }
+
+  /** Notional maturing: from the pockets when they cover the scope, else from the clients in scope. */
+  private maturingInScope(scope: BookScope): number {
+    if (aggregatesCover(scope)) {
+      return this.pocketsInScope(scope).reduce((sum, p) => sum + p.maturingUsd, 0);
+    }
+    return FIXTURE_CLIENTS.filter((c) => this.inScope(c.id, scope)).reduce((sum, c) => sum + c.maturingUsd, 0);
   }
 
   private client(clientId: string): FixtureClient {
@@ -173,7 +174,7 @@ export class MockTodayDataSource extends TodayDataSource {
         preparedFrom: "yesterday's blotter, fixings and RFQ log",
         sources: ['EQD master', 'outstanding stock'],
         leads,
-        maturingUsd: this.scenario === 'empty' ? 0 : this.pocketsInScope(scope).reduce((sum, p) => sum + p.maturingUsd, 0),
+        maturingUsd: this.scenario === 'empty' ? 0 : this.maturingInScope(scope),
         pockets: this.scenario === 'empty' ? [] : this.pocketsInScope(scope),
       };
     });
