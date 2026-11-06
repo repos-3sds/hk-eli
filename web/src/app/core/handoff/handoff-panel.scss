@@ -43,3 +43,12 @@
 .grow { flex: 1; }
 .label { margin: 0; padding: var(--eli-space-3) var(--eli-space-8) var(--eli-space-5); color: var(--eli-text-muted); font-size: var(--eli-font-size-xs); }
 .fb { padding: var(--eli-space-3) var(--eli-space-8) 0; }
+
+.save-error {
+  margin: 0 0 var(--eli-space-4);
+  padding: var(--eli-space-3) var(--eli-space-4);
+  border-radius: var(--eli-radius-s);
+  border: 1px solid var(--eli-status-negative);
+  color: var(--eli-status-negative);
+  font-size: var(--eli-font-size-s);
+}

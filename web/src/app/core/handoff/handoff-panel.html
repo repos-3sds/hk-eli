@@ -16,6 +16,9 @@
         <p class="empty-text">Add clients from Today, or ideas from Ideas. The list is grouped by owner RM, then copied to Teams or downloaded.</p>
       </div>
     } @else {
+    @if (store.saveError(); as err) {
+      <p class="save-error" role="alert">{{ err }}</p>
+    }
       <p class="sub">Grouped by who gets it. Nothing is sent from here: copy it to Teams or download the CSV, then mark it handed off so outcomes can be linked.</p>
       @for (g of store.byOwner(); track g.owner) {
         <section class="group" [attr.aria-label]="'For ' + g.owner">

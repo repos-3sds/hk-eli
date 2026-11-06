@@ -9,13 +9,14 @@ npm ci            # .npmrc sets legacy-peer-deps (works around an npm 10 bug wit
 npm start         # http://localhost:4200 (opens on the role's start view)
 npm test          # Vitest, single run
 npm run build     # production build in dist/web
+npm run start:gateway   # same, but on the Java gateway (../gateway on :8080) through proxy.conf.json
 ```
 
 URL switches for demos, no back end needed:
 
 | Switch | Effect |
 | --- | --- |
-| `?role=wms`, `?role=pm`, `?role=tsm` | Demo user and start view (PM opens on Shelf; WMS and TSM on Today). The header role menu does the same. |
+| `?role=wms`, `?role=pm`, `?role=tsm` | Demo user and start view (WMS opens on Today, PM on Shelf, TSM on Update). The header role menu does the same. |
 | `?scenario=empty`, `error`, `slow` | Loading, error and empty states |
 | `?freshness=late`, `?freshness=failed` | Prices not in yet, or the overnight refresh failed |
 | `/update?scope=branch:Kwun%20Tong` | Business Update for one branch, segment (`segment:Treasures`) or `channel:digibank` |

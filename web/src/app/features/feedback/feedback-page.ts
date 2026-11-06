@@ -21,9 +21,13 @@ export class FeedbackPage {
   private readonly store = inject(FeedbackStore);
   private readonly snack = inject(MatSnackBar);
   protected readonly week = this.store.week;
+
+  constructor() {
+    this.store.refresh();
+  }
   protected readonly range = computed(() => `${dayMonth(this.week().weekStart)} to ${dayMonth(this.week().weekEnd)}`);
   protected readonly group = topicGroup;
-  protected readonly hasSamples = computed(() => this.store.week().total > this.store.entries().length);
+  protected readonly hasSamples = computed(() => !this.store.fromGateway() && this.store.week().total > this.store.entries().length);
 
   protected role(role: string): string {
     return ROLE_SHORT[role as LaunchRole] ?? role;

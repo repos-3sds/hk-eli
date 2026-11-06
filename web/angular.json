@@ -54,6 +54,22 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
+            },
+            "gateway": {
+              "assets": [
+                {
+                  "glob": "**/*",
+                  "input": "public",
+                  "ignore": [
+                    "config/app-config.json"
+                  ]
+                },
+                {
+                  "glob": "app-config.json",
+                  "input": "config/gateway",
+                  "output": "config"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"
@@ -66,6 +82,10 @@
             },
             "development": {
               "buildTarget": "web:build:development"
+            },
+            "gateway": {
+              "buildTarget": "web:build:development,gateway",
+              "proxyConfig": "proxy.conf.json"
             }
           },
           "defaultConfiguration": "development"

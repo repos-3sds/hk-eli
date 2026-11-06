@@ -1,4 +1,6 @@
+import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
+import { APP_CONFIG } from '../config/app-config';
 import { SessionService, ROLE_LABELS } from '../session/session.service';
 import { BusinessClock } from '../time/business-clock';
 import { addBusinessDays } from '../time/business-calendar';
@@ -18,7 +20,12 @@ const INTERNAL = 'Internal use only. Not a recommendation; the owning RM checks 
 export class HandoffStore {
   private readonly session = inject(SessionService);
   private readonly clock = inject(BusinessClock);
+  private readonly config = inject(APP_CONFIG);
+  private readonly http = inject(HttpClient);
   private counter = 0;
+
+  /** Gateway mode: the gateway keeps the record (R38). Set when the last save failed, so the panel can say so. */
+  readonly saveError = signal<string | null>(null);
 
   readonly draft = signal<readonly HandoffItem[]>([]);
   readonly records = signal<readonly HandoffRecord[]>(PAST_HANDOFFS);
@@ -115,14 +122,35 @@ export class HandoffStore {
     this.records.update((list) => [record, ...list]);
     this.draft.set([]);
     this.tab.set('sent');
+    this.save(record);
     return record;
   }
 
   /** The desk said no to an item (for example over a limit). Recorded so it does not count as a missed trade. */
   recordDeskDecline(recordId: string, itemId: string, why: string): void {
-    this.records.update((list) =>
-      list.map((r) => (r.id === recordId ? { ...r, outcomes: { ...r.outcomes, [itemId]: { status: 'desk-declined', note: why.trim() || 'No reason given' } } } : r)),
-    );
+    const note = why.trim() || 'No reason given';
+    this.records.update((list) => list.map((r) => (r.id === recordId ? { ...r, outcomes: { ...r.outcomes, [itemId]: { status: 'desk-declined', note } } } : r)));
+    if (this.config.dataSource === 'gateway' && !PAST_HANDOFFS.some((r) => r.id === recordId)) {
+      this.http.patch(`${this.config.gatewayBaseUrl}/handoffs/${encodeURIComponent(recordId)}/items/${encodeURIComponent(itemId)}`, { status: 'desk-declined', note }).subscribe({
+        next: () => this.saveError.set(null),
+        error: () => this.saveError.set('The decline was not saved. Try again, or tell the product team.'),
+      });
+    }
+  }
+
+  /** Gateway mode: store the record; the gateway's id and window replace the local ones. */
+  private save(local: HandoffRecord): void {
+    if (this.config.dataSource !== 'gateway') {
+      return;
+    }
+    this.http.post<HandoffRecord>(`${this.config.gatewayBaseUrl}/handoffs`, { items: local.items }).subscribe({
+      next: (saved) => {
+        this.saveError.set(null);
+        const role = ROLE_LABELS[saved.role as keyof typeof ROLE_LABELS] ?? saved.role;
+        this.records.update((list) => list.map((r) => (r.id === local.id ? { ...saved, role } : r)));
+      },
+      error: () => this.saveError.set('The list was marked sent here but not saved, so a later trade cannot be linked to it. Try again.'),
+    });
   }
 
   statusLabel(status: HandoffStatus): string {

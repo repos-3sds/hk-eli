@@ -23,10 +23,10 @@
 } @else {
   <section class="figures" aria-label="This week in numbers">
     <div class="fig"><span class="fig-v" [class.warn]="week().usefulPct < 70">{{ week().usefulPct }}%</span><span class="fig-l">found it useful</span></div>
-    <div class="fig"><span class="fig-v">{{ week().total }}</span><span class="fig-l">ratings</span></div>
+    <div class="fig"><span class="fig-v">{{ week().total }}</span><span class="fig-l">{{ week().total === 1 ? 'rating' : 'ratings' }}</span></div>
     <div class="fig"><span class="fig-v">{{ week().notes.length }}</span><span class="fig-l">notes</span></div>
     @for (r of week().byRole; track r.role) {
-      <div class="fig"><span class="fig-v">{{ r.usefulPct }}%</span><span class="fig-l">{{ role(r.role) }} · {{ r.total }} ratings</span></div>
+      <div class="fig"><span class="fig-v">{{ r.usefulPct }}%</span><span class="fig-l">{{ role(r.role) }} · {{ r.total }} {{ r.total === 1 ? 'rating' : 'ratings' }}</span></div>
     }
   </section>
 

@@ -1,4 +1,6 @@
+import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
+import { APP_CONFIG } from '../config/app-config';
 import { SessionService } from '../session/session.service';
 import { BusinessClock } from '../time/business-clock';
 import { addDays } from '../time/business-calendar';
@@ -97,7 +99,17 @@ export function summariseWeek(entries: readonly FeedbackEntry[], anyDayInWeek: s
 export class FeedbackStore {
   private readonly session = inject(SessionService);
   private readonly clock = inject(BusinessClock);
+  private readonly config = inject(APP_CONFIG);
+  private readonly http = inject(HttpClient);
   private counter = 0;
+
+  /** Gateway mode: the stored summary for everyone this week, loaded by refresh(). */
+  private readonly stored = signal<WeeklyFeedback | null>(null);
+  /** True when the week shown is the gateway's stored summary rather than this session plus samples. */
+  readonly fromGateway = computed(() => this.stored() !== null);
+  private get gateway(): boolean {
+    return this.config.dataSource === 'gateway';
+  }
 
   readonly entries = signal<readonly FeedbackEntry[]>([]);
   readonly summary = computed(() => {
@@ -107,24 +119,50 @@ export class FeedbackStore {
 
   /** This week's summary: sample entries from earlier in the week plus everything rated this session. */
   readonly week = computed(() => {
+    const stored = this.stored();
+    if (stored) {
+      return stored;
+    }
     const today = this.clock.businessDate();
     return summariseWeek([...FEEDBACK_EARLIER_THIS_WEEK(today), ...this.entries()], today);
   });
+
+  /** Gateway mode: reload the week from the gateway (everyone's ratings, not only this session's). */
+  refresh(): void {
+    if (this.gateway) {
+      this.http.get<WeeklyFeedback>(`${this.config.gatewayBaseUrl}/feedback/week`).subscribe({ next: (w) => this.stored.set(w), error: () => this.stored.set(null) });
+    }
+  }
 
   /** One rating per topic: a new rating replaces the earlier one. */
   rate(topic: string, rating: FeedbackRating, note = ''): FeedbackEntry {
     const entry: FeedbackEntry = { id: `fb-${++this.counter}`, topic, rating, note: note.trim(), role: this.session.role(), at: new Date().toISOString() };
     this.entries.update((list) => [...list.filter((e) => e.topic !== topic), entry]);
+    this.store(entry);
     return entry;
   }
 
   addNote(topic: string, note: string): void {
     this.entries.update((list) => list.map((e) => (e.topic === topic ? { ...e, note: note.trim() } : e)));
+    const entry = this.entries().find((e) => e.topic === topic);
+    if (entry) {
+      this.store(entry);
+    }
   }
 
   /** Taking a rating back removes it from the summary. */
   clear(topic: string): void {
     this.entries.update((list) => list.filter((e) => e.topic !== topic));
+    if (this.gateway) {
+      this.http.delete(`${this.config.gatewayBaseUrl}/feedback`, { params: { topic } }).subscribe({ next: () => this.refresh(), error: () => undefined });
+    }
+  }
+
+  /** Gateway mode: the gateway keeps one rating per user and topic, so a re-rate replaces the stored one. */
+  private store(entry: FeedbackEntry): void {
+    if (this.gateway) {
+      this.http.post(`${this.config.gatewayBaseUrl}/feedback`, { topic: entry.topic, rating: entry.rating, note: entry.note }).subscribe({ next: () => this.refresh(), error: () => undefined });
+    }
   }
 
   ratingFor(topic: string): FeedbackRating | null {
