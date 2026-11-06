@@ -8,6 +8,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { filter } from 'rxjs';
 import { FreshnessStore } from '../../core/freshness/freshness';
+import { FeedbackButtons } from '../../core/feedback/feedback-buttons';
 import { FreshnessClocks } from '../../core/freshness/freshness-clocks';
 import { FIXTURE_CLIENTS } from '../../core/data/today.fixture';
 import { ownerOf } from '../../core/data/business.fixture';
@@ -28,7 +29,7 @@ import { SignalPicker } from './signal-picker';
  */
 @Component({
   selector: 'eli-idea-finder-page',
-  imports: [FormsModule, MatButtonModule, MatIconModule, MatMenuModule, MatTooltipModule, ConcentrationBar, UsdPipe, SignalPicker, FocusChips, FreshnessClocks],
+  imports: [FormsModule, MatButtonModule, MatIconModule, MatMenuModule, MatTooltipModule, ConcentrationBar, UsdPipe, SignalPicker, FocusChips, FreshnessClocks, FeedbackButtons],
   providers: [IdeaFinderStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './idea-finder-page.html',

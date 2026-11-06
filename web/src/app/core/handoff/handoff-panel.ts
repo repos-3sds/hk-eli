@@ -1,3 +1,4 @@
+import { FeedbackButtons } from '../feedback/feedback-buttons';
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -16,7 +17,7 @@ import { longDate } from '../time/business-calendar';
  */
 @Component({
   selector: 'eli-handoff-panel',
-  imports: [MatDialogModule, MatButtonModule, MatIconModule, MatTooltipModule, FormsModule, DatePipe],
+  imports: [MatDialogModule, MatButtonModule, MatIconModule, MatTooltipModule, FormsModule, DatePipe, FeedbackButtons],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './handoff-panel.html',
   styleUrl: './handoff-panel.scss',

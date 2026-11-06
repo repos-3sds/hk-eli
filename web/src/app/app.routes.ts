@@ -47,6 +47,11 @@ export const routes: Routes = [
     title: 'Alerts · HK ELI Chatbot',
     loadComponent: () => import('./features/alerts/alerts-page').then((m) => m.AlertsPage),
   },
+  {
+    path: 'feedback',
+    title: 'Feedback this week · HK ELI Chatbot',
+    loadComponent: () => import('./features/feedback/feedback-page').then((m) => m.FeedbackPage),
+  },
   // Old RM-first links.
   { path: 'rm', pathMatch: 'full', redirectTo: 'today' },
   { path: 'rm/today/ideas/:clientId', redirectTo: ({ params }) => `/ideas?client=${encodeURIComponent(params['clientId'])}` },

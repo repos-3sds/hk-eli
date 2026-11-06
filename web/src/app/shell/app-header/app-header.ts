@@ -37,7 +37,10 @@ import { LAUNCH_ROLES, LaunchRole, ROLE_LABELS, START_VIEWS, SessionService } fr
         </mat-menu>
         <span class="sep" aria-hidden="true"></span>
         <button type="button" class="icon-btn" matTooltip="Add widget" aria-label="Add widget"><mat-icon svgIcon="dm-plus" /></button>
-        <button type="button" class="icon-btn" matTooltip="Help" aria-label="Help"><mat-icon svgIcon="dm-faq" /></button>
+        <button type="button" class="icon-btn" matTooltip="Help and feedback" aria-label="Help and feedback" [matMenuTriggerFor]="helpMenu"><mat-icon svgIcon="dm-faq" /></button>
+        <mat-menu #helpMenu="matMenu" xPosition="before">
+          <button mat-menu-item type="button" (click)="router.navigateByUrl('/feedback')"><mat-icon svgIcon="message-square" />Feedback this week</button>
+        </mat-menu>
         <button type="button" class="icon-btn" matTooltip="Log out" aria-label="Log out"><mat-icon svgIcon="dm-logout" /></button>
       </div>
     </header>
@@ -79,7 +82,7 @@ import { LAUNCH_ROLES, LaunchRole, ROLE_LABELS, START_VIEWS, SessionService } fr
 })
 export class AppHeader {
   protected readonly session = inject(SessionService);
-  private readonly router = inject(Router);
+  protected readonly router = inject(Router);
 
   /** Demo: switching role opens that role's start view, as signing in would. */
   protected switchRole(role: LaunchRole): void {
