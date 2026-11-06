@@ -8,7 +8,9 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test --watch=false",
-    "test:watch": "ng test"
+    "test:watch": "ng test",
+    "export-seed": "esbuild scripts/export-seed.ts --bundle --platform=node --format=esm --outfile=scripts/.export-seed.mjs --log-level=warning && node scripts/.export-seed.mjs",
+    "export-golden": "esbuild scripts/export-golden.ts --bundle --platform=node --format=esm --outfile=scripts/.export-golden.mjs --tsconfig=tsconfig.json --log-level=warning && node scripts/.export-golden.mjs"
   },
   "private": true,
   "engines": {
