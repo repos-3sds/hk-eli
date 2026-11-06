@@ -1,3 +1,4 @@
+import { PARITY_RESULTS, ParityTopic } from '../parity/tableau-parity';
 import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, forkJoin, map, of, switchMap } from 'rxjs';
 import { BOOK_CONCENTRATION, ROLLOVER_BASELINE_PCT, ROLLOVER_POCKETS, UNMET_DEMAND } from '../data/business.fixture';
@@ -61,8 +62,10 @@ export class MockChatDataSource extends ChatDataSource {
     );
   }
 
-  private businessAnswer(id: string, blocks: AnswerBlock[], followUps: string[], sources: string[]): Observable<ChatAnswer> {
-    return this.today.getMorningBrief('all').pipe(map((brief) => ({ id, fallback: false, businessDate: brief.businessDate, sources, blocks, followUps })));
+  private businessAnswer(id: string, blocks: AnswerBlock[], followUps: string[], sources: string[], topic: ParityTopic): Observable<ChatAnswer> {
+    return this.today
+      .getMorningBrief('all')
+      .pipe(map((brief) => ({ id, fallback: false, businessDate: brief.businessDate, sources, blocks, followUps, parity: PARITY_RESULTS[topic] })));
   }
 
   private rollover(id: string): Observable<ChatAnswer> {
@@ -89,6 +92,7 @@ export class MockChatDataSource extends ChatDataSource {
       ],
       ['Who matures this week?', 'What was quoted and not traded this week?'],
       ['EQD master', 'trades this month'],
+      'rollover',
     );
   }
 
@@ -102,6 +106,7 @@ export class MockChatDataSource extends ChatDataSource {
       ],
       ['What was quoted and not traded this week?', 'Who matures this week?'],
       ['EQD master', 'outstanding stock', 'name limits'],
+      'concentration',
     );
   }
 
@@ -124,6 +129,7 @@ export class MockChatDataSource extends ChatDataSource {
       ],
       ['Top concentrations against limit', 'Where is rollover below 80% this month?'],
       ['RFQ log', 'digibank quote log', 'blotter'],
+      'unmet',
     );
   }
 
@@ -181,6 +187,7 @@ export class MockChatDataSource extends ChatDataSource {
           sources: SOURCES,
           blocks,
           followUps: [`What did ${first} trade in the last 90 days?`, 'Who matures this week?', 'Which knock-outs are close to the barrier?'],
+          parity: PARITY_RESULTS.client,
         };
       }),
     );
@@ -204,7 +211,7 @@ export class MockChatDataSource extends ChatDataSource {
         if (rfqs.length) {
           blocks.push({ kind: 'bullets', title: 'Recent RFQs', items: rfqs });
         }
-        return { id, fallback: false, businessDate: brief.businessDate, sources: SOURCES, blocks, followUps: [`Brief me on ${first}`, 'Who matures this week?'] };
+        return { id, fallback: false, businessDate: brief.businessDate, sources: SOURCES, blocks, followUps: [`Brief me on ${first}`, 'Who matures this week?'], parity: PARITY_RESULTS.client };
       }),
     );
   }
@@ -253,7 +260,7 @@ export class MockChatDataSource extends ChatDataSource {
         }
         const followUps = rows.slice(0, 2).map((r) => `Brief me on ${r.name.split(' ')[0]}`);
         followUps.push(type === 'maturity' ? 'Which knock-outs are close to the barrier?' : 'Who matures this week?');
-        return { id, fallback: false, businessDate: brief.businessDate, sources: SOURCES, blocks, followUps };
+        return { id, fallback: false, businessDate: brief.businessDate, sources: SOURCES, blocks, followUps, parity: PARITY_RESULTS[type === 'maturity' ? 'maturities' : 'knockouts'] };
       }),
     );
   }

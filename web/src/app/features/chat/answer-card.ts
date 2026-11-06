@@ -1,3 +1,5 @@
+import { TableauParity, parityLine } from '../../core/parity/tableau-parity';
+import { shortDate } from '../../core/time/business-calendar';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -100,6 +102,12 @@ import { UsdPipe } from '../today/shared/format';
         }
       }
       <eli-trust-line [businessDate]="answer().businessDate" [sources]="answer().sources" reference="chat" />
+      @if (answer().parity; as p) {
+        <p class="parity" [class]="p.status" [attr.role]="p.status === 'mismatch' ? 'note' : null">
+          <mat-icon [svgIcon]="p.status === 'match' ? 'check' : p.status === 'mismatch' ? 'triangle-alert' : 'info'" aria-hidden="true" />
+          <span>{{ parityText(p) }}</span>
+        </p>
+      }
       @if (showFollowUps() && answer().followUps.length) {
         <div class="follow" role="group" aria-label="Ask next">
           <span class="follow-label">Ask next</span>
@@ -111,6 +119,11 @@ import { UsdPipe } from '../today/shared/format';
     </article>
   `,
   styles: `
+    .parity { display: flex; align-items: flex-start; gap: var(--eli-space-3); margin: 0; color: var(--eli-text-muted-2); font-size: var(--eli-font-size-s);
+      mat-icon { flex: none; width: 14px; height: 14px; margin-top: 2px; }
+      &.match mat-icon { color: var(--eli-status-positive); }
+      &.mismatch { padding: var(--eli-space-3) var(--eli-space-5); border-left: 3px solid var(--eli-accent-orange); border-radius: var(--eli-radius-s); background: var(--eli-bg-row); color: var(--eli-text-primary); mat-icon { color: var(--eli-accent-orange); } }
+      &.unchecked { color: var(--eli-text-muted); } }
     .card { display: flex; flex-direction: column; gap: var(--eli-space-7); padding: var(--eli-space-7) var(--eli-space-8); border: 1px solid var(--eli-separator); border-radius: var(--eli-radius-m); background: var(--eli-bg-dock); }
     .card.fallback { border-left: 3px solid var(--eli-accent-link); }
     .text { margin: 0; color: var(--eli-text-primary); font-size: var(--eli-font-size-m); line-height: 22px; }
@@ -146,6 +159,10 @@ import { UsdPipe } from '../today/shared/format';
   `,
 })
 export class AnswerCard {
+  protected parityText(p: TableauParity): string {
+    return parityLine(p, shortDate(this.answer().businessDate));
+  }
+
   readonly answer = input.required<ChatAnswer>();
   /** Only the newest answer offers follow-up questions, so older ones stay quiet. */
   readonly showFollowUps = input(true);

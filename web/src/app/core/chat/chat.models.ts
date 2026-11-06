@@ -1,3 +1,4 @@
+import { TableauParity } from '../parity/tableau-parity';
 import { MomentType } from '../models/today.models';
 
 /**
@@ -81,4 +82,6 @@ export interface ChatAnswer {
   readonly sources: readonly string[];
   /** True when the question was not understood and the answer only suggests what to ask. */
   readonly fallback: boolean;
+  /** How the figures compare with the Tableau view users know (R36). Absent when no view applies. */
+  readonly parity?: TableauParity;
 }
