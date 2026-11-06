@@ -1,0 +1,81 @@
+<header class="top">
+  <div class="titles">
+    <h2 class="title">Business Update</h2>
+    <p class="lede">The monthly Tableau routine, section by section, for {{ update().scopeName === 'Whole business' ? 'the whole business' : update().scopeName }}. Figures are computed from data; nothing here is written by AI.</p>
+    <eli-freshness-clocks class="clocks" />
+    @if (isTsm()) {
+      <div class="start" role="group" aria-label="Start here">
+        <span class="start-lbl">Start here</span>
+        <button type="button" class="start-btn" (click)="go('branches')"><mat-icon svgIcon="layers" aria-hidden="true" />Team performance by branch</button>
+        <button type="button" class="start-btn" (click)="go('handoffs')"><mat-icon svgIcon="clipboard-list" aria-hidden="true" />Hand-off lists and linked conversion</button>
+        <button type="button" class="start-btn" (click)="go('rollover')"><mat-icon svgIcon="refresh-cw" aria-hidden="true" />Pockets below the rollover line</button>
+      </div>
+    }
+  </div>
+  <div class="tools">
+    <eli-scope-switch [value]="scope()" (changed)="scope.set($event)" />
+    <button matButton="outlined" type="button" (click)="schedule.open({ template: 'business-update', scope: scope() })"><mat-icon svgIcon="calendar-plus" />Schedule</button>
+    <button matButton="outlined" type="button" (click)="copyAll()"><mat-icon svgIcon="clipboard-copy" />Copy update</button>
+  </div>
+</header>
+
+<div class="body">
+  <nav class="toc eli-scroll" aria-label="Sections">
+    <ol>
+      @for (s of update().sections; track s.id; let i = $index) {
+        <li><button type="button" class="toc-link" (click)="go(s.id)"><span class="n">{{ i + 1 }}</span>{{ s.title }}</button></li>
+      }
+    </ol>
+  </nav>
+
+  <div class="sections eli-scroll">
+    @for (s of update().sections; track s.id; let i = $index) {
+      <section class="sec" tabindex="-1" [id]="'sec-' + s.id" [attr.aria-labelledby]="'h-' + s.id">
+        <div class="sec-head">
+          <span class="n">{{ i + 1 }}</span>
+          <h3 class="sec-title" [id]="'h-' + s.id">{{ s.title }}</h3>
+          @if (s.wholeBusinessOnly) {
+            <span class="tag" matTooltip="Book-level data: not split by branch, segment or channel at launch">Whole business</span>
+          }
+          <span class="grow"></span>
+          <span class="date"><mat-icon svgIcon="database" aria-hidden="true" />Close {{ dataDateText() }}</span>
+        </div>
+        <p class="summary">{{ s.summary }}</p>
+        @if (s.figures; as figs) {
+          <dl class="figs">
+            @for (f of figs; track f.label) {
+              <div class="fig" [attr.data-tone]="f.tone ?? null">
+                <dt>{{ f.label }}</dt>
+                <dd><span class="v">{{ f.value }}</span>@if (f.note) {<span class="note">{{ f.note }}</span>}</dd>
+              </div>
+            }
+          </dl>
+        }
+        @if (s.table; as t) {
+          <div class="table-wrap">
+            <table class="tbl">
+              <caption class="eli-visually-hidden">{{ s.title }}</caption>
+              <thead><tr>@for (c of t.columns; track c; let ci = $index) {<th scope="col" [class.num]="t.numeric[ci]">{{ c }}</th>}</tr></thead>
+              <tbody>
+                @for (r of t.rows; track $index; let ri = $index) {
+                  <tr [class.flag]="t.flagged?.includes(ri)">
+                    @for (cell of r; track $index; let ci = $index) {<td [class.num]="t.numeric[ci]">{{ cell }}</td>}
+                  </tr>
+                } @empty {
+                  <tr><td [attr.colspan]="t.columns.length" class="none">Nothing in this scope.</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+        <div class="sec-foot">
+          <span class="src">Source: {{ s.source }}</span>
+          <span class="grow"></span>
+          <button type="button" class="eli-link" (click)="ask(s.ask)"><mat-icon svgIcon="message-square" aria-hidden="true" />Ask about this</button>
+        </div>
+      </section>
+    }
+    <eli-feedback class="feedback" topic="Business Update" />
+    <p class="trust"><mat-icon svgIcon="info" aria-hidden="true" />Demo figures. Parity with the launch users' Tableau views is checked once that list is shared. Internal use only.</p>
+  </div>
+</div>

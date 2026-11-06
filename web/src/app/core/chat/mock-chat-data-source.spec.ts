@@ -22,7 +22,7 @@ const kinds = (a: ChatAnswer) => a.blocks.map((b) => b.kind);
 
 describe('MockChatDataSource', () => {
   it('prepares a call for a named client with book, concentration, ideas and talking points', async () => {
-    const a = await firstValueFrom(setup().ask({ text: 'Prepare me for my call with Chan', clientId: null }));
+    const a = await firstValueFrom(setup().ask({ text: 'Brief me on Chan', clientId: null }));
     expect(a.fallback).toBe(false);
     expect(kinds(a)).toEqual(['text', 'facts', 'concentration', 'ideas', 'bullets']);
     expect((a.blocks[0] as { text: string }).text).toContain("Chan Tai Man is in today's brief");
@@ -53,5 +53,17 @@ describe('MockChatDataSource', () => {
 
   it('fails when the data behind it fails', async () => {
     await expect(firstValueFrom(setup('error').ask({ text: 'Who matures this week?', clientId: null }))).rejects.toThrow();
+  });
+
+  it('answers the launch-role questions with breakdown tables from data', async () => {
+    const ds = setup();
+    const rollover = await firstValueFrom(ds.ask({ text: 'Where is rollover below 80% this month?', clientId: null }));
+    expect(kinds(rollover)).toEqual(['text', 'table']);
+    expect((rollover.blocks[0] as { text: string }).text).toContain('Kwun Tong · Treasures is lowest at 45%');
+    const conc = await firstValueFrom(ds.ask({ text: 'Top concentrations against limit', clientId: null }));
+    expect(kinds(conc)).toEqual(['text', 'concentration']);
+    const unmet = await firstValueFrom(ds.ask({ text: 'What was quoted and not traded this week?', clientId: null }));
+    expect(kinds(unmet)).toEqual(['text', 'table']);
+    expect(unmet.sources).toContain('digibank quote log');
   });
 });

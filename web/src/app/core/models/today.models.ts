@@ -16,13 +16,8 @@ export const MOMENT_LABELS: Record<MomentType, string> = {
   rfq: 'Open RFQ',
 };
 
-/** Whose clients the strip and the brief cover. */
-export type BookScope = 'my-book' | 'team';
-
-export const BOOK_SCOPE_LABELS: Record<BookScope, string> = {
-  'my-book': 'My book',
-  team: 'My team',
-};
+export type { BookScope, ScopeOption, ScopeGroup } from './scope';
+export { SCOPE_OPTIONS, scopeLabel } from './scope';
 
 /** One business day in the strip. `offset` 0 is today; T-n means n business days from today. */
 export interface BusinessDay {
@@ -58,7 +53,7 @@ export interface Signal {
 
 export type LeadActionKind = 'rollover-ideas' | 'exercised-stock-ideas' | 'knockout-ideas' | 'reactivation-ideas';
 
-/** A client who needs the RM today, with the reason in plain words. */
+/** A client who needs attention today, with the reason in plain words and who owns the client. */
 export interface Lead {
   readonly id: string;
   readonly clientId: string;
@@ -66,11 +61,28 @@ export interface Lead {
   readonly clientShortName: string;
   readonly segment: string;
   readonly cifMasked: string;
+  /** The RM (or "Digibank") a handoff goes to. */
+  readonly ownerRm: string;
+  readonly branch: string;
+  readonly channel: 'advisory' | 'digibank';
   readonly moment: Moment;
   /** Plain-words summary. Worded by the model from computed figures. */
   readonly summary: string;
   readonly signals: readonly Signal[];
   readonly action: { readonly kind: LeadActionKind; readonly label: string };
+}
+
+/** Rollover this month for one branch and segment, against the baseline. Below the line is an exception worth a look. */
+export interface Pocket {
+  readonly id: string;
+  readonly branch: string;
+  readonly segment: string;
+  readonly rolloverPct: number;
+  readonly baselinePct: number;
+  readonly maturedThisMonth: number;
+  readonly rolledThisMonth: number;
+  /** ELI notional maturing in the next 10 business days in this pocket. */
+  readonly maturingUsd: number;
 }
 
 export interface MorningBrief {
@@ -79,6 +91,10 @@ export interface MorningBrief {
   readonly preparedFrom: string;
   readonly sources: readonly string[];
   readonly leads: readonly Lead[];
+  /** Notional maturing in the next 10 business days across the scope. */
+  readonly maturingUsd: number;
+  /** Rollover pockets in the scope, lowest first. */
+  readonly pockets: readonly Pocket[];
 }
 
 export interface ConcentrationLine {
@@ -125,6 +141,8 @@ export interface ClientContext {
   readonly segment: string;
   readonly cifMasked: string;
   readonly rmName: string;
+  readonly branch: string;
+  readonly channel: 'advisory' | 'digibank';
   readonly riskProfile: number;
   readonly eliOutstandingUsd: number;
   readonly maturingUsd: number;
@@ -175,4 +193,24 @@ export interface QuoteRequestReceipt {
   readonly ideaId: string;
   readonly sentAt: string;
   readonly desk: string;
+}
+
+/**
+ * The two clocks every screen shows (R37). The dataset refreshes overnight (data as of last close);
+ * prices refresh in the morning. Either run can be late or fail, and the screens must say so.
+ */
+export type FreshnessState = 'ready' | 'prices-late' | 'run-failed';
+
+export interface Freshness {
+  readonly state: FreshnessState;
+  /** Close date the data describes. When the overnight run failed, the last good close. */
+  readonly dataAsOf: string;
+  /** When the overnight run finished (ISO with offset), or null when it failed. */
+  readonly dataRefreshedAt: string | null;
+  /** When the prices used were run (ISO with offset). */
+  readonly pricesAsOf: string;
+  /** True when pricesAsOf is from this morning's run. */
+  readonly pricesToday: boolean;
+  /** When this morning's prices are expected, while they are late (ISO with offset). */
+  readonly pricesExpectedAt: string | null;
 }

@@ -1,0 +1,68 @@
+<header class="top">
+  <div class="titles">
+    <h2 class="title">Feedback this week</h2>
+    <p class="lede">What the launch users said about each view, {{ range() }}. Good feedback is the gate for going wider, so this is read every week.</p>
+  </div>
+  <div class="tools">
+    <button matButton="outlined" type="button" (click)="copy()" [disabled]="week().total === 0"><mat-icon svgIcon="clipboard-copy" />Copy summary</button>
+  </div>
+</header>
+
+@if (hasSamples()) {
+  <p class="preview" role="note"><mat-icon svgIcon="eye" aria-hidden="true" />Earlier days show sample ratings. Your own ratings from this session are added as you give them. The gateway keeps them for real once connected.</p>
+}
+
+@if (week().total === 0) {
+  <section class="state" aria-live="polite">
+    <mat-icon svgIcon="message-square" aria-hidden="true" />
+    <div>
+      <p class="state-title">No feedback yet this week</p>
+      <p class="state-text">Ratings appear here as people use the thumbs at the foot of each view, list and chat answer.</p>
+    </div>
+  </section>
+} @else {
+  <section class="figures" aria-label="This week in numbers">
+    <div class="fig"><span class="fig-v" [class.warn]="week().usefulPct < 70">{{ week().usefulPct }}%</span><span class="fig-l">found it useful</span></div>
+    <div class="fig"><span class="fig-v">{{ week().total }}</span><span class="fig-l">{{ week().total === 1 ? 'rating' : 'ratings' }}</span></div>
+    <div class="fig"><span class="fig-v">{{ week().notes.length }}</span><span class="fig-l">notes</span></div>
+    @for (r of week().byRole; track r.role) {
+      <div class="fig"><span class="fig-v">{{ r.usefulPct }}%</span><span class="fig-l">{{ role(r.role) }} · {{ r.total }} {{ r.total === 1 ? 'rating' : 'ratings' }}</span></div>
+    }
+  </section>
+
+  <div class="grid">
+    <section class="card" aria-labelledby="views-h">
+      <h3 id="views-h" class="card-h">By view, least useful first</h3>
+      <table class="tbl">
+        <thead><tr><th scope="col">View</th><th scope="col" class="num">Useful</th><th scope="col" class="num">Not useful</th><th scope="col" class="num">Notes</th><th scope="col" class="bar-col"><span class="eli-visually-hidden">Share useful</span></th></tr></thead>
+        <tbody>
+          @for (t of week().byTopic; track t.topic) {
+            <tr>
+              <th scope="row">{{ t.topic }}</th>
+              <td class="num">{{ t.up }}</td>
+              <td class="num">{{ t.down }}</td>
+              <td class="num">{{ t.notes }}</td>
+              <td class="bar-col"><span class="bar" [attr.aria-label]="t.usefulPct + '% useful'"><span class="fill" [style.width.%]="t.usefulPct"></span></span></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card" aria-labelledby="notes-h">
+      <h3 id="notes-h" class="card-h">Notes <span class="n">{{ week().notes.length }}</span></h3>
+      @for (n of week().notes; track n.id) {
+        <figure class="note">
+          <blockquote>{{ n.note }}</blockquote>
+          <figcaption>
+            <mat-icon [svgIcon]="n.rating === 'up' ? 'thumbs-up' : 'thumbs-down'" [class.down]="n.rating === 'down'" aria-hidden="true" />
+            {{ group(n.topic) }} · {{ role(n.role) }} · {{ when(n.at) }}
+          </figcaption>
+        </figure>
+      } @empty {
+        <p class="sub">Nobody left a note this week.</p>
+      }
+    </section>
+  </div>
+}
+<p class="foot">Internal use only. Not for clients.</p>

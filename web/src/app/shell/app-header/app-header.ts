@@ -1,12 +1,14 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { SessionService } from '../../core/session/session.service';
+import { Router } from '@angular/router';
+import { LAUNCH_ROLES, LaunchRole, ROLE_LABELS, START_VIEWS, SessionService } from '../../core/session/session.service';
 
 /** The Digimarkets top bar: logo, workspace tabs, greeting and platform actions (HK ELI Figma 1:11321). */
 @Component({
   selector: 'eli-app-header',
-  imports: [MatIconModule, MatTooltipModule],
+  imports: [MatIconModule, MatMenuModule, MatTooltipModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="bar" role="banner">
@@ -23,9 +25,22 @@ import { SessionService } from '../../core/session/session.service';
       </nav>
       <div class="right">
         <span class="welcome">Welcome back, {{ session.user().displayName }}</span>
+        <button type="button" class="role" [matMenuTriggerFor]="roleMenu" matTooltip="Demo only: switch the launch role">
+          {{ session.roleLabel() }}<mat-icon svgIcon="chevron-down" aria-hidden="true" />
+        </button>
+        <mat-menu #roleMenu="matMenu">
+          @for (r of roles; track r) {
+            <button mat-menu-item type="button" (click)="switchRole(r)" [attr.aria-current]="r === session.role() ? 'true' : null">
+              {{ roleLabels[r] }}
+            </button>
+          }
+        </mat-menu>
         <span class="sep" aria-hidden="true"></span>
         <button type="button" class="icon-btn" matTooltip="Add widget" aria-label="Add widget"><mat-icon svgIcon="dm-plus" /></button>
-        <button type="button" class="icon-btn" matTooltip="Help" aria-label="Help"><mat-icon svgIcon="dm-faq" /></button>
+        <button type="button" class="icon-btn" matTooltip="Help and feedback" aria-label="Help and feedback" [matMenuTriggerFor]="helpMenu"><mat-icon svgIcon="dm-faq" /></button>
+        <mat-menu #helpMenu="matMenu" xPosition="before">
+          <button mat-menu-item type="button" (click)="router.navigateByUrl('/feedback')"><mat-icon svgIcon="message-square" />Feedback this week</button>
+        </mat-menu>
         <button type="button" class="icon-btn" matTooltip="Log out" aria-label="Log out"><mat-icon svgIcon="dm-logout" /></button>
       </div>
     </header>
@@ -48,6 +63,13 @@ import { SessionService } from '../../core/session/session.service';
     .ws-close { width: 10px; height: 10px; color: var(--eli-text-workspace-idle); align-self: flex-start; }
     .right { display: flex; align-items: center; gap: var(--eli-space-6); margin-left: auto; height: 100%; }
     .welcome { color: var(--eli-text-strong); font-size: var(--eli-font-size-m); font-weight: var(--eli-weight-semibold); }
+    .role {
+      display: inline-flex; align-items: center; gap: var(--eli-space-2); height: 22px; padding: 0 var(--eli-space-3) 0 var(--eli-space-4);
+      border: 1px solid var(--eli-border); border-radius: 11px; background: none; color: var(--eli-text-primary);
+      font: inherit; font-size: var(--eli-font-size-s); cursor: pointer;
+      &:hover { background: var(--eli-bg-workspace-tab); }
+      mat-icon { width: 12px; height: 12px; }
+    }
     .sep { width: 2px; height: 100%; background: var(--eli-separator); order: -1; margin-right: var(--eli-space-6); }
     .icon-btn {
       display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: var(--eli-radius-s);
@@ -55,11 +77,20 @@ import { SessionService } from '../../core/session/session.service';
       &:hover { background: var(--eli-bg-workspace-tab); }
       mat-icon { width: 18px; height: 18px; }
     }
-    @media (max-width: 900px) { .workspaces, .welcome, .sep { display: none; } }
+    @media (max-width: 900px) { .workspaces, .welcome, .sep, .role { display: none; } }
   `,
 })
 export class AppHeader {
   protected readonly session = inject(SessionService);
+  protected readonly router = inject(Router);
+
+  /** Demo: switching role opens that role's start view, as signing in would. */
+  protected switchRole(role: LaunchRole): void {
+    this.session.switchRole(role);
+    void this.router.navigate(['/', START_VIEWS[role]]);
+  }
   protected readonly workspaces = ['My Workspace 1', 'My Workspace 2'];
   protected readonly activeWorkspace = signal(this.workspaces[0]);
+  protected readonly roles = LAUNCH_ROLES;
+  protected readonly roleLabels = ROLE_LABELS;
 }

@@ -23,8 +23,11 @@ export function answerAsText(answer: ChatAnswer): string {
       case 'bullets':
         lines.push(b.title, ...b.items.map((i) => `- ${i}`));
         break;
+      case 'table':
+        lines.push(b.title, b.columns.join(' | '), ...b.rows.map((r) => r.join(' | ')));
+        break;
     }
   }
-  lines.push(`Sources: ${answer.sources.join(', ')}. Business date ${answer.businessDate}. Figures computed from data, wording by AI.`);
+  lines.push(`Sources: ${answer.sources.join(', ')}. Data as of close ${answer.businessDate}. Figures computed from data, wording by AI. Internal use only.`);
   return lines.join('\n');
 }

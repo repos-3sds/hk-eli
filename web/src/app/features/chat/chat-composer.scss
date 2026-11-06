@@ -2,7 +2,8 @@
 :host { display: block; }
 mat-icon { flex: none; }
 .box { display: flex; flex-direction: column; gap: var(--eli-space-5); padding: var(--eli-space-6) var(--eli-space-7) var(--eli-space-5); border: 1px solid var(--eli-border); border-radius: 14px; background: var(--eli-bg-input); transition: border-color var(--eli-motion-fast); &:focus-within { border-color: var(--eli-accent-link); } }
-.input { field-sizing: content; min-height: 44px; max-height: 160px; border: 0; outline: 0; resize: none; padding: 0; background: none; color: var(--eli-text-primary); font: inherit; font-size: var(--eli-font-size-m); line-height: 22px; &::placeholder { color: var(--eli-text-muted); } }
+/* Definite height: the box never grows with the text; longer questions scroll inside. */
+.input { height: 66px; overflow-y: auto; border: 0; outline: 0; resize: none; padding: 0; background: none; color: var(--eli-text-primary); font: inherit; font-size: var(--eli-font-size-m); line-height: 22px; &::placeholder { color: var(--eli-text-muted); } }
 .box-foot { display: flex; align-items: center; gap: var(--eli-space-4); }
 .spacer { flex: 1; }
 .ctx { display: inline-flex; align-items: center; gap: var(--eli-space-3); height: 26px; padding: 0 var(--eli-space-4); border: 1px solid transparent; border-radius: 13px; background: var(--eli-bg-selected); color: var(--eli-text-strong); font: inherit; font-size: var(--eli-font-size-s); font-weight: var(--eli-weight-semibold);

@@ -40,11 +40,18 @@
   }
 }
 
+.hero-top {
+  display: flex;
+  align-items: center;
+  gap: var(--eli-space-5);
+}
+
 .greeting {
   margin: 0;
   color: var(--eli-text-strong);
-  font-size: 30px;
-  line-height: 38px;
+  max-width: 860px;
+  font-size: 26px;
+  line-height: 34px;
   font-weight: var(--eli-weight-semibold);
   text-wrap: balance;
 }
@@ -201,6 +208,27 @@
   &.error {
     border-left: 3px solid var(--eli-status-negative);
   }
+
+  &.warn {
+    border-left: 3px solid var(--eli-accent-orange);
+
+    > mat-icon {
+      color: var(--eli-accent-orange);
+    }
+  }
+}
+
+.warn-text {
+  color: var(--eli-accent-orange);
+}
+
+.clocks {
+  align-items: center;
+  margin-top: var(--eli-space-2);
+}
+
+.feedback {
+  margin-top: var(--eli-space-4);
 }
 
 .state-title {
@@ -214,4 +242,98 @@
   margin: var(--eli-space-1) 0 0;
   color: var(--eli-text-muted-2);
   font-size: var(--eli-font-size-s);
+}
+
+/* Rollover pockets below the line */
+.pockets {
+  display: flex;
+  flex-direction: column;
+  gap: var(--eli-space-5);
+  margin-bottom: var(--eli-space-4);
+}
+
+.pockets-h {
+  margin: 0;
+  color: var(--eli-text-strong);
+  font-size: var(--eli-font-size-m);
+  font-weight: var(--eli-weight-semibold);
+}
+
+.pocket-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--eli-space-5);
+}
+
+.pocket {
+  display: flex;
+  flex-direction: column;
+  gap: var(--eli-space-4);
+  padding: var(--eli-space-6);
+  border-left: 3px solid var(--eli-accent-orange);
+  border-radius: var(--eli-radius-s);
+  background: var(--eli-bg-surface);
+}
+
+.pocket-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.pocket-name {
+  color: var(--eli-text-strong);
+  font-weight: var(--eli-weight-semibold);
+}
+
+.pocket-pct {
+  color: var(--eli-accent-orange);
+  font-size: 20px;
+  font-weight: var(--eli-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.bar {
+  position: relative;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--eli-bg-row);
+
+  .fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    border-radius: 3px;
+    background: var(--eli-accent-orange);
+  }
+
+  .line {
+    position: absolute;
+    top: -3px;
+    bottom: -3px;
+    width: 2px;
+    background: var(--eli-text-strong);
+  }
+}
+
+.pocket-text {
+  margin: 0;
+  color: var(--eli-text-muted-2);
+  font-size: var(--eli-font-size-s);
+}
+
+.pocket-actions {
+  display: flex;
+  gap: var(--eli-space-6);
+
+  .eli-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--eli-space-2);
+    font-size: var(--eli-font-size-s);
+  }
+
+  mat-icon {
+    width: 14px;
+    height: 14px;
+  }
 }

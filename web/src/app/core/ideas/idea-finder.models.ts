@@ -74,6 +74,14 @@ export interface ConcentrationEffect {
   readonly limitPct: number;
 }
 
+/**
+ * The single limit rule (D1, settled 4 Nov). Green ranks normally. Amber (at 85% of a limit or more) ranks lower
+ * and says why. Red leaves the Top 5 for "Hidden by limits" and needs a desk override.
+ */
+export type LimitState = 'green' | 'amber' | 'red';
+
+export const AMBER_SHARE_OF_LIMIT = 0.85;
+
 export interface IdeaMatch {
   readonly id: string;
   readonly title: string;
@@ -84,6 +92,9 @@ export interface IdeaMatch {
   readonly met: number;
   readonly effect: ConcentrationEffect | null;
   readonly pricedAt: string;
+  readonly limitState: LimitState;
+  /** Why it ranks lower or is hidden, in plain words; null when green. */
+  readonly limitReason: string | null;
 }
 
 /** One hard filter, and how many warehouse ideas would pass without it. Used to explain an empty result. */
@@ -99,6 +110,8 @@ export interface IdeaResults {
   readonly blockers: readonly FilterBlocker[];
   readonly warehouseSize: number;
   readonly matches: readonly IdeaMatch[];
+  /** Red under the limit rule: kept out of the ranking, shown apart, need a desk override. */
+  readonly hiddenByLimits: readonly IdeaMatch[];
   readonly notionalUsd: number;
   readonly businessDate: string;
 }

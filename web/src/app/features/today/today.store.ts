@@ -3,7 +3,9 @@ import { rxResource } from '@angular/core/rxjs-interop';
 import { of } from 'rxjs';
 import { APP_CONFIG } from '../../core/config/app-config';
 import { TodayDataSource } from '../../core/data/today-data-source';
-import { BookScope, Lead, MOMENT_TYPES, MomentType } from '../../core/models/today.models';
+import { aggregatesCover } from '../../core/models/scope';
+import { BookScope, Lead, MOMENT_TYPES, MomentType, Pocket, scopeLabel } from '../../core/models/today.models';
+import { usdCompact } from './shared/format';
 import { BusinessClock } from '../../core/time/business-clock';
 import { SessionService } from '../../core/session/session.service';
 import { momentText } from './shared/moment-text';
@@ -29,8 +31,10 @@ export class TodayStore {
   private readonly clock = inject(BusinessClock);
   private readonly session = inject(SessionService);
 
-  // What the RM has chosen
-  readonly scope = signal<BookScope>('my-book');
+  // What the user has chosen
+  readonly scope = signal<BookScope>('all');
+  /** A rollover pocket the user chose to look into: the list narrows to its clients. */
+  readonly pocketFilter = signal<Pocket | null>(null);
   readonly activeTypes = signal<ReadonlySet<MomentType>>(new Set(MOMENT_TYPES));
   readonly focusedDay = signal<number | null>(null);
   readonly pickedClientId = signal<string | null>(null);
@@ -77,7 +81,10 @@ export class TodayStore {
     const parked = this.parkedLeadIds();
     const types = this.activeTypes();
     const day = this.focusedDay();
-    return this.allLeads().filter((l) => !parked.has(l.id) && types.has(l.moment.type) && (day === null || l.moment.offset === day));
+    const pocket = this.pocketFilter();
+    return this.allLeads().filter(
+      (l) => !parked.has(l.id) && types.has(l.moment.type) && (day === null || l.moment.offset === day) && (!pocket || inPocket(l, pocket)),
+    );
   });
 
   readonly visibleLeads = computed(() =>
@@ -92,31 +99,49 @@ export class TodayStore {
     return `${part}, ${this.session.user().firstName}`;
   });
 
-  /** The landing headline: how many clients still need the RM today. */
+  /** Rollover pockets in the scope that sit below the baseline, lowest first. */
+  readonly pocketsBelow = computed(() => (this.brief.hasValue() ? this.brief.value().pockets.filter((p) => p.rolloverPct < p.baselinePct) : []));
+
+  readonly scopeName = computed(() => scopeLabel(this.scope()));
+
+  /** Pockets are kept by branch and segment, so an RM or underlying scope has none to show. */
+  readonly pocketsCovered = computed(() => aggregatesCover(this.scope()));
+
+  /** The landing headline: the business picture for the scope, then how many clients need attention. */
   readonly headline = computed(() => {
+    const brief = this.brief.hasValue() ? this.brief.value() : null;
     const count = this.openLeads().length;
-    if (count === 0) {
-      return 'Nobody needs you urgently today.';
+    if (!brief || (count === 0 && brief.maturingUsd === 0)) {
+      return 'Nothing needs attention urgently today.';
     }
-    return `${count} ${count === 1 ? 'client needs' : 'clients need'} you today.`;
+    const matures = `${usdCompact(brief.maturingUsd)} matures in the next 10 business days`;
+    if (!this.pocketsCovered()) {
+      return `${matures} for clients in ${this.scopeName().replace(/^Holds /, 'holders of ')}.`;
+    }
+    const below = this.pocketsBelow().length;
+    const pockets = below === 0 ? 'rollover is at or above the line everywhere' : `${below} ${below === 1 ? 'pocket is' : 'pockets are'} below the rollover line`;
+    return `${matures}; ${pockets}.`;
   });
 
-  /** Ready-made questions under the ask box. The first one names the top lead. */
+  /** "12 clients need attention": the count line that used to be the headline. */
+  readonly attentionLine = computed(() => {
+    const count = this.openLeads().length;
+    return count === 0 ? 'No clients need attention urgently.' : `${count} ${count === 1 ? 'client needs' : 'clients need'} attention today.`;
+  });
+
+  /** Ready-made questions under the ask box, by launch role. The first one for WMS names the top lead. */
   readonly suggestions = computed(() => {
-    const top = this.openLeads()[0];
-    const list = top ? [`Prepare me for my call with ${top.clientName.split(' ')[0]}`] : [];
-    return [...list, 'Who matures this week?', 'Which knock-outs are close to the barrier?'];
-  });
-
-  readonly greeting = computed(() => {
-    const hour = this.clock.hour();
-    const part = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
-    const count = this.allLeads().filter((l) => !this.parkedLeadIds().has(l.id)).length;
-    const name = this.session.user().firstName;
-    if (count === 0) {
-      return `${part}, ${name}. Nobody needs you urgently today.`;
+    switch (this.session.role()) {
+      case 'pm':
+        return ['Top concentrations against limit', 'What was quoted and not traded this week?', 'Who matures this week?'];
+      case 'tsm':
+        return ['Where is rollover below 80% this month?', 'Who matures this week?', 'Which knock-outs are close to the barrier?'];
+      default: {
+        const top = this.openLeads()[0];
+        const list = top ? [`Brief me on ${top.clientName.split(' ')[0]}`] : [];
+        return [...list, 'Who matures this week?', 'Which knock-outs are close to the barrier?'];
+      }
     }
-    return `${part}, ${name}. ${count} ${count === 1 ? 'client needs' : 'clients need'} you today.`;
   });
 
   /** The brief lead for the client in the dock, if that client is in today's brief and not parked. */
@@ -155,13 +180,17 @@ export class TodayStore {
     const first = open[0];
     const when = momentText(first.moment);
     const met = first.signals.filter((x) => x.met).length;
-    return `${list[0].toUpperCase()}${list.slice(1)}. Start with ${first.clientName}: ${when.charAt(0).toLowerCase()}${when.slice(1)}, ${met} of ${first.signals.length} signals agree.`;
+    const who = `${open.length} ${open.length === 1 ? 'client needs' : 'clients need'} attention`;
+    return `${who}: ${list}. Start with ${first.clientName}: ${when.charAt(0).toLowerCase()}${when.slice(1)}, ${met} of ${first.signals.length} signals agree.`;
   });
 
-  readonly filtersActive = computed(() => this.activeTypes().size < MOMENT_TYPES.length || this.focusedDay() !== null);
+  readonly filtersActive = computed(
+    () => this.activeTypes().size < MOMENT_TYPES.length || this.focusedDay() !== null || this.pocketFilter() !== null,
+  );
 
   setScope(scope: BookScope): void {
     this.scope.set(scope);
+    this.pocketFilter.set(null);
     this.focusedDay.set(null);
     this.showAllLeads.set(false);
   }
@@ -185,6 +214,14 @@ export class TodayStore {
   clearFilters(): void {
     this.activeTypes.set(new Set(MOMENT_TYPES));
     this.focusedDay.set(null);
+    this.pocketFilter.set(null);
+  }
+
+  /** Narrow the list to one pocket's clients and show the brief. */
+  showPocket(pocket: Pocket): void {
+    this.pocketFilter.set(pocket);
+    this.showAllLeads.set(true);
+    this.landingTab.set('brief');
   }
 
   /** Puts a client in the right-hand panel and opens it. */
@@ -199,7 +236,7 @@ export class TodayStore {
     this.linkedContext.set(null);
   }
 
-  /** "Not today": parks the lead for today and records it, so the outcome window knows it was seen. */
+  /** "Mark reviewed": takes the lead off today's list and records it, so the outcome window knows it was seen. */
   parkLead(lead: Lead): void {
     this.parkedLeadIds.update((s) => new Set(s).add(lead.id));
     this.data.recordNotToday(lead.id).subscribe({ error: () => this.unparkLead(lead) });
@@ -226,7 +263,7 @@ export class TodayStore {
   }
 
   askAbout(clientName: string): void {
-    this.composerDraft.set(`What should I know about ${clientName} before I call?`);
+    this.composerDraft.set(`What should I know about ${clientName}?`);
   }
 
   toggleCallNote(ideaId: string): void {
@@ -245,4 +282,12 @@ export class TodayStore {
     this.strip.reload();
     this.brief.reload();
   }
+}
+
+/** A lead belongs to a pocket when it is from that branch and segment (digibank pocket: the digibank channel). */
+export function inPocket(lead: Lead, pocket: Pocket): boolean {
+  if (pocket.branch === 'Digibank') {
+    return lead.channel === 'digibank';
+  }
+  return lead.branch === pocket.branch && lead.segment === pocket.segment;
 }

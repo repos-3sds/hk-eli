@@ -6,7 +6,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
 import { APP_CONFIG } from '../../core/config/app-config';
 import { FIXTURE_CLIENTS } from '../../core/data/today.fixture';
-import { SessionService } from '../../core/session/session.service';
+import { LaunchRole, SessionService } from '../../core/session/session.service';
 import { BusinessClock } from '../../core/time/business-clock';
 import { ChatAnswer } from '../../core/chat/chat.models';
 import { answerAsText } from '../../core/chat/answer-text';
@@ -20,17 +20,32 @@ interface Starter {
   readonly question: string;
 }
 
-const STARTERS: readonly Starter[] = [
-  { icon: 'user-round', title: 'Prepare a call', question: 'Prepare me for my call with Chan' },
-  { icon: 'calendar-clock', title: 'Maturities', question: 'Who matures this week?' },
-  { icon: 'shield-alert', title: 'Knock-outs', question: 'Which knock-outs are close to the barrier?' },
-  { icon: 'history', title: 'Client history', question: 'What did Chan trade in the last 90 days?' },
-];
+/** Ready questions for each launch role. Each one is answered from data, never from the model's memory. */
+const STARTERS: Record<LaunchRole, readonly Starter[]> = {
+  wms: [
+    { icon: 'calendar-clock', title: 'Maturities', question: 'Who matures this week?' },
+    { icon: 'shield-alert', title: 'Knock-outs', question: 'Which knock-outs are close to the barrier?' },
+    { icon: 'user-round', title: 'One client', question: 'Brief me on Chan' },
+    { icon: 'history', title: 'Client history', question: 'What did Chan trade in the last 90 days?' },
+  ],
+  pm: [
+    { icon: 'chart-column', title: 'Concentration', question: 'Top concentrations against limit' },
+    { icon: 'funnel', title: 'Unmet demand', question: 'What was quoted and not traded this week?' },
+    { icon: 'calendar-clock', title: 'Maturities', question: 'Who matures this week?' },
+    { icon: 'shield-alert', title: 'Knock-outs', question: 'Which knock-outs are close to the barrier?' },
+  ],
+  tsm: [
+    { icon: 'chart-column', title: 'Rollover', question: 'Where is rollover below 80% this month?' },
+    { icon: 'calendar-clock', title: 'Maturities', question: 'Who matures this week?' },
+    { icon: 'funnel', title: 'Unmet demand', question: 'What was quoted and not traded this week?' },
+    { icon: 'shield-alert', title: 'Knock-outs', question: 'Which knock-outs are close to the barrier?' },
+  ],
+};
 
 /**
  * The Chat tab: ask about the book in plain words, get typed answers built from data.
  * A question from Today arrives as ?q=…&client=… and is asked once; the URL is then cleaned.
- * Nothing is ever sent to a client from here.
+ * Internal use only: nothing is ever sent to a client from here.
  */
 @Component({
   selector: 'eli-chat-page',
@@ -48,7 +63,7 @@ export class ChatPage {
   private readonly scroller = viewChild.required<ElementRef<HTMLElement>>('scroller');
   private readonly composer = viewChild.required(ChatComposer);
 
-  protected readonly starters = STARTERS;
+  protected readonly starters = computed(() => STARTERS[this.session.role()]);
   protected readonly stages = ANSWER_STAGES;
   protected readonly clients = FIXTURE_CLIENTS;
   /** The RM has scrolled up, away from the newest answer. */

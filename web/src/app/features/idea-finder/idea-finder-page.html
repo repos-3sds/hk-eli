@@ -1,10 +1,11 @@
 <header class="top">
   <div class="titles">
     <h2 class="title">Find ideas that line up</h2>
-    <p class="lede">Say what the client wants. Pick the signals that matter. Ideas that meet more of them rank higher; there is no AI score.</p>
+    <p class="lede">Say what the RM or branch asked for. Pick the signals that matter. Ideas that meet more of them rank higher; there is no AI score.</p>
+    <eli-freshness-clocks class="clocks" />
   </div>
-  <form class="ask" (submit)="$event.preventDefault(); store.read()" aria-label="Describe what the client wants">
-    <label class="eli-visually-hidden" for="idea-ask">What does the client want?</label>
+  <form class="ask" (submit)="$event.preventDefault(); store.read()" aria-label="Describe what the RM or branch asked for">
+    <label class="eli-visually-hidden" for="idea-ask">What did the RM or branch ask for?</label>
     <textarea id="idea-ask" name="ask" rows="2" class="input"
       placeholder="e.g. Rollover for Chan, 6M, coupon 15%, KI 65 or lower, no more NVDA  (Enter to read)"
       [ngModel]="store.text()" (ngModelChange)="store.text.set($event)" (keydown.enter)="onEnter($event)"></textarea>
@@ -37,12 +38,19 @@
       }
     } @else if (store.results.hasValue()) {
       @let r = store.results.value();
+      @if (store.pocket(); as p) {
+        <div class="pocket-note" role="note">
+          <mat-icon svgIcon="layers" aria-hidden="true" />
+          <span>For the <strong>{{ p.branch }} · {{ p.segment }}</strong> pocket: rollover {{ p.rolloverPct }}% this month against {{ p.baselinePct }}%. {{ p.maturingUsd | usd }} matures in the next 10 business days. Rollover signals picked.</span>
+          <button type="button" class="eli-link" (click)="store.setPocket(null)">Clear</button>
+        </div>
+      }
       <div class="res-head">
         <h3 id="res-h" class="res-title">{{ r.passedFilters }} of {{ r.warehouseSize }} ideas pass your filters</h3>
         <p class="res-sub">
-          Ranked by how many of your {{ store.picked().length }} signals line up, then by coupon. Ideas that would break a client limit go last.
+          Ranked by how many of your {{ store.picked().length }} signals line up, then by coupon. Ideas close to a limit rank lower; ideas over one are hidden.
           @if (store.client(); as c) { Concentration shown for {{ c.name }} with {{ r.notionalUsd | usd }}. }
-          Indicative, priced {{ r.businessDate | eliDate: 'long' }} 18:00 HKT.
+          Indicative. {{ freshness.priceClock() ?? 'Prices loading' }}.
         </p>
         <button type="button" class="eli-link build" (click)="openBuilder()"><mat-icon svgIcon="sliders" aria-hidden="true" />Nothing quite fits? Build my own ELI</button>
         @if (store.clientSignalsWithoutClient()) {
@@ -53,7 +61,9 @@
       @if (r.matches.length === 0) {
         <div class="state">
           <mat-icon svgIcon="info" aria-hidden="true" />
-          @if (r.blockers[0]; as top) {
+          @if (r.passedFilters > 0) {
+            <span>All {{ r.passedFilters }} ideas that pass your filters are over a limit, so none is ranked. See them under Hidden by limits; offering one needs a desk override.</span>
+          } @else if (r.blockers[0]; as top) {
             @if (top.wouldPass > 0) {
               <span>No ideas pass all your filters. <strong>{{ top.label }}</strong> is the one holding most back: without it, {{ top.wouldPass }} {{ top.wouldPass === 1 ? 'idea passes' : 'ideas pass' }}.</span>
               <button matButton="filled" type="button" (click)="store.dropFilter(top.key)">Remove {{ top.label }}</button>
@@ -74,7 +84,12 @@
                 <span class="rank">{{ i + 1 }}</span>
                 <span class="what">
                   <span class="idea-title">{{ m.title }}</span>
-                  <span class="terms">Coupon {{ m.terms.couponPct }}% p.a. · KI {{ m.terms.kiPct }}% · strike {{ m.terms.strikePct }}%</span>
+                  <span class="terms">Coupon {{ m.terms.couponPct }}% p.a. · KI {{ m.terms.kiPct }}% · strike {{ m.terms.strikePct }}%
+                    @if (!freshness.pricesReady()) { <span class="stale-tag">Yesterday's price</span> }
+                  </span>
+                  @if (m.limitState === 'amber') {
+                    <span class="lower"><mat-icon svgIcon="triangle-alert" aria-hidden="true" />Ranked lower: {{ m.limitReason }}</span>
+                  }
                 </span>
                 <span class="conf" [attr.aria-label]="m.met + ' of ' + m.checks.length + ' signals line up'">
                   <span class="dots" aria-hidden="true">
@@ -91,9 +106,14 @@
                 </span>
                 <span class="acts">
                   <button matButton type="button" (click)="toggleRow(m.id)" [attr.aria-expanded]="store.openRow() === m.id">Why<mat-icon class="chev" svgIcon="chevron-down" /></button>
-                  <span [matTooltip]="store.client() ? '' : 'Pick a client first'">
-                    <button matButton="outlined" type="button" [disabled]="!store.client()" (click)="requestQuote(m)">Live quote</button>
-                  </span>
+                  <button matButton="outlined" type="button" (click)="copyTerms(m)"
+                    matTooltip="Copies the terms with their price time and the internal-only label. Live quotes come in MVP2.">
+                    <mat-icon [svgIcon]="copiedId() === m.id ? 'check' : 'clipboard-copy'" />{{ copiedId() === m.id ? 'Copied' : 'Copy terms' }}
+                  </button>
+                  <button matIconButton type="button" class="ho" (click)="addToHandoff(m)" [disabled]="isOnHandoff(m)"
+                    [matTooltip]="isOnHandoff(m) ? 'On the hand-off list' : 'Add to hand-off list'" [attr.aria-label]="(isOnHandoff(m) ? 'On the hand-off list: ' : 'Add to hand-off list: ') + m.title">
+                    <mat-icon [svgIcon]="isOnHandoff(m) ? 'check' : 'list-plus'" />
+                  </button>
                 </span>
               </div>
               @if (store.openRow() === m.id) {
@@ -121,7 +141,25 @@
           </button>
         }
       }
-      <p class="trust"><mat-icon svgIcon="info" aria-hidden="true" />Figures from the idea warehouse, blotter, RFQ log and EQD master. Signals are rules on data, not AI. Not a recommendation; check suitability before you call.</p>
+      @if (store.hiddenByLimits().length) {
+        <section class="hidden-limits" aria-labelledby="hl-h">
+          <button type="button" class="hl-head" id="hl-h" (click)="store.showHidden.set(!store.showHidden())" [attr.aria-expanded]="store.showHidden()">
+            <mat-icon svgIcon="eye" aria-hidden="true" />
+            Hidden by limits ({{ store.hiddenByLimits().length }})
+            <mat-icon class="chev" svgIcon="chevron-down" aria-hidden="true" />
+          </button>
+          @if (store.showHidden()) {
+            <p class="hl-sub">These pass your filters but are over a limit, so they are not ranked. Offering one needs a desk override; ask the desk first.</p>
+            <ul class="hl-list">
+              @for (m of store.hiddenByLimits(); track m.id) {
+                <li><span class="idea-title">{{ m.title }}</span> <span class="muted">Coupon {{ m.terms.couponPct }}% · KI {{ m.terms.kiPct }}%</span><span class="hl-why">{{ m.limitReason }}</span></li>
+              }
+            </ul>
+          }
+        </section>
+      }
+      <p class="trust"><mat-icon svgIcon="info" aria-hidden="true" />Figures from the idea warehouse, blotter, RFQ log and EQD master. Signals are rules on data, not AI. Internal use only. Not a recommendation; the owning RM checks suitability before any conversation.</p>
+      <eli-feedback class="feedback" topic="Ideas results" />
     }
   </section>
 </div>

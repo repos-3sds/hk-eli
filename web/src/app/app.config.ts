@@ -1,3 +1,4 @@
+import { callerInterceptor } from './core/session/caller.interceptor';
 import { ApplicationConfig, provideBrowserGlobalErrorListeners, provideZonelessChangeDetection } from '@angular/core';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { provideRouter, withComponentInputBinding, withInMemoryScrolling } from '@angular/router';
@@ -15,7 +16,7 @@ export function createAppConfig(config: AppConfig): ApplicationConfig {
       provideBrowserGlobalErrorListeners(),
       provideZonelessChangeDetection(),
       provideRouter(routes, withComponentInputBinding(), withInMemoryScrolling({ scrollPositionRestoration: 'top' })),
-      provideHttpClient(withFetch(), withInterceptors([traceInterceptor])),
+      provideHttpClient(withFetch(), withInterceptors([traceInterceptor, callerInterceptor])),
       { provide: APP_CONFIG, useValue: config },
       provideTodayData(),
       provideChatData(),

@@ -6,6 +6,7 @@ import {
   BookScope,
   ClientContext,
   EvidenceRow,
+  Freshness,
   MomentStrip,
   MorningBrief,
   QuoteRequestReceipt,
@@ -29,6 +30,10 @@ export class GatewayTodayDataSource extends TodayDataSource {
 
   private get<T>(path: string, params?: HttpParams): Observable<T> {
     return this.http.get<T>(this.url(path), { params }).pipe(timeout(this.config.requestTimeoutMs));
+  }
+
+  getFreshness(): Observable<Freshness> {
+    return this.get('/freshness');
   }
 
   getMomentStrip(scope: BookScope): Observable<MomentStrip> {

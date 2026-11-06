@@ -1,0 +1,98 @@
+<div class="head">
+  <h2 mat-dialog-title class="title">Hand-off list</h2>
+  <button matIconButton type="button" mat-dialog-close aria-label="Close hand-off list"><mat-icon svgIcon="x" /></button>
+</div>
+<div class="tabs" role="tablist" aria-label="Hand-off">
+  <button type="button" role="tab" class="tab" [attr.aria-selected]="store.tab() === 'draft'" (click)="store.tab.set('draft')">To hand off <span class="count">{{ store.count() }}</span></button>
+  <button type="button" role="tab" class="tab" [attr.aria-selected]="store.tab() === 'sent'" (click)="store.tab.set('sent')">Handed off <span class="count">{{ store.records().length }}</span></button>
+</div>
+
+<mat-dialog-content class="body">
+  @if (store.tab() === 'draft') {
+    @if (store.count() === 0) {
+      <div class="empty">
+        <mat-icon svgIcon="list-plus" aria-hidden="true" />
+        <p class="empty-title">Nothing on the list yet</p>
+        <p class="empty-text">Add clients from Today, or ideas from Ideas. The list is grouped by owner RM, then copied to Teams or downloaded.</p>
+      </div>
+    } @else {
+    @if (store.saveError(); as err) {
+      <p class="save-error" role="alert">{{ err }}</p>
+    }
+      <p class="sub">Grouped by who gets it. Nothing is sent from here: copy it to Teams or download the CSV, then mark it handed off so outcomes can be linked.</p>
+      @for (g of store.byOwner(); track g.owner) {
+        <section class="group" [attr.aria-label]="'For ' + g.owner">
+          <h3 class="owner"><mat-icon svgIcon="users" aria-hidden="true" />For {{ g.owner }} <span class="muted">· {{ g.items.length }}</span></h3>
+          <ul class="items">
+            @for (i of g.items; track i.id) {
+              <li class="item">
+                <div class="item-text">
+                  <span class="client">{{ i.clientName ?? 'No client named' }}</span>
+                  <span class="reason">{{ i.reason }} · from {{ i.from }}</span>
+                  @if (i.idea; as idea) {
+                    <span class="idea">{{ idea.title }} · {{ idea.terms }} <span class="muted">· priced {{ idea.pricedAt | date: 'HH:mm' : '+0800' }} HKT</span></span>
+                  }
+                </div>
+                <button matIconButton type="button" class="remove" [attr.aria-label]="'Remove ' + (i.clientName ?? 'item')" matTooltip="Remove" (click)="store.remove(i.id)"><mat-icon svgIcon="trash" /></button>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+    }
+  } @else {
+    @let c = store.conversion();
+    <section class="conv" aria-labelledby="conv-h">
+      <h3 id="conv-h" class="conv-h">Linked conversion</h3>
+      <div class="conv-figs">
+        <div class="fig"><span class="big">{{ c.pct === null ? '–' : c.pct + '%' }}</span><span class="lbl">with a hand-off<br />{{ c.linked }} of {{ c.decided }} traded</span></div>
+        <div class="fig"><span class="big muted-big">{{ c.noHandoffPct }}%</span><span class="lbl">comparable clients<br />with no hand-off</span></div>
+        <div class="fig"><span class="big muted-big">{{ c.open }}</span><span class="lbl">windows still open<br />{{ c.declined }} desk declined</span></div>
+      </div>
+      <p class="conv-note">Linked, not caused: same client, inside {{ window }} business days, related underlying. Open windows and desk declines are left out of the rate.</p>
+    </section>
+
+    @for (r of store.records(); track r.id) {
+      <section class="record" [attr.aria-label]="'Hand-off sent ' + (r.sentAt | date: 'd MMM')">
+        <h3 class="rec-h">{{ r.sentAt | date: 'EEE d MMM, HH:mm' : '+0800' }} <span class="muted">· {{ r.sentBy }}, {{ r.role }} · window to {{ r.windowEnds | date: 'd MMM' }}</span></h3>
+        <ul class="items">
+          @for (i of r.items; track i.id) {
+            @let o = r.outcomes[i.id];
+            <li class="item">
+              <div class="item-text">
+                <span class="client">{{ i.clientName ?? 'No client named' }} <span class="muted">· {{ i.ownerRm }}, {{ i.branch }}</span></span>
+                <span class="reason">{{ i.reason }}@if (i.idea) { · {{ i.idea.title }} }</span>
+                @if (declining()?.itemId === i.id) {
+                  <form class="decline" (submit)="$event.preventDefault(); saveDecline()">
+                    <label class="eli-visually-hidden" [for]="'why-' + i.id">Why did the desk decline?</label>
+                    <input [id]="'why-' + i.id" class="why" placeholder="Why, e.g. over the NVDA limit" [ngModel]="declineWhy()" (ngModelChange)="declineWhy.set($event)" name="why" />
+                    <button matButton="filled" type="submit">Record</button>
+                    <button matButton type="button" (click)="declining.set(null)">Cancel</button>
+                  </form>
+                }
+              </div>
+              <span class="status" [attr.data-status]="o.status">
+                <mat-icon [svgIcon]="statusIcon(o.status)" aria-hidden="true" />
+                <span>{{ store.statusLabel(o.status) }}@if (o.note) {<span class="note">{{ o.note }}</span>}</span>
+              </span>
+              @if (o.status === 'sent' && declining()?.itemId !== i.id) {
+                <button matButton type="button" class="dec-btn" (click)="startDecline(r.id, i.id)">Desk declined</button>
+              }
+            </li>
+          }
+        </ul>
+      </section>
+    }
+  }
+</mat-dialog-content>
+
+@if (store.tab() === 'draft' && store.count() > 0) {
+  <mat-dialog-actions class="actions">
+    <button matButton="outlined" type="button" (click)="copyForTeams()"><mat-icon svgIcon="clipboard-copy" />Copy for Teams</button>
+    <button matButton="outlined" type="button" (click)="downloadCsv()"><mat-icon svgIcon="download" />Download CSV</button>
+    <span class="grow"></span>
+    <button matButton="filled" type="button" (click)="markSent()" matTooltip="Starts the {{ window }}-business-day window for linking trades">Mark as handed off</button>
+  </mat-dialog-actions>
+}
+<eli-feedback class="fb" topic="Hand-off list" />
+<p class="label">Internal use only. Not a recommendation; the owning RM checks suitability.</p>

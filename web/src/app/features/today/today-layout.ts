@@ -58,7 +58,7 @@ export class TodayLayout {
     ),
     { initialValue: this.router.url },
   );
-  protected readonly onBrief = computed(() => /^\/rm\/today\/?(\?|#|$)/.test(this.url()));
+  protected readonly onBrief = computed(() => /^\/today\/?(\?|#|$)/.test(this.url()));
 
   constructor() {
     // The landing view starts calm with the panel closed; views about one client (ideas) open it.

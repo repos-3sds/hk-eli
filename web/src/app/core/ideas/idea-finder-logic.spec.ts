@@ -1,6 +1,6 @@
 import { FIXTURE_CLIENTS } from '../data/today.fixture';
 import { NO_FILTERS } from './idea-finder.models';
-import { ALL_TICKERS, checkSignal, couponLine, filterBlockers, passesFilters, rankIdeas, readIntent, solveCoupon } from './idea-finder-logic';
+import { ALL_TICKERS, checkSignal, limitCheck, couponLine, filterBlockers, passesFilters, rankIdeas, readIntent, solveCoupon } from './idea-finder-logic';
 import { WAREHOUSE } from './idea-warehouse.fixture';
 
 const chan = FIXTURE_CLIENTS.find((c) => c.id === 'c-4821')!;
@@ -55,6 +55,32 @@ describe('Idea Finder logic', () => {
     const over = (m: (typeof matches)[number]) => m.effect!.toPct > m.effect!.limitPct;
     const firstOver = matches.findIndex(over);
     expect(firstOver === -1 || matches.slice(firstOver).every(over)).toBe(true);
+  });
+});
+
+describe('limit rule (D1)', () => {
+  it('without a client, checks the bank book: a name within half a point of its limit is hidden', () => {
+    const { matches, hiddenByLimits } = rankIdeas(WAREHOUSE, { filters: NO_FILTERS, signalIds: ['top-coupon'] }, null, '2026-11-04T09:00:00+08:00');
+    expect(hiddenByLimits.map((m) => m.id).sort()).toEqual(['w-04', 'w-14']);
+    expect(hiddenByLimits[0].limitReason).toContain('NVDA is 24.63% of the bank');
+    expect(matches.some((m) => m.underlyings.includes('NVDA'))).toBe(false);
+    expect(matches.every((m) => m.limitState !== 'red')).toBe(true);
+  });
+
+  it('with a client: amber at 85% of the limit ranks lower with a reason, red is hidden', () => {
+    expect(limitCheck({ underlyings: ['AMD'] }, { underlying: 'AMD', fromPct: 10, toPct: 18, limitPct: 25 })).toEqual({ state: 'green', reason: null });
+    const amber = limitCheck({ underlyings: ['AMD'] }, { underlying: 'AMD', fromPct: 20, toPct: 22, limitPct: 25 });
+    expect(amber.state).toBe('amber');
+    expect(amber.reason).toContain('close to the 25% limit');
+    expect(limitCheck({ underlyings: ['AMD'] }, { underlying: 'AMD', fromPct: 24, toPct: 26.5, limitPct: 25 }).state).toBe('red');
+  });
+
+  it('puts every green idea before any amber one', () => {
+    const { matches, hiddenByLimits } = rankIdeas(WAREHOUSE, { filters: NO_FILTERS, signalIds: ['headroom', 'top-coupon'] }, chan, '2026-11-04T09:00:00+08:00');
+    const firstAmber = matches.findIndex((m) => m.limitState === 'amber');
+    expect(firstAmber === -1 || matches.slice(firstAmber).every((m) => m.limitState === 'amber')).toBe(true);
+    expect(hiddenByLimits.every((m) => m.effect!.toPct > m.effect!.limitPct)).toBe(true);
+    expect(matches.length + hiddenByLimits.length).toBe(WAREHOUSE.length);
   });
 });
 

@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { ChatDataSource } from '../../core/chat/chat-data-source';
 import { ChatAnswer } from '../../core/chat/chat.models';
+import { FeedbackStore } from '../../core/feedback/feedback.store';
 import { FIXTURE_CLIENTS } from '../../core/data/today.fixture';
 
 export type TurnStatus = 'pending' | 'done' | 'error' | 'stopped';
@@ -28,7 +29,7 @@ export interface PastConversation {
   readonly turns: readonly ChatTurn[];
 }
 
-/** What the RM sees while an answer is being put together, step by step. */
+/** What the user sees while an answer is being put together, step by step. */
 export const ANSWER_STAGES = ['Finding the client and the question', 'Reading the blotter, fixings and RFQ log', 'Writing the answer'] as const;
 const STAGE_DELAYS_MS = [350, 900];
 
@@ -39,6 +40,7 @@ const STAGE_DELAYS_MS = [350, 900];
 @Injectable({ providedIn: 'root' })
 export class ChatStore {
   private readonly data = inject(ChatDataSource);
+  private readonly feedback = inject(FeedbackStore);
   private counter = 0;
   private readonly running = new Map<string, { sub: Subscription; timers: ReturnType<typeof setTimeout>[] }>();
 
@@ -82,6 +84,16 @@ export class ChatStore {
 
   rate(turnId: string, feedback: Feedback): void {
     this.patch(turnId, { feedback });
+    // Chat answers count in the weekly feedback summary too (R40), one rating per question.
+    const turn = this.turns().find((t) => t.id === turnId);
+    if (turn) {
+      const topic = `Chat answer: ${turn.question.length > 60 ? turn.question.slice(0, 57) + '…' : turn.question}`;
+      if (feedback) {
+        this.feedback.rate(topic, feedback);
+      } else {
+        this.feedback.clear(topic);
+      }
+    }
   }
 
   /** Files the current conversation under History and starts an empty one. */
@@ -126,7 +138,7 @@ export class ChatStore {
       },
       error: () => {
         this.finish(turnId);
-        this.patch(turnId, { status: 'error', error: 'The answer did not come back in time. Nothing was sent to the client.' });
+        this.patch(turnId, { status: 'error', error: 'The answer did not come back in time. Nothing was sent anywhere.' });
       },
     });
   }

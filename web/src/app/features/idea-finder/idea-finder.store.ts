@@ -1,5 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
+import { ROLLOVER_POCKETS, RolloverPocket } from '../../core/data/business.fixture';
 import { FIXTURE_CLIENTS } from '../../core/data/today.fixture';
 import { IdeaFinderDataSource } from '../../core/ideas/idea-finder-data-source';
 import { FilterBlocker, IdeaFilters, NO_FILTERS, ReadIntent } from '../../core/ideas/idea-finder.models';
@@ -20,6 +21,9 @@ export class IdeaFinderStore {
   readonly picked = signal<readonly string[]>(STARTER_PACKS.find((p) => p.id === 'yield')!.signalIds);
   readonly showAll = signal(false);
   readonly openRow = signal<string | null>(null);
+  readonly showHidden = signal(false);
+  /** A rollover pocket the user came from on Today, shown as context above the results. */
+  readonly pocket = signal<RolloverPocket | null>(null);
 
   readonly results = rxResource({
     params: () => ({ filters: this.filters(), signalIds: this.picked() }),
@@ -45,6 +49,7 @@ export class IdeaFinderStore {
   readonly canSavePack = computed(() => this.picked().length > 0 && !this.activePackId() && !this.activeMyPackId());
   readonly atMax = computed(() => this.picked().length >= MAX_SIGNALS);
   readonly topMatches = computed(() => (this.results.hasValue() ? this.results.value().matches.slice(0, this.showAll() ? undefined : 5) : []));
+  readonly hiddenByLimits = computed(() => (this.results.hasValue() ? this.results.value().hiddenByLimits : []));
   readonly hiddenCount = computed(() => (this.results.hasValue() ? Math.max(0, this.results.value().matches.length - 5) : 0));
   readonly clientSignalsWithoutClient = computed(
     () => !this.client() && this.picked().some((id) => IDEA_SIGNALS.find((s) => s.id === id)?.needsClient),
@@ -95,6 +100,10 @@ export class IdeaFinderStore {
 
   toggleSignal(id: string): void {
     this.picked.update((list) => (list.includes(id) ? list.filter((x) => x !== id) : list.length >= MAX_SIGNALS ? list : [...list, id]));
+  }
+
+  setPocket(pocketId: string | null): void {
+    this.pocket.set(ROLLOVER_POCKETS.find((p) => p.id === pocketId) ?? null);
   }
 
   setClient(clientId: string | null): void {
