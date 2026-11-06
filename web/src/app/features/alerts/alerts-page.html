@@ -48,6 +48,38 @@
         <p class="sub">No instant alerts in quiet hours; they wait for the digest. The digest goes out after the overnight refresh and morning pricing.</p>
       }
     </section>
+
+    <section class="card" aria-labelledby="reports-h">
+      <h3 id="reports-h" class="card-h">Scheduled reports <span class="active-n">{{ schedules.active() }} active</span>
+        <span class="grow"></span>
+        <button matButton="outlined" type="button" (click)="schedule.open()"><mat-icon svgIcon="calendar-plus" />New schedule</button>
+      </h3>
+      @for (s of schedules.schedules(); track s.id) {
+        <article class="report" [class.off]="s.paused" [attr.aria-label]="templateLabel(s.template)">
+          <div class="rp-head">
+            <span class="rp-name">{{ templateLabel(s.template) }}</span>
+            @if (s.paused) { <span class="rp-state">Paused</span> }
+            <span class="grow"></span>
+            <button type="button" class="icon" [attr.aria-label]="(s.paused ? 'Resume ' : 'Pause ') + templateLabel(s.template)" [matTooltip]="s.paused ? 'Resume' : 'Pause'" (click)="schedules.togglePause(s.id)">
+              <mat-icon [svgIcon]="s.paused ? 'play' : 'pause'" />
+            </button>
+            <button type="button" class="icon" [attr.aria-label]="'Delete ' + templateLabel(s.template)" matTooltip="Delete" (click)="removeSchedule(s)"><mat-icon svgIcon="trash" /></button>
+          </div>
+          <p class="rp-sum">{{ describe(s) }}</p>
+          @if (s.runs.length) {
+            <ul class="runs" aria-label="Run history">
+              @for (r of s.runs; track r.at) {
+                <li [class]="r.status"><span class="dot" aria-hidden="true"></span>{{ runWhen(r.at) }} · {{ r.status === 'sent' ? 'Sent ' : r.status === 'held' ? 'Held: ' : 'Failed: ' }}{{ r.note }}</li>
+              }
+            </ul>
+          } @else {
+            <p class="sub">No runs yet. First run {{ nextLabel(s) }}.</p>
+          }
+        </article>
+      } @empty {
+        <p class="sub">No scheduled reports. Schedule the Business Update or a list from here or from the Update tab.</p>
+      }
+    </section>
   </div>
 
   <section class="card rules" aria-labelledby="rules-h">

@@ -14,6 +14,7 @@ import { SessionService } from '../../core/session/session.service';
 import { longDate } from '../../core/time/business-calendar';
 import { buildBusinessUpdate, updateAsText } from '../../core/update/business-update';
 import { ScopeSwitch } from '../today/shared/scope-switch';
+import { ScheduleOpener } from '../schedules/schedule-opener';
 
 /**
  * The Business Update tab (R2): the monthly Tableau routine as 14 sections, sliced by the same scope switch
@@ -34,6 +35,7 @@ export class BusinessUpdatePage {
   private readonly host = inject(ElementRef<HTMLElement>);
   protected readonly freshness = inject(FreshnessStore);
   private readonly session = inject(SessionService);
+  protected readonly schedule = inject(ScheduleOpener);
   /** The TSM opens here (R41): point straight at team performance and the lists. */
   protected readonly isTsm = computed(() => this.session.role() === 'tsm');
 

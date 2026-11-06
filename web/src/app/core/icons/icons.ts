@@ -3,6 +3,9 @@ import { MatIconRegistry } from '@angular/material/icon';
 import { DomSanitizer } from '@angular/platform-browser';
 import {
   ArrowDown,
+  Pause,
+  Play,
+  CalendarPlus,
   Database,
   Clock,
   TriangleAlert,
@@ -108,6 +111,9 @@ export const LUCIDE_ICONS: Record<string, string> = {
   plus: Plus,
   'refresh-cw': RefreshCw,
   send: Send,
+  'pause': Pause,
+  'play': Play,
+  'calendar-plus': CalendarPlus,
   sparkles: Sparkles,
   'external-link': SquareArrowOutUpRight,
   sun: Sun,

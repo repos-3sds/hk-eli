@@ -14,6 +14,7 @@
   </div>
   <div class="tools">
     <eli-scope-switch [value]="scope()" (changed)="scope.set($event)" />
+    <button matButton="outlined" type="button" (click)="schedule.open({ template: 'business-update', scope: scope() })"><mat-icon svgIcon="calendar-plus" />Schedule</button>
     <button matButton="outlined" type="button" (click)="copyAll()"><mat-icon svgIcon="clipboard-copy" />Copy update</button>
   </div>
 </header>

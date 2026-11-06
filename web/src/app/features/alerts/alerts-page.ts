@@ -13,6 +13,12 @@ import { FeedbackButtons } from '../../core/feedback/feedback-buttons';
 import { HandoffOpener } from '../../core/handoff/handoff-opener';
 import { HandoffStore } from '../../core/handoff/handoff.store';
 import { ROLE_SHORT, SessionService } from '../../core/session/session.service';
+import { APP_CONFIG } from '../../core/config/app-config';
+import { Schedule, describe, nextRun, nextRunLabel, templateLabel } from '../../core/schedules/schedules';
+import { SchedulesStore } from '../../core/schedules/schedules.store';
+import { BusinessClock } from '../../core/time/business-clock';
+import { shortDate } from '../../core/time/business-calendar';
+import { ScheduleOpener } from '../schedules/schedule-opener';
 
 /**
  * Alerts and schedules as a working design preview: plain-word rules ("fire when 2 of these 4 are true"),
@@ -34,6 +40,26 @@ export class AlertsPage {
   private readonly snack = inject(MatSnackBar);
   protected readonly roleShort = ROLE_SHORT;
   protected readonly met = metCount;
+  protected readonly schedules = inject(SchedulesStore);
+  protected readonly schedule = inject(ScheduleOpener);
+  private readonly clock = inject(BusinessClock);
+  private readonly config = inject(APP_CONFIG);
+  protected readonly describe = describe;
+  protected readonly templateLabel = templateLabel;
+
+  protected runWhen(iso: string): string {
+    return `${shortDate(iso.slice(0, 10))} ${iso.slice(11, 16)}`;
+  }
+
+  protected nextLabel(s: Schedule): string {
+    const now = new Intl.DateTimeFormat('en-GB', { timeZone: this.config.timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date());
+    return nextRunLabel(nextRun(s, this.clock.today(), now, this.clock.holidays), s.time);
+  }
+
+  protected removeSchedule(s: Schedule): void {
+    this.schedules.remove(s.id);
+    this.snack.open(`${templateLabel(s.template)} schedule deleted.`, 'Undo', { duration: 5000 }).onAction().subscribe(() => this.schedules.schedules.update((l) => [s, ...l]));
+  }
 
   protected range(n: number): number[] {
     return Array.from({ length: n }, (_, i) => i + 1);
