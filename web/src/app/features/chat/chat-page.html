@@ -32,8 +32,8 @@
     @if (store.turns().length === 0) {
       <section class="empty" aria-labelledby="chat-hello">
         <p class="hello"><mat-icon svgIcon="sun" aria-hidden="true" />{{ greeting() }}</p>
-        <h2 id="chat-hello" class="title">Ask anything about the HK ELI business</h2>
-        <p class="lede">Ask in plain words, about the whole business, a branch, an underlying or one client. Figures come from last night's blotter, fixings and RFQ log and this morning's prices; only the wording is written by AI.</p>
+        <h2 id="chat-hello" class="title">Ask about the HK ELI business</h2>
+        <p class="lede">Ask in plain words about {{ canAnswer }}. Figures come from last night's blotter, fixings and RFQ log and this morning's prices; only the wording is written by AI. It doesn't forecast prices or give advice.</p>
         <div class="starters">
           @for (s of starters(); track s.title) {
             <button type="button" class="starter" (click)="ask(s.question)">
@@ -50,7 +50,7 @@
           <li class="turn">
             <div class="q-row">
               <div class="q-meta">
-                @if (t.clientId) {<span class="q-client"><mat-icon svgIcon="user-round" aria-hidden="true" />{{ clientName(t.clientId) }}</span>}
+                @if (t.clientId) {<span class="q-client"><mat-icon svgIcon="user-round" aria-hidden="true" />About {{ clientName(t.clientId) }}</span>}
                 <span>{{ time(t.askedAt) }}</span>
               </div>
               <p class="question">{{ t.question }}</p>

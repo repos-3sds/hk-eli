@@ -101,7 +101,9 @@ import { UsdPipe } from '../today/shared/format';
           }
         }
       }
-      <eli-trust-line [businessDate]="answer().businessDate" [sources]="answer().sources" reference="chat" />
+      @if (!answer().fallback) {
+        <eli-trust-line [businessDate]="answer().businessDate" [sources]="answer().sources" reference="chat" />
+      }
       @if (answer().parity; as p) {
         <p class="parity" [class]="p.status" [attr.role]="p.status === 'mismatch' ? 'note' : null">
           <mat-icon [svgIcon]="p.status === 'match' ? 'check' : p.status === 'mismatch' ? 'triangle-alert' : 'info'" aria-hidden="true" />

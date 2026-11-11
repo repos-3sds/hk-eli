@@ -4625,38 +4625,39 @@
      "title": "Top ideas for USD 420k, indicative",
      "ideas": [
       {
-       "id": "i-amd-meta-6m",
-       "title": "AMD / META worst-of · 6M",
+       "id": "w-16",
+       "title": "BABA / TCEHY worst-of · 6M",
        "tenor": "6M",
-       "couponPct": 17.4,
-       "kiPct": 65,
-       "concentration": "AMD 14.0% → 19.2%"
+       "couponPct": 20.1,
+       "kiPct": 60,
+       "concentration": "BABA 0.0% → 12.7%"
       },
       {
-       "id": "i-msft-googl-6m",
+       "id": "w-09",
+       "title": "TSM / AVGO worst-of · 6M",
+       "tenor": "6M",
+       "couponPct": 18.2,
+       "kiPct": 64,
+       "concentration": "TSM 0.0% → 12.7%"
+      },
+      {
+       "id": "w-02",
        "title": "MSFT / GOOGL worst-of · 6M",
        "tenor": "6M",
        "couponPct": 14.1,
        "kiPct": 70,
-       "concentration": "MSFT 0.0% → 5.8%"
-      },
-      {
-       "id": "i-avgo-3m",
-       "title": "AVGO · 3M",
-       "tenor": "3M",
-       "couponPct": 15.8,
-       "kiPct": 68,
-       "concentration": "AVGO 4.2% → 9.9%"
+       "concentration": "MSFT 0.0% → 12.7%"
       }
      ]
     },
     {
      "kind": "bullets",
-     "title": "Points for the owning RM",
+     "title": "Facts for the owning RM",
      "items": [
-      "Friday’s ELI pays back USD 420k plus the final coupon. Ask what he wants the cash to do next.",
-      "He liked AMD last time. Idea #1 keeps AMD and adds META at the same 6M tenor, without more NVDA.",
-      "If he asks for NVDA again, explain it is close to his 25% limit and offer #2 to spread risk."
+      "USD 420k matures in the next 10 business days.",
+      "Largest holding is NVDA at 23.1% of the client's ELI book, against a 25% limit.",
+      "Idea 1 meets 3 of 5 rollover signals. The evidence for each is under Why in Ideas.",
+      "8 ideas are hidden because they would take a holding over its limit."
      ]
     }
    ],
@@ -5034,29 +5035,39 @@
      "title": "Top ideas for USD 260k, indicative",
      "ideas": [
       {
-       "id": "i-g1-c-1093",
-       "title": "MSFT / GOOGL worst-of · 6M",
-       "tenor": "6M",
-       "couponPct": 13.2,
-       "kiPct": 70,
-       "concentration": "MSFT 0.0% → 6.5%"
+       "id": "w-14",
+       "title": "NVDA · 3M",
+       "tenor": "3M",
+       "couponPct": 21.3,
+       "kiPct": 65,
+       "concentration": "NVDA 0.0% → 10.1%"
       },
       {
-       "id": "i-g2-c-1093",
-       "title": "AAPL / META worst-of · 3M",
-       "tenor": "3M",
-       "couponPct": 11.6,
-       "kiPct": 72,
-       "concentration": "AAPL 0.0% → 6.5%"
+       "id": "w-04",
+       "title": "NVDA / AMD worst-of · 6M",
+       "tenor": "6M",
+       "couponPct": 19.6,
+       "kiPct": 62,
+       "concentration": "NVDA 0.0% → 5.1%"
+      },
+      {
+       "id": "w-01",
+       "title": "AMD / META worst-of · 6M",
+       "tenor": "6M",
+       "couponPct": 17.4,
+       "kiPct": 65,
+       "concentration": "META 12.2% → 16.0%"
       }
      ]
     },
     {
      "kind": "bullets",
-     "title": "Points for the owning RM",
+     "title": "Facts for the owning RM",
      "items": [
-      "Open with what changed for Wong since the last trade.",
-      "Walk through idea #1 first; it adds no concentration."
+      "USD 260k matures in the next 10 business days.",
+      "Largest holding is TSLA at 18.4% of the client's ELI book, against a 25% limit.",
+      "Idea 1 meets 4 of 5 rollover signals. The evidence for each is under Why in Ideas.",
+      "1 idea is hidden because it would take a holding over its limit."
      ]
     }
    ],
@@ -5082,6 +5093,326 @@
    "id": "a-10",
    "fallback": true,
    "businessDate": "2026-11-02",
+   "sources": [],
+   "blocks": [
+    {
+     "kind": "text",
+     "text": "I can't answer that one yet. I can answer maturities this week or next, knock-outs near the barrier, rollover by branch, concentration against limits, what was quoted and not traded, and a brief or trade history for one client."
+    }
+   ],
+   "followUps": [
+    "Where is rollover below 80% this month?",
+    "Who matures this week?",
+    "Which knock-outs are close to the barrier?"
+   ]
+  }
+ },
+ "chat Which branch has the worst rollover and why?": {
+  "method": "POST",
+  "path": "/chat/answers",
+  "body": {
+   "text": "Which branch has the worst rollover and why?",
+   "clientId": null
+  },
+  "response": {
+   "id": "a-11",
+   "fallback": false,
+   "businessDate": "2026-11-02",
+   "sources": [
+    "EQD master",
+    "trades this month"
+   ],
+   "blocks": [
+    {
+     "kind": "text",
+     "text": "Rollover is above the 80% baseline overall, but 3 pockets are below it this month. Kwun Tong · Treasures is lowest at 45% (5 of 11 rolled), with USD 3.80m maturing in the next 10 business days."
+    },
+    {
+     "kind": "table",
+     "title": "Rollover this month, by branch and segment",
+     "columns": [
+      "Branch",
+      "Segment",
+      "Rolled",
+      "Rollover",
+      "Maturing next 10 days"
+     ],
+     "numeric": [
+      2,
+      3,
+      4
+     ],
+     "rows": [
+      [
+       "Kwun Tong",
+       "Treasures",
+       "5 of 11",
+       "45%",
+       "USD 3.80m"
+      ],
+      [
+       "Mong Kok",
+       "Treasures",
+       "6 of 9",
+       "67%",
+       "USD 1.45m"
+      ],
+      [
+       "Tsim Sha Tsui",
+       "Treasures",
+       "6 of 8",
+       "75%",
+       "USD 980k"
+      ],
+      [
+       "Digibank",
+       "Self-directed",
+       "41 of 50",
+       "82%",
+       "USD 1.25m"
+      ],
+      [
+       "Central",
+       "Treasures",
+       "24 of 28",
+       "86%",
+       "USD 1.90m"
+      ],
+      [
+       "Central",
+       "Treasure Private",
+       "30 of 34",
+       "88%",
+       "USD 2.60m"
+      ]
+     ],
+     "flagged": [
+      0,
+      1,
+      2
+     ]
+    }
+   ],
+   "followUps": [
+    "Who matures this week?",
+    "What was quoted and not traded this week?"
+   ],
+   "parity": {
+    "view": "ELI rollover by branch (demo name)",
+    "status": "mismatch",
+    "detail": "Kwun Tong · Treasures: 5 of 11 here, 5 of 12 in Tableau. Tableau also counts a maturity that settled after the close; this answer uses the blotter at close."
+   }
+  }
+ },
+ "chat What will NVDA do next week? Should Chan buy?": {
+  "method": "POST",
+  "path": "/chat/answers",
+  "body": {
+   "text": "What will NVDA do next week? Should Chan buy?",
+   "clientId": "c-4821"
+  },
+  "response": {
+   "id": "a-12",
+   "fallback": true,
+   "businessDate": "2026-11-02",
+   "sources": [],
+   "blocks": [
+    {
+     "kind": "text",
+     "text": "HK ELI Chatbot doesn't forecast prices or say what a client should buy or sell. Suitability and advice stay with the owning RM. Here is what the data can show instead."
+    }
+   ],
+   "followUps": [
+    "Brief me on Chan",
+    "What did Chan trade in the last 90 days?",
+    "Top concentrations against limit"
+   ]
+  }
+ },
+ "chat Should we recommend AMD?": {
+  "method": "POST",
+  "path": "/chat/answers",
+  "body": {
+   "text": "Should we recommend AMD?",
+   "clientId": null
+  },
+  "response": {
+   "id": "a-13",
+   "fallback": true,
+   "businessDate": "2026-11-02",
+   "sources": [],
+   "blocks": [
+    {
+     "kind": "text",
+     "text": "HK ELI Chatbot doesn't forecast prices or say what a client should buy or sell. Suitability and advice stay with the owning RM. Here is what the data can show instead."
+    }
+   ],
+   "followUps": [
+    "Top concentrations against limit",
+    "What was quoted and not traded this week?",
+    "Who matures this week?"
+   ]
+  }
+ },
+ "chat Which names are closest to the limit?": {
+  "method": "POST",
+  "path": "/chat/answers",
+  "body": {
+   "text": "Which names are closest to the limit?",
+   "clientId": null
+  },
+  "response": {
+   "id": "a-14",
+   "fallback": false,
+   "businessDate": "2026-11-02",
+   "sources": [
+    "EQD master",
+    "outstanding stock",
+    "name limits"
+   ],
+   "blocks": [
+    {
+     "kind": "text",
+     "text": "NVDA is 24.63% of all ELI outstanding against a 25% limit, the closest name to its limit. Ideas that add NVDA rank lower and say why."
+    },
+    {
+     "kind": "concentration",
+     "title": "Share of all ELI outstanding, by underlying",
+     "lines": [
+      {
+       "underlying": "NVDA",
+       "sharePct": 24.63,
+       "limitPct": 25
+      },
+      {
+       "underlying": "TSLA",
+       "sharePct": 17.9,
+       "limitPct": 25
+      },
+      {
+       "underlying": "AMD",
+       "sharePct": 14.2,
+       "limitPct": 25
+      },
+      {
+       "underlying": "META",
+       "sharePct": 9.6,
+       "limitPct": 25
+      },
+      {
+       "underlying": "0700.HK",
+       "sharePct": 7.1,
+       "limitPct": 25
+      }
+     ]
+    }
+   ],
+   "followUps": [
+    "What was quoted and not traded this week?",
+    "Who matures this week?"
+   ],
+   "parity": {
+    "view": "ELI concentration against limits (demo name)",
+    "status": "match"
+   }
+  }
+ },
+ "chat What did not trade this week?": {
+  "method": "POST",
+  "path": "/chat/answers",
+  "body": {
+   "text": "What did not trade this week?",
+   "clientId": "c-4821"
+  },
+  "response": {
+   "id": "a-15",
+   "fallback": false,
+   "businessDate": "2026-11-02",
+   "sources": [
+    "RFQ log",
+    "digibank quote log",
+    "blotter"
+   ],
+   "blocks": [
+    {
+     "kind": "text",
+     "text": "NVDA had the most quotes that did not trade this week (183). On digibank, 477 quotes led to 71 trades; most asked for short tenors with high coupons."
+    },
+    {
+     "kind": "table",
+     "title": "Quoted and not traded this week",
+     "columns": [
+      "Underlying",
+      "Channel",
+      "Quotes",
+      "Traded",
+      "Most asked for"
+     ],
+     "numeric": [
+      2,
+      3
+     ],
+     "rows": [
+      [
+       "NVDA",
+       "Digibank",
+       "214",
+       "31",
+       "3M · KI 70% · coupon 20%+"
+      ],
+      [
+       "TSLA",
+       "Digibank",
+       "166",
+       "22",
+       "3M · KI 65% · coupon 24%+"
+      ],
+      [
+       "0700.HK",
+       "Digibank",
+       "97",
+       "18",
+       "6M · KI 75% · coupon 12%"
+      ],
+      [
+       "AMD",
+       "Advisory",
+       "58",
+       "9",
+       "6M · KI 65% · coupon 17%"
+      ],
+      [
+       "META",
+       "Advisory",
+       "41",
+       "12",
+       "6M · KI 68% · coupon 15%"
+      ]
+     ]
+    }
+   ],
+   "followUps": [
+    "Top concentrations against limit",
+    "Where is rollover below 80% this month?"
+   ],
+   "parity": {
+    "view": "RFQ funnel (demo name)",
+    "status": "unchecked",
+    "detail": "Not checked yet: waiting for the list of Tableau views."
+   }
+  }
+ },
+ "chat Give me an overview of Wong": {
+  "method": "POST",
+  "path": "/chat/answers",
+  "body": {
+   "text": "Give me an overview of Wong",
+   "clientId": null
+  },
+  "response": {
+   "id": "a-16",
+   "fallback": false,
+   "businessDate": "2026-11-02",
    "sources": [
     "EQD master",
     "outstanding stock",
@@ -5090,14 +5421,101 @@
    "blocks": [
     {
      "kind": "text",
-     "text": "I can only answer a few kinds of question in this demo: a brief on one client, maturities this week or next, and knock-outs close to the barrier. Try one of these."
+     "text": "Wong Ka Lok is in today's brief: TSLA closed 1.8% below the knock-out barrier yesterday. If it knocks out on Wednesday, USD 260k returns early with coupon paid. 4 of 6 signals agree."
+    },
+    {
+     "kind": "facts",
+     "items": [
+      {
+       "label": "ELI outstanding",
+       "value": "USD 2.31m"
+      },
+      {
+       "label": "Maturing in 10 days",
+       "value": "USD 260k"
+      },
+      {
+       "label": "Last trade",
+       "value": "Wed 23 Sep"
+      },
+      {
+       "label": "Risk profile",
+       "value": "5"
+      }
+     ]
+    },
+    {
+     "kind": "concentration",
+     "title": "Concentration, share of ELI outstanding",
+     "lines": [
+      {
+       "underlying": "TSLA",
+       "sharePct": 18.4,
+       "limitPct": 25
+      },
+      {
+       "underlying": "META",
+       "sharePct": 12.2,
+       "limitPct": 25
+      },
+      {
+       "underlying": "AAPL",
+       "sharePct": 7.5,
+       "limitPct": 25
+      }
+     ]
+    },
+    {
+     "kind": "ideas",
+     "clientId": "c-1093",
+     "title": "Top ideas for USD 260k, indicative",
+     "ideas": [
+      {
+       "id": "w-14",
+       "title": "NVDA · 3M",
+       "tenor": "3M",
+       "couponPct": 21.3,
+       "kiPct": 65,
+       "concentration": "NVDA 0.0% → 10.1%"
+      },
+      {
+       "id": "w-04",
+       "title": "NVDA / AMD worst-of · 6M",
+       "tenor": "6M",
+       "couponPct": 19.6,
+       "kiPct": 62,
+       "concentration": "NVDA 0.0% → 5.1%"
+      },
+      {
+       "id": "w-01",
+       "title": "AMD / META worst-of · 6M",
+       "tenor": "6M",
+       "couponPct": 17.4,
+       "kiPct": 65,
+       "concentration": "META 12.2% → 16.0%"
+      }
+     ]
+    },
+    {
+     "kind": "bullets",
+     "title": "Facts for the owning RM",
+     "items": [
+      "USD 260k matures in the next 10 business days.",
+      "Largest holding is TSLA at 18.4% of the client's ELI book, against a 25% limit.",
+      "Idea 1 meets 4 of 5 rollover signals. The evidence for each is under Why in Ideas.",
+      "1 idea is hidden because it would take a holding over its limit."
+     ]
     }
    ],
    "followUps": [
+    "What did Wong trade in the last 90 days?",
     "Who matures this week?",
-    "Which knock-outs are close to the barrier?",
-    "Brief me on Chan"
-   ]
+    "Which knock-outs are close to the barrier?"
+   ],
+   "parity": {
+    "view": "Client ELI holdings (demo name)",
+    "status": "match"
+   }
   }
  },
  "read 6M, 15% coupon, KI 65 or lower, no more NVDA for Chan, rollover": {

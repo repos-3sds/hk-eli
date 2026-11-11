@@ -13,7 +13,15 @@
 .note { margin: 0; color: var(--eli-text-muted); font-size: var(--eli-font-size-s); &.error { color: var(--eli-status-negative); } }
 
 .body { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: var(--eli-space-7); flex: 1; min-height: 0; }
-@container widget (max-width: 1000px) { .body { grid-template-columns: 1fr; overflow: auto; } .picker { overflow: visible; } }
+// Narrow widget: stack packs above results and let the whole tab scroll, header included, so the ranked ideas are not
+// squeezed under the header. The packs keep their own short scroll, and nothing shares a row (which made the two
+// overlap at 1024px).
+@container widget (max-width: 1000px) {
+  :host { overflow: auto; }
+  .body { flex: none; grid-template-columns: minmax(0, 1fr); grid-auto-rows: max-content; align-content: start; overflow: visible; }
+  .picker { max-height: 240px; overflow: auto; }
+  .results { overflow: visible; padding-right: 0; }
+}
 
 
 .results { display: flex; flex-direction: column; gap: var(--eli-space-5); min-height: 0; overflow: auto; padding-right: var(--eli-space-2); }
@@ -35,7 +43,13 @@
 .count { color: var(--eli-text-strong); font-weight: var(--eli-weight-semibold); }
 .effect eli-concentration-bar { max-width: 240px; }
 .muted { color: var(--eli-text-muted); font-size: var(--eli-font-size-s); }
-.acts { display: flex; align-items: center; gap: var(--eli-space-3); .chev { width: 14px; height: 14px; } }
+.acts { display: flex; align-items: center; gap: var(--eli-space-3); .chev { width: 14px; height: 14px; } button { white-space: nowrap; } }
+// Mid and narrow widgets: the concentration readout moves to its own line under the terms, so no column is squeezed
+// and Copy terms never wraps.
+@container widget (max-width: 1360px) {
+  .row { grid-template-columns: 24px minmax(0, 1fr) auto auto; row-gap: var(--eli-space-3); }
+  .effect { grid-column: 2 / -1; grid-row: 2; }
+}
 .evidence { width: calc(100% - 2 * var(--eli-space-7)); margin: 0 var(--eli-space-7) var(--eli-space-6); border-collapse: collapse; font-size: var(--eli-font-size-s);
   th { padding: var(--eli-space-3) var(--eli-space-4); color: var(--eli-text-muted); font-weight: var(--eli-weight-semibold); text-align: left; border-bottom: 1px solid var(--eli-border); }
   td { padding: var(--eli-space-4); color: var(--eli-text-primary); border-bottom: 1px solid var(--eli-border); }

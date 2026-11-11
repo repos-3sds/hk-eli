@@ -65175,49 +65175,121 @@ var PARITY_RESULTS = {
 
 // src/app/core/chat/mock-chat-data-source.ts
 var import_rxjs6 = __toESM(require_cjs());
+
+// src/app/core/ideas/idea-finder-data-source.ts
+var IdeaFinderDataSource = class {
+};
+
+// src/app/core/ideas/idea-finder.models.ts
+var NO_FILTERS = { tenorMonths: null, minCouponPct: null, maxKiPct: null, include: [], exclude: [], clientId: null };
+var AMBER_SHARE_OF_LIMIT = 0.85;
+
+// src/app/core/ideas/idea-warehouse.fixture.ts
+var WAREHOUSE = [
+  { id: "w-01", underlyings: ["AMD", "META"], tenorMonths: 6, couponPct: 17.4, kiPct: 65, strikePct: 90, couponChangeBp: 60, volRank: 74, rmTrades: 5, rfqs5d: 14, fillRatePct: 64, correlation: 0.62, earningsInDays: 58 },
+  { id: "w-02", underlyings: ["MSFT", "GOOGL"], tenorMonths: 6, couponPct: 14.1, kiPct: 70, strikePct: 92, couponChangeBp: 20, volRank: 48, rmTrades: 3, rfqs5d: 9, fillRatePct: 71, correlation: 0.78, earningsInDays: 61 },
+  { id: "w-03", underlyings: ["AVGO"], tenorMonths: 3, couponPct: 15.8, kiPct: 68, strikePct: 90, couponChangeBp: 85, volRank: 81, rmTrades: 2, rfqs5d: 11, fillRatePct: 55, correlation: 1, earningsInDays: 26 },
+  { id: "w-04", underlyings: ["NVDA", "AMD"], tenorMonths: 6, couponPct: 19.6, kiPct: 62, strikePct: 88, couponChangeBp: 40, volRank: 79, rmTrades: 7, rfqs5d: 22, fillRatePct: 68, correlation: 0.81, earningsInDays: 14 },
+  { id: "w-05", underlyings: ["AAPL"], tenorMonths: 3, couponPct: 9.8, kiPct: 75, strikePct: 95, couponChangeBp: -10, volRank: 32, rmTrades: 4, rfqs5d: 8, fillRatePct: 77, correlation: 1, earningsInDays: 63 },
+  { id: "w-06", underlyings: ["TSLA"], tenorMonths: 3, couponPct: 24.5, kiPct: 60, strikePct: 85, couponChangeBp: 120, volRank: 90, rmTrades: 6, rfqs5d: 19, fillRatePct: 49, correlation: 1, earningsInDays: 40 },
+  { id: "w-07", underlyings: ["AMZN", "MSFT"], tenorMonths: 9, couponPct: 13.2, kiPct: 65, strikePct: 90, couponChangeBp: 15, volRank: 44, rmTrades: 2, rfqs5d: 6, fillRatePct: 73, correlation: 0.74, earningsInDays: 70 },
+  { id: "w-08", underlyings: ["META"], tenorMonths: 6, couponPct: 16, kiPct: 63, strikePct: 90, couponChangeBp: 55, volRank: 69, rmTrades: 3, rfqs5d: 12, fillRatePct: 61, correlation: 1, earningsInDays: 57 },
+  { id: "w-09", underlyings: ["TSM", "AVGO"], tenorMonths: 6, couponPct: 18.2, kiPct: 64, strikePct: 88, couponChangeBp: 70, volRank: 77, rmTrades: 4, rfqs5d: 15, fillRatePct: 58, correlation: 0.71, earningsInDays: 49 },
+  { id: "w-10", underlyings: ["GOOGL"], tenorMonths: 9, couponPct: 11.4, kiPct: 65, strikePct: 92, couponChangeBp: 5, volRank: 38, rmTrades: 1, rfqs5d: 4, fillRatePct: 80, correlation: 1, earningsInDays: 66 },
+  { id: "w-11", underlyings: ["NFLX", "META"], tenorMonths: 6, couponPct: 17.9, kiPct: 62, strikePct: 88, couponChangeBp: 35, volRank: 72, rmTrades: 2, rfqs5d: 7, fillRatePct: 52, correlation: 0.55, earningsInDays: 72 },
+  { id: "w-12", underlyings: ["JPM", "GS"], tenorMonths: 6, couponPct: 12.6, kiPct: 70, strikePct: 93, couponChangeBp: 25, volRank: 41, rmTrades: 3, rfqs5d: 10, fillRatePct: 75, correlation: 0.86, earningsInDays: 52 },
+  { id: "w-13", underlyings: ["AAPL", "MSFT"], tenorMonths: 12, couponPct: 10.9, kiPct: 60, strikePct: 90, couponChangeBp: 0, volRank: 30, rmTrades: 2, rfqs5d: 5, fillRatePct: 82, correlation: 0.8, earningsInDays: 63 },
+  { id: "w-14", underlyings: ["NVDA"], tenorMonths: 3, couponPct: 21.3, kiPct: 65, strikePct: 88, couponChangeBp: 90, volRank: 85, rmTrades: 8, rfqs5d: 25, fillRatePct: 70, correlation: 1, earningsInDays: 14 },
+  { id: "w-15", underlyings: ["AMD"], tenorMonths: 6, couponPct: 18.8, kiPct: 62, strikePct: 88, couponChangeBp: 45, volRank: 76, rmTrades: 4, rfqs5d: 13, fillRatePct: 60, correlation: 1, earningsInDays: 79 },
+  { id: "w-16", underlyings: ["BABA", "TCEHY"], tenorMonths: 6, couponPct: 20.1, kiPct: 60, strikePct: 85, couponChangeBp: -30, volRank: 66, rmTrades: 1, rfqs5d: 3, fillRatePct: 38, correlation: 0.69, earningsInDays: 18 }
+];
+var IDEA_SIGNALS = [
+  { id: "top-coupon", group: "coupon", name: "Top-quartile coupon", rule: "Coupon is in the top 25% of today\u2019s warehouse.", why: "The client gets paid well for the risk compared with what else is on offer today.", caveat: "A high coupon usually means more risk, not a bargain.", source: "Idea warehouse, morning pricing", needsClient: false },
+  { id: "coupon-up", group: "coupon", name: "Coupon up this week", rule: "Coupon is at least 0.5 points higher than last week.", why: "A reason to call now: the same idea pays more than it did.", caveat: "It may be higher because volatility rose.", source: "Idea warehouse, week-on-week", needsClient: false },
+  { id: "vol-rich", group: "coupon", name: "Volatility is rich", rule: "Implied volatility is in the top 30% of its one-year range.", why: "Selling volatility pays more when it is high, which lifts the coupon.", caveat: "High volatility can stay high; the knock-in is more likely.", source: "Fixings, implied vol", needsClient: false },
+  { id: "rm-traded", group: "desk", name: "Other RMs traded it", rule: "At least 3 HK RMs traded it this week.", why: "Peers found clients who wanted it; easier to explain.", caveat: "Popular is not the same as suitable for this client.", source: "Blotter, this week", needsClient: false },
+  { id: "rfq-busy", group: "desk", name: "Busy in RFQs", rule: "At least 10 RFQs in the last 5 business days.", why: "The desk is pricing it often, so a live quote comes back fast.", caveat: "Many RFQs can also mean many clients said no.", source: "RFQ log, 5 days", needsClient: false },
+  { id: "fills", group: "desk", name: "Usually trades", rule: "At least 60% of its RFQs traded in the last 30 days.", why: "Clients who see it tend to say yes.", caveat: "Small samples swing; check the RFQ count too.", source: "RFQ log, 30 days", needsClient: false },
+  { id: "deep-ki", group: "protection", name: "Deep knock-in", rule: "Knock-in at 65% of spot or lower.", why: "The stock can fall a third or more before the capital is at risk.", caveat: "Deep knock-ins come with lower coupons.", source: "Idea warehouse, terms", needsClient: false },
+  { id: "correlated", group: "protection", name: "Underlyings move together", rule: "Correlation of 0.7 or more (or a single stock).", why: "In a worst-of, stocks that move together make the worst one less likely to drag.", caveat: "Correlation breaks down in a sell-off.", source: "Fixings, 1-year correlation", needsClient: false },
+  { id: "no-earnings", group: "protection", name: "No earnings in the first month", rule: "No earnings date in the next 20 business days.", why: "Avoids a results-day gap right after the trade.", caveat: "Other news can still move the stock.", source: "Corporate events calendar", needsClient: false },
+  { id: "headroom", group: "client", name: "Stays under the limit", rule: "After the trade, no underlying goes above the client\u2019s 25% limit.", why: "Keeps the book within the concentration policy.", caveat: "Uses ELI outstanding only, not the whole portfolio.", source: "EQD master, outstanding stock", needsClient: true },
+  { id: "familiar", group: "client", name: "Client knows the stock", rule: "The client already holds an ELI on at least one of these underlyings.", why: "Easier conversation; the client follows the name.", caveat: "Familiar can also mean more concentration.", source: "EQD master, outstanding stock", needsClient: true },
+  { id: "not-top", group: "client", name: "Avoids the largest holding", rule: "Does not add to the client\u2019s largest underlying.", why: "Spreads risk instead of piling into one name.", caveat: "The client may want more of what they like.", source: "EQD master, outstanding stock", needsClient: true }
+];
+var STARTER_PACKS = [
+  { id: "rollover", name: "Rollover for a maturing client", blurb: "Fits the book, pays well, peers are trading it.", signalIds: ["headroom", "not-top", "familiar", "top-coupon", "rm-traded"] },
+  { id: "yield", name: "Yield hunter", blurb: "The best coupons, rising this week, and they trade.", signalIds: ["top-coupon", "coupon-up", "vol-rich", "fills"] },
+  { id: "defensive", name: "Sleep at night", blurb: "Deep protection and fewer surprises.", signalIds: ["deep-ki", "correlated", "no-earnings", "fills"] },
+  { id: "desk", name: "What the desk is busy with", blurb: "Popular this week and quick to quote.", signalIds: ["rm-traded", "rfq-busy", "fills", "coupon-up"] },
+  { id: "diversify", name: "Diversify a concentrated book", blurb: "Adds new names without breaking limits.", signalIds: ["headroom", "not-top", "correlated", "deep-ki"] }
+];
+var CONCENTRATION_LIMIT_PCT = 25;
+var DEFAULT_NOTIONAL_USD = 25e4;
+
+// src/app/core/chat/chat-scope.ts
+var CAN_ANSWER = "maturities this week or next, knock-outs near the barrier, rollover by branch, concentration against limits, what was quoted and not traded, and a brief or trade history for one client";
+var FALLBACK_TEXT = `I can't answer that one yet. I can answer ${CAN_ANSWER}.`;
+var DECLINE_TEXT = "HK ELI Chatbot doesn't forecast prices or say what a client should buy or sell. Suitability and advice stay with the owning RM. Here is what the data can show instead.";
+
+// src/app/core/chat/mock-chat-data-source.ts
 var SOURCES = ["EQD master", "outstanding stock", "RFQ log"];
-var FALLBACK_FOLLOW_UPS = ["Who matures this week?", "Which knock-outs are close to the barrier?", "Brief me on Chan"];
+var FALLBACK_FOLLOW_UPS = ["Where is rollover below 80% this month?", "Who matures this week?", "Which knock-outs are close to the barrier?"];
+var CALL_PREP_PACK = "rollover";
+var ADVICE = /\b(should (i|we|he|she|they|the client|\w+) (buy|sell|invest|hold|switch|add|exit|get out)|buy or sell|recommend\w*|forecast|predict\w*|price target|what will \S+(?: \S+)? do|will \S+(?: \S+)? (go up|go down|rise|fall|drop|rally|crash)|is it a good (time|idea)|worth buying|good buy)\b/;
+var HISTORY = /\b(trade|traded|trades|history|rfqs?|last 90)\b/;
+var BRIEF = /\b(prepare|prep|before i call|know about|call with|tell me about|brief me|brief on|summary of|summari[sz]e|overview|update on|status of)\b/;
+var ROLLOVER = /\broll(ed|s|ing)?[ -]?overs?\b/;
+var CONCENTRATION = /concentrat|against limit|limits?\b|exposure|heaviest|book share|closest to (its |the )?limit/;
+var UNMET = /not traded|quoted and not|unmet|demand|did ?n[o']t trade|didn't trade|unconverted|missed quotes|lost quotes/;
+var MATURITY = /matur|expir|falling due|coming due/;
+var KNOCKOUT = /knock|barrier|\bko\b/;
 var MockChatDataSource = class extends ChatDataSource {
   today = inject2(TodayDataSource);
+  ideaFinder = inject2(IdeaFinderDataSource);
   counter = 0;
   ask(question) {
     const text2 = question.text.toLowerCase();
     const named = findClient(text2);
+    const clientId = named ?? question.clientId;
     const id = `a-${++this.counter}`;
-    if (/\b(trade|traded|history|rfqs?|last 90)\b/.test(text2) && (named ?? question.clientId)) {
-      return this.history(id, named ?? question.clientId);
+    if (ADVICE.test(text2)) {
+      return this.decline(id, clientId);
     }
-    if (/\b(prepare|prep|before i call|know about|call with|tell me about|brief me)\b/.test(text2) && (named ?? question.clientId)) {
-      return this.callPrep(id, named ?? question.clientId);
-    }
-    if (/rollover/.test(text2) && /(below|under|ratio|pocket|baseline)/.test(text2)) {
-      return this.rollover(id);
-    }
-    if (/concentrat|against limit|limits?\b/.test(text2)) {
-      return this.concentration(id);
-    }
-    if (/not traded|quoted and not|unmet|demand/.test(text2)) {
+    if (UNMET.test(text2)) {
       return this.unmetDemand(id);
     }
-    if (/matur/.test(text2)) {
+    if (HISTORY.test(text2) && clientId) {
+      return this.history(id, clientId);
+    }
+    if (BRIEF.test(text2) && clientId) {
+      return this.callPrep(id, clientId);
+    }
+    if (ROLLOVER.test(text2)) {
+      return this.rollover(id);
+    }
+    if (CONCENTRATION.test(text2)) {
+      return this.concentration(id);
+    }
+    if (MATURITY.test(text2)) {
       return this.byType(id, "maturity", text2.includes("next week") ? "next" : "this");
     }
-    if (/knock|barrier|\bko\b/.test(text2)) {
+    if (KNOCKOUT.test(text2)) {
       return this.byType(id, "knockout", "window");
     }
     if (named) {
       return this.callPrep(id, named);
     }
     return this.today.getMorningBrief("all").pipe(
-      (0, import_rxjs6.map)((brief) => ({
-        id,
-        fallback: true,
-        businessDate: brief.businessDate,
-        sources: SOURCES,
-        blocks: [{ kind: "text", text: "I can only answer a few kinds of question in this demo: a brief on one client, maturities this week or next, and knock-outs close to the barrier. Try one of these." }],
-        followUps: FALLBACK_FOLLOW_UPS
-      }))
+      (0, import_rxjs6.map)((brief) => ({ id, fallback: true, businessDate: brief.businessDate, sources: [], blocks: [{ kind: "text", text: FALLBACK_TEXT }], followUps: FALLBACK_FOLLOW_UPS }))
     );
+  }
+  /** Forecast or advice: say plainly that the tool does not do that, and offer facts instead. No figures, no sources. */
+  decline(id, clientId) {
+    const client = clientId ? FIXTURE_CLIENTS.find((c) => c.id === clientId) : void 0;
+    const first = client?.name.split(" ")[0];
+    const followUps = first ? [`Brief me on ${first}`, `What did ${first} trade in the last 90 days?`, "Top concentrations against limit"] : ["Top concentrations against limit", "What was quoted and not traded this week?", "Who matures this week?"];
+    return this.today.getMorningBrief("all").pipe((0, import_rxjs6.map)((brief) => ({ id, fallback: true, businessDate: brief.businessDate, sources: [], blocks: [{ kind: "text", text: DECLINE_TEXT }], followUps })));
   }
   businessAnswer(id, blocks, followUps, sources, topic) {
     return this.today.getMorningBrief("all").pipe((0, import_rxjs6.map)((brief) => ({ id, fallback: false, businessDate: brief.businessDate, sources, blocks, followUps, parity: PARITY_RESULTS[topic] })));
@@ -65286,7 +65358,7 @@ var MockChatDataSource = class extends ChatDataSource {
     return (0, import_rxjs6.forkJoin)({
       brief: this.today.getMorningBrief("all"),
       context: this.today.getClientContext(clientId),
-      ideas: this.today.getIdeas(clientId).pipe((0, import_rxjs6.catchError)(() => (0, import_rxjs6.of)(null)))
+      ideas: this.ideaFinder.search({ filters: { ...NO_FILTERS, clientId }, signalIds: STARTER_PACKS.find((p) => p.id === CALL_PREP_PACK).signalIds }).pipe((0, import_rxjs6.catchError)(() => (0, import_rxjs6.of)(null)))
     }).pipe(
       (0, import_rxjs6.map)(({ brief, context, ideas: ideas2 }) => {
         const lead = brief.leads.find((l) => l.clientId === clientId);
@@ -65309,23 +65381,24 @@ var MockChatDataSource = class extends ChatDataSource {
         if (context.concentration.length > 0) {
           blocks.push({ kind: "concentration", title: "Concentration, share of ELI outstanding", lines: context.concentration.map((c) => ({ underlying: c.underlying, sharePct: c.sharePct, limitPct: c.limitPct })) });
         }
-        if (ideas2 && ideas2.ideas.length > 0) {
+        if (ideas2 && ideas2.matches.length > 0) {
           blocks.push({
             kind: "ideas",
             clientId,
-            title: `Top ideas for USD ${Math.round(ideas2.amountUsd / 1e3)}k, indicative`,
-            ideas: ideas2.ideas.slice(0, 3).map((i) => ({
-              id: i.id,
-              title: i.title,
-              tenor: i.tenor,
-              couponPct: i.terms.couponPct,
-              kiPct: i.terms.kiPct,
-              concentration: `${i.concentration.underlying} ${i.concentration.fromPct.toFixed(1)}% \u2192 ${i.concentration.toPct.toFixed(1)}%`
+            title: `Top ideas for USD ${Math.round(ideas2.notionalUsd / 1e3)}k, indicative`,
+            ideas: ideas2.matches.slice(0, 3).map((m) => ({
+              id: m.id,
+              title: m.title,
+              tenor: `${m.tenorMonths}M`,
+              couponPct: m.terms.couponPct,
+              kiPct: m.terms.kiPct,
+              concentration: m.effect ? `${m.effect.underlying} ${m.effect.fromPct.toFixed(1)}% \u2192 ${m.effect.toPct.toFixed(1)}%` : ""
             }))
           });
-          if (ideas2.callPrep.length > 0) {
-            blocks.push({ kind: "bullets", title: "Points for the owning RM", items: ideas2.callPrep });
-          }
+        }
+        const facts = factsForRm(context, ideas2);
+        if (facts.length > 0) {
+          blocks.push({ kind: "bullets", title: "Facts for the owning RM", items: facts });
         }
         return {
           id,
@@ -65409,6 +65482,25 @@ var MockChatDataSource = class extends ChatDataSource {
 MockChatDataSource = __decorateClass([
   Injectable()
 ], MockChatDataSource);
+function factsForRm(context, ideas2) {
+  const out2 = [];
+  if (context.maturingUsd > 0) {
+    out2.push(`${usd(context.maturingUsd)} matures in the next 10 business days.`);
+  }
+  const top = [...context.concentration].sort((a, b) => b.sharePct - a.sharePct)[0];
+  if (top) {
+    out2.push(`Largest holding is ${top.underlying} at ${top.sharePct}% of the client's ELI book, against a ${top.limitPct}% limit.`);
+  }
+  if (ideas2 && ideas2.matches.length > 0) {
+    const m = ideas2.matches[0];
+    out2.push(`Idea 1 meets ${m.met} of ${m.checks.length} rollover signals. The evidence for each is under Why in Ideas.`);
+  }
+  if (ideas2 && ideas2.hiddenByLimits.length > 0) {
+    const n = ideas2.hiddenByLimits.length;
+    out2.push(`${n} ${n === 1 ? "idea is" : "ideas are"} hidden because ${n === 1 ? "it" : "they"} would take a holding over its limit.`);
+  }
+  return out2;
+}
 function findClient(text2) {
   const hit = FIXTURE_CLIENTS.find((c) => {
     const parts = c.name.toLowerCase().split(" ");
@@ -65432,52 +65524,8 @@ function usd(value) {
   return value === 0 ? "USD 0" : `USD ${Math.round(value / 1e3)}k`;
 }
 
-// src/app/core/ideas/idea-finder-data-source.ts
-var IdeaFinderDataSource = class {
-};
-
 // src/app/core/ideas/mock-idea-finder-data-source.ts
 var import_rxjs7 = __toESM(require_cjs());
-
-// src/app/core/ideas/idea-finder.models.ts
-var NO_FILTERS = { tenorMonths: null, minCouponPct: null, maxKiPct: null, include: [], exclude: [], clientId: null };
-var AMBER_SHARE_OF_LIMIT = 0.85;
-
-// src/app/core/ideas/idea-warehouse.fixture.ts
-var WAREHOUSE = [
-  { id: "w-01", underlyings: ["AMD", "META"], tenorMonths: 6, couponPct: 17.4, kiPct: 65, strikePct: 90, couponChangeBp: 60, volRank: 74, rmTrades: 5, rfqs5d: 14, fillRatePct: 64, correlation: 0.62, earningsInDays: 58 },
-  { id: "w-02", underlyings: ["MSFT", "GOOGL"], tenorMonths: 6, couponPct: 14.1, kiPct: 70, strikePct: 92, couponChangeBp: 20, volRank: 48, rmTrades: 3, rfqs5d: 9, fillRatePct: 71, correlation: 0.78, earningsInDays: 61 },
-  { id: "w-03", underlyings: ["AVGO"], tenorMonths: 3, couponPct: 15.8, kiPct: 68, strikePct: 90, couponChangeBp: 85, volRank: 81, rmTrades: 2, rfqs5d: 11, fillRatePct: 55, correlation: 1, earningsInDays: 26 },
-  { id: "w-04", underlyings: ["NVDA", "AMD"], tenorMonths: 6, couponPct: 19.6, kiPct: 62, strikePct: 88, couponChangeBp: 40, volRank: 79, rmTrades: 7, rfqs5d: 22, fillRatePct: 68, correlation: 0.81, earningsInDays: 14 },
-  { id: "w-05", underlyings: ["AAPL"], tenorMonths: 3, couponPct: 9.8, kiPct: 75, strikePct: 95, couponChangeBp: -10, volRank: 32, rmTrades: 4, rfqs5d: 8, fillRatePct: 77, correlation: 1, earningsInDays: 63 },
-  { id: "w-06", underlyings: ["TSLA"], tenorMonths: 3, couponPct: 24.5, kiPct: 60, strikePct: 85, couponChangeBp: 120, volRank: 90, rmTrades: 6, rfqs5d: 19, fillRatePct: 49, correlation: 1, earningsInDays: 40 },
-  { id: "w-07", underlyings: ["AMZN", "MSFT"], tenorMonths: 9, couponPct: 13.2, kiPct: 65, strikePct: 90, couponChangeBp: 15, volRank: 44, rmTrades: 2, rfqs5d: 6, fillRatePct: 73, correlation: 0.74, earningsInDays: 70 },
-  { id: "w-08", underlyings: ["META"], tenorMonths: 6, couponPct: 16, kiPct: 63, strikePct: 90, couponChangeBp: 55, volRank: 69, rmTrades: 3, rfqs5d: 12, fillRatePct: 61, correlation: 1, earningsInDays: 57 },
-  { id: "w-09", underlyings: ["TSM", "AVGO"], tenorMonths: 6, couponPct: 18.2, kiPct: 64, strikePct: 88, couponChangeBp: 70, volRank: 77, rmTrades: 4, rfqs5d: 15, fillRatePct: 58, correlation: 0.71, earningsInDays: 49 },
-  { id: "w-10", underlyings: ["GOOGL"], tenorMonths: 9, couponPct: 11.4, kiPct: 65, strikePct: 92, couponChangeBp: 5, volRank: 38, rmTrades: 1, rfqs5d: 4, fillRatePct: 80, correlation: 1, earningsInDays: 66 },
-  { id: "w-11", underlyings: ["NFLX", "META"], tenorMonths: 6, couponPct: 17.9, kiPct: 62, strikePct: 88, couponChangeBp: 35, volRank: 72, rmTrades: 2, rfqs5d: 7, fillRatePct: 52, correlation: 0.55, earningsInDays: 72 },
-  { id: "w-12", underlyings: ["JPM", "GS"], tenorMonths: 6, couponPct: 12.6, kiPct: 70, strikePct: 93, couponChangeBp: 25, volRank: 41, rmTrades: 3, rfqs5d: 10, fillRatePct: 75, correlation: 0.86, earningsInDays: 52 },
-  { id: "w-13", underlyings: ["AAPL", "MSFT"], tenorMonths: 12, couponPct: 10.9, kiPct: 60, strikePct: 90, couponChangeBp: 0, volRank: 30, rmTrades: 2, rfqs5d: 5, fillRatePct: 82, correlation: 0.8, earningsInDays: 63 },
-  { id: "w-14", underlyings: ["NVDA"], tenorMonths: 3, couponPct: 21.3, kiPct: 65, strikePct: 88, couponChangeBp: 90, volRank: 85, rmTrades: 8, rfqs5d: 25, fillRatePct: 70, correlation: 1, earningsInDays: 14 },
-  { id: "w-15", underlyings: ["AMD"], tenorMonths: 6, couponPct: 18.8, kiPct: 62, strikePct: 88, couponChangeBp: 45, volRank: 76, rmTrades: 4, rfqs5d: 13, fillRatePct: 60, correlation: 1, earningsInDays: 79 },
-  { id: "w-16", underlyings: ["BABA", "TCEHY"], tenorMonths: 6, couponPct: 20.1, kiPct: 60, strikePct: 85, couponChangeBp: -30, volRank: 66, rmTrades: 1, rfqs5d: 3, fillRatePct: 38, correlation: 0.69, earningsInDays: 18 }
-];
-var IDEA_SIGNALS = [
-  { id: "top-coupon", group: "coupon", name: "Top-quartile coupon", rule: "Coupon is in the top 25% of today\u2019s warehouse.", why: "The client gets paid well for the risk compared with what else is on offer today.", caveat: "A high coupon usually means more risk, not a bargain.", source: "Idea warehouse, morning pricing", needsClient: false },
-  { id: "coupon-up", group: "coupon", name: "Coupon up this week", rule: "Coupon is at least 0.5 points higher than last week.", why: "A reason to call now: the same idea pays more than it did.", caveat: "It may be higher because volatility rose.", source: "Idea warehouse, week-on-week", needsClient: false },
-  { id: "vol-rich", group: "coupon", name: "Volatility is rich", rule: "Implied volatility is in the top 30% of its one-year range.", why: "Selling volatility pays more when it is high, which lifts the coupon.", caveat: "High volatility can stay high; the knock-in is more likely.", source: "Fixings, implied vol", needsClient: false },
-  { id: "rm-traded", group: "desk", name: "Other RMs traded it", rule: "At least 3 HK RMs traded it this week.", why: "Peers found clients who wanted it; easier to explain.", caveat: "Popular is not the same as suitable for this client.", source: "Blotter, this week", needsClient: false },
-  { id: "rfq-busy", group: "desk", name: "Busy in RFQs", rule: "At least 10 RFQs in the last 5 business days.", why: "The desk is pricing it often, so a live quote comes back fast.", caveat: "Many RFQs can also mean many clients said no.", source: "RFQ log, 5 days", needsClient: false },
-  { id: "fills", group: "desk", name: "Usually trades", rule: "At least 60% of its RFQs traded in the last 30 days.", why: "Clients who see it tend to say yes.", caveat: "Small samples swing; check the RFQ count too.", source: "RFQ log, 30 days", needsClient: false },
-  { id: "deep-ki", group: "protection", name: "Deep knock-in", rule: "Knock-in at 65% of spot or lower.", why: "The stock can fall a third or more before the capital is at risk.", caveat: "Deep knock-ins come with lower coupons.", source: "Idea warehouse, terms", needsClient: false },
-  { id: "correlated", group: "protection", name: "Underlyings move together", rule: "Correlation of 0.7 or more (or a single stock).", why: "In a worst-of, stocks that move together make the worst one less likely to drag.", caveat: "Correlation breaks down in a sell-off.", source: "Fixings, 1-year correlation", needsClient: false },
-  { id: "no-earnings", group: "protection", name: "No earnings in the first month", rule: "No earnings date in the next 20 business days.", why: "Avoids a results-day gap right after the trade.", caveat: "Other news can still move the stock.", source: "Corporate events calendar", needsClient: false },
-  { id: "headroom", group: "client", name: "Stays under the limit", rule: "After the trade, no underlying goes above the client\u2019s 25% limit.", why: "Keeps the book within the concentration policy.", caveat: "Uses ELI outstanding only, not the whole portfolio.", source: "EQD master, outstanding stock", needsClient: true },
-  { id: "familiar", group: "client", name: "Client knows the stock", rule: "The client already holds an ELI on at least one of these underlyings.", why: "Easier conversation; the client follows the name.", caveat: "Familiar can also mean more concentration.", source: "EQD master, outstanding stock", needsClient: true },
-  { id: "not-top", group: "client", name: "Avoids the largest holding", rule: "Does not add to the client\u2019s largest underlying.", why: "Spreads risk instead of piling into one name.", caveat: "The client may want more of what they like.", source: "EQD master, outstanding stock", needsClient: true }
-];
-var CONCENTRATION_LIMIT_PCT = 25;
-var DEFAULT_NOTIONAL_USD = 25e4;
 
 // src/app/core/ideas/idea-finder-logic.ts
 var STOP_WORDS = /* @__PURE__ */ new Set(["a", "an", "the", "for", "and", "or", "with", "to", "of", "in", "on", "me", "my", "some", "ideas", "idea", "eli", "elis", "find", "show", "want", "wants", "client", "please", "around", "about", "at", "least", "than", "is", "he", "she", "they", "that", "who"]);
@@ -65810,7 +65858,13 @@ async function main() {
     { text: "Top concentrations against limit", clientId: null },
     { text: "What was quoted and not traded this week?", clientId: null },
     { text: "Prepare me for a call", clientId: "c-1093" },
-    { text: "What is the weather?", clientId: null }
+    { text: "What is the weather?", clientId: null },
+    { text: "Which branch has the worst rollover and why?", clientId: null },
+    { text: "What will NVDA do next week? Should Chan buy?", clientId: "c-4821" },
+    { text: "Should we recommend AMD?", clientId: null },
+    { text: "Which names are closest to the limit?", clientId: null },
+    { text: "What did not trade this week?", clientId: "c-4821" },
+    { text: "Give me an overview of Wong", clientId: null }
   ];
   for (const q of questions) {
     await add(`chat ${q.text}`, "POST", "/chat/answers", q, () => (0, import_rxjs8.firstValueFrom)(chat.ask(q)));

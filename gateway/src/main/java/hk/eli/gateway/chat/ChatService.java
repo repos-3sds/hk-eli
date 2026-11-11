@@ -3,11 +3,16 @@ package hk.eli.gateway.chat;
 import static hk.eli.gateway.time.BusinessCalendar.shortDate;
 
 import hk.eli.gateway.chat.ChatModels.*;
+import hk.eli.gateway.config.EliProperties;
+import hk.eli.gateway.ideas.IdeaLogic;
+import hk.eli.gateway.ideas.IdeaModels.IdeaFilters;
+import hk.eli.gateway.ideas.IdeaModels.IdeaQuery;
 import hk.eli.gateway.ideas.Num;
 import hk.eli.gateway.scope.Scope;
 import hk.eli.gateway.seed.Seed;
 import hk.eli.gateway.seed.SeedData;
 import hk.eli.gateway.today.TodayModels;
+import hk.eli.gateway.time.BusinessClock;
 import hk.eli.gateway.today.TodayService;
 import hk.eli.gateway.web.NotFoundException;
 import java.time.LocalDate;
@@ -23,32 +28,60 @@ import org.springframework.stereotype.Service;
 @Service
 public class ChatService {
   static final List<String> SOURCES = List.of("EQD master", "outstanding stock", "RFQ log");
-  static final List<String> FALLBACK_FOLLOW_UPS = List.of("Who matures this week?", "Which knock-outs are close to the barrier?", "Brief me on Chan");
+  static final List<String> FALLBACK_FOLLOW_UPS = List.of("Where is rollover below 80% this month?", "Who matures this week?", "Which knock-outs are close to the barrier?");
+
+  // Same sentences as web/src/app/core/chat/chat-scope.ts.
+  static final String CAN_ANSWER =
+      "maturities this week or next, knock-outs near the barrier, rollover by branch, concentration against limits, what was quoted and not traded, and a brief or trade history for one client";
+  static final String FALLBACK_TEXT = "I can't answer that one yet. I can answer " + CAN_ANSWER + ".";
+  static final String DECLINE_TEXT =
+      "HK ELI Chatbot doesn't forecast prices or say what a client should buy or sell. Suitability and advice stay with the owning RM. Here is what the data can show instead.";
+  /** The pack the Ideas tab opens a client's ideas with; chat ranks with the same one so both say the same. */
+  static final String CALL_PREP_PACK = "rollover";
+
+  // Question intents, word for word the same as mock-chat-data-source.ts. Order matters: first match wins.
+  static final Pattern ADVICE = Pattern.compile(
+      "\\b(should (i|we|he|she|they|the client|\\w+) (buy|sell|invest|hold|switch|add|exit|get out)|buy or sell|recommend\\w*|forecast|predict\\w*|price target|what will \\S+(?: \\S+)? do|will \\S+(?: \\S+)? (go up|go down|rise|fall|drop|rally|crash)|is it a good (time|idea)|worth buying|good buy)\\b");
+  static final Pattern UNMET = Pattern.compile("not traded|quoted and not|unmet|demand|did ?n[o']t trade|didn't trade|unconverted|missed quotes|lost quotes");
+  static final Pattern HISTORY = Pattern.compile("\\b(trade|traded|trades|history|rfqs?|last 90)\\b");
+  static final Pattern BRIEF = Pattern.compile("\\b(prepare|prep|before i call|know about|call with|tell me about|brief me|brief on|summary of|summari[sz]e|overview|update on|status of)\\b");
+  static final Pattern ROLLOVER = Pattern.compile("\\broll(ed|s|ing)?[ -]?overs?\\b");
+  static final Pattern CONCENTRATION = Pattern.compile("concentrat|against limit|limits?\\b|exposure|heaviest|book share|closest to (its |the )?limit");
+  static final Pattern MATURITY = Pattern.compile("matur|expir|falling due|coming due");
+  static final Pattern KNOCKOUT = Pattern.compile("knock|barrier|\\bko\\b");
 
   private final TodayService today;
   private final SeedData seed;
+  private final BusinessClock clock;
+  private final EliProperties props;
+  private final IdeaLogic ideaLogic;
   private final AtomicInteger counter = new AtomicInteger();
 
-  public ChatService(TodayService today, SeedData seed) {
+  public ChatService(TodayService today, SeedData seed, BusinessClock clock, EliProperties props) {
     this.today = today;
     this.seed = seed;
+    this.clock = clock;
+    this.props = props;
+    this.ideaLogic = new IdeaLogic(seed.ideas(), seed.business());
   }
 
   private static boolean has(String regex, String text) {
     return Pattern.compile(regex).matcher(text).find();
   }
 
-  /** Which kind of question this is, for the audit and the wording prompt. */
-  public static String intentOf(String text, boolean hasClient) {
+  /** Which kind of question this is, for the audit and the wording prompt. Same order as the web mock. */
+  public static String intentOf(String text, boolean hasClient, boolean named) {
     String t = text.toLowerCase(Locale.ROOT);
-    if (has("\\b(trade|traded|history|rfqs?|last 90)\\b", t) && hasClient) return "history";
-    if (has("\\b(prepare|prep|before i call|know about|call with|tell me about|brief me)\\b", t) && hasClient) return "call-prep";
-    if (t.contains("rollover") && has("(below|under|ratio|pocket|baseline)", t)) return "rollover";
-    if (has("concentrat|against limit|limits?\\b", t)) return "concentration";
-    if (has("not traded|quoted and not|unmet|demand", t)) return "unmet";
-    if (t.contains("matur")) return "maturities";
-    if (has("knock|barrier|\\bko\\b", t)) return "knockouts";
-    if (hasClient) return "call-prep";
+    if (ADVICE.matcher(t).find()) return "advice";
+    if (UNMET.matcher(t).find()) return "unmet";
+    if (HISTORY.matcher(t).find() && hasClient) return "history";
+    if (BRIEF.matcher(t).find() && hasClient) return "call-prep";
+    if (ROLLOVER.matcher(t).find()) return "rollover";
+    if (CONCENTRATION.matcher(t).find()) return "concentration";
+    if (MATURITY.matcher(t).find()) return "maturities";
+    if (KNOCKOUT.matcher(t).find()) return "knockouts";
+    // Only a named client, not the picked one, makes a question with no other intent into a brief.
+    if (named) return "call-prep";
     return "fallback";
   }
 
@@ -57,13 +90,10 @@ public class ChatService {
     String named = findClient(text);
     String clientId = named != null ? named : q.clientId();
     String id = "a-" + counter.incrementAndGet();
-    // Only a named client, not the picked one, makes a question with no other intent into a brief.
-    String intent = intentOf(text, clientId != null);
-    if (intent.equals("call-prep") && named == null && !has("\\b(prepare|prep|before i call|know about|call with|tell me about|brief me)\\b", text)) {
-      intent = "fallback";
-    }
+    String intent = intentOf(text, clientId != null, named != null);
     String date = today.brief(Scope.ALL).businessDate();
     return switch (intent) {
+      case "advice" -> decline(id, clientId, date);
       case "history" -> history(id, clientId, date);
       case "call-prep" -> callPrep(id, clientId, date);
       case "rollover" -> rollover(id, date);
@@ -71,10 +101,18 @@ public class ChatService {
       case "unmet" -> unmet(id, date);
       case "maturities" -> byType(id, "maturity", text.contains("next week") ? "next" : "this", date);
       case "knockouts" -> byType(id, "knockout", "window", date);
-      default -> new ChatAnswer(id, List.of(new TextBlock(
-          "I can only answer a few kinds of question in this demo: a brief on one client, maturities this week or next, and knock-outs close to the barrier. Try one of these.")),
-          FALLBACK_FOLLOW_UPS, date, SOURCES, true, null);
+      default -> new ChatAnswer(id, List.of(new TextBlock(FALLBACK_TEXT)), FALLBACK_FOLLOW_UPS, date, List.of(), true, null);
     };
+  }
+
+  /** Forecast or advice: say plainly the tool does not do that, and offer facts instead. No figures, no sources. */
+  private ChatAnswer decline(String id, String clientId, String date) {
+    var client = clientId == null ? Optional.<Seed.Client>empty() : seed.client(clientId);
+    List<String> followUps = client.map(c -> {
+      String first = c.name().split(" ")[0];
+      return List.of("Brief me on " + first, "What did " + first + " trade in the last 90 days?", "Top concentrations against limit");
+    }).orElse(List.of("Top concentrations against limit", "What was quoted and not traded this week?", "Who matures this week?"));
+    return new ChatAnswer(id, List.of(new TextBlock(DECLINE_TEXT)), followUps, date, List.of(), true, null);
   }
 
   private ChatAnswer business(String id, List<Block> blocks, List<String> followUps, List<String> sources, String topic, String date) {
@@ -132,12 +170,7 @@ public class ChatService {
   private ChatAnswer callPrep(String id, String clientId, String date) {
     var brief = today.brief(Scope.ALL);
     var ctx = today.context(clientId);
-    TodayModels.RolloverIdeas ideas;
-    try {
-      ideas = today.ideas(clientId);
-    } catch (NotFoundException e) {
-      ideas = null;
-    }
+    IdeaLogic.Ranked ideas = rankForClient(clientId);
     var lead = brief.leads().stream().filter(l -> l.clientId().equals(clientId)).findFirst().orElse(null);
     String first = ctx.name().split(" ")[0];
     List<Block> blocks = new ArrayList<>();
@@ -152,16 +185,46 @@ public class ChatService {
     if (!ctx.concentration().isEmpty()) {
       blocks.add(new ConcentrationBlock("Concentration, share of ELI outstanding", ctx.concentration().stream().map(c -> new Line(c.underlying(), c.sharePct(), c.limitPct())).toList()));
     }
-    if (ideas != null && !ideas.ideas().isEmpty()) {
-      blocks.add(new IdeasBlock(clientId, "Top ideas for USD " + Math.round(ideas.amountUsd() / 1000.0) + "k, indicative",
-          ideas.ideas().stream().limit(3).map(i -> new IdeaLine(i.id(), i.title(), i.tenor(), i.terms().couponPct(), i.terms().kiPct(),
-              i.concentration().underlying() + " " + Num.fixed(i.concentration().fromPct(), 1) + "% → " + Num.fixed(i.concentration().toPct(), 1) + "%")).toList()));
-      if (!ideas.callPrep().isEmpty()) {
-        blocks.add(new BulletsBlock("Points for the owning RM", ideas.callPrep()));
-      }
+    if (ideas != null && !ideas.matches().isEmpty()) {
+      blocks.add(new IdeasBlock(clientId, "Top ideas for USD " + Math.round(ideas.notionalUsd() / 1000.0) + "k, indicative",
+          ideas.matches().stream().limit(3).map(m -> new IdeaLine(m.id(), m.title(), m.tenorMonths() + "M", m.terms().couponPct(), m.terms().kiPct(),
+              m.effect() == null ? "" : m.effect().underlying() + " " + Num.fixed(m.effect().fromPct(), 1) + "% → " + Num.fixed(m.effect().toPct(), 1) + "%")).toList()));
+    }
+    List<String> facts = factsForRm(ctx, ideas);
+    if (!facts.isEmpty()) {
+      blocks.add(new BulletsBlock("Facts for the owning RM", facts));
     }
     return new ChatAnswer(id, blocks, List.of("What did " + first + " trade in the last 90 days?", "Who matures this week?", "Which knock-outs are close to the barrier?"),
         date, SOURCES, false, TableauParity.RESULTS.get("client"));
+  }
+
+  /** The same ranking the Ideas tab shows for this client: the rollover pack, no other filters. */
+  private IdeaLogic.Ranked rankForClient(String clientId) {
+    var client = seed.client(clientId).orElse(null);
+    if (client == null) return null;
+    var pack = seed.ideas().starterPacks().stream().filter(p -> p.id().equals(CALL_PREP_PACK)).findFirst().orElseThrow();
+    var warehouse = "empty".equals(props.scenario()) ? List.<Seed.WarehouseIdea>of() : seed.ideas().warehouse();
+    var query = new IdeaQuery(new IdeaFilters(null, null, null, List.of(), List.of(), clientId), pack.signalIds());
+    return ideaLogic.rank(warehouse, query, client, clock.at(clock.today(), "09:05"));
+  }
+
+  /** Plain facts for the owning RM. Facts only: nothing here tells anyone what to sell. Same sentences as the web mock. */
+  static List<String> factsForRm(TodayModels.ClientContext ctx, IdeaLogic.Ranked ideas) {
+    List<String> out = new ArrayList<>();
+    if (ctx.maturingUsd() > 0) {
+      out.add(usd(ctx.maturingUsd()) + " matures in the next 10 business days.");
+    }
+    ctx.concentration().stream().max(Comparator.comparingDouble(TodayModels.ConcentrationLine::sharePct)).ifPresent(top ->
+        out.add("Largest holding is " + top.underlying() + " at " + Num.plain(top.sharePct()) + "% of the client's ELI book, against a " + Num.plain(top.limitPct()) + "% limit."));
+    if (ideas != null && !ideas.matches().isEmpty()) {
+      var m = ideas.matches().get(0);
+      out.add("Idea 1 meets " + m.met() + " of " + m.checks().size() + " rollover signals. The evidence for each is under Why in Ideas.");
+    }
+    if (ideas != null && !ideas.hiddenByLimits().isEmpty()) {
+      int n = ideas.hiddenByLimits().size();
+      out.add(n + " " + (n == 1 ? "idea is" : "ideas are") + " hidden because " + (n == 1 ? "it" : "they") + " would take a holding over its limit.");
+    }
+    return out;
   }
 
   private static String status(String s) {

@@ -74,6 +74,12 @@ async function main(): Promise<void> {
     { text: 'What was quoted and not traded this week?', clientId: null },
     { text: 'Prepare me for a call', clientId: 'c-1093' },
     { text: 'What is the weather?', clientId: null },
+    { text: 'Which branch has the worst rollover and why?', clientId: null },
+    { text: 'What will NVDA do next week? Should Chan buy?', clientId: 'c-4821' },
+    { text: 'Should we recommend AMD?', clientId: null },
+    { text: 'Which names are closest to the limit?', clientId: null },
+    { text: 'What did not trade this week?', clientId: 'c-4821' },
+    { text: 'Give me an overview of Wong', clientId: null },
   ];
   for (const q of questions) {
     await add(`chat ${q.text}`, 'POST', '/chat/answers', q, () => firstValueFrom(chat.ask(q)));
