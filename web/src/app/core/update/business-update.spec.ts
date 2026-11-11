@@ -4,10 +4,10 @@ import { BUSINESS_ROWS, buildBusinessUpdate, rowsInScope, updateAsText } from '.
 const conv = { decided: 4, linked: 3, pct: 75, noHandoffPct: 18, open: 2, declined: 1 };
 
 describe('Business Update', () => {
-  it('has 14 sections, each with a summary, a source and a question for Chat', () => {
+  it('has 15 sections, each with a summary, a source and a question for Chat', () => {
     const u = buildBusinessUpdate('all', '3 Nov 2026', conv);
-    expect(u.sections).toHaveLength(14);
-    expect(new Set(u.sections.map((s) => s.id)).size).toBe(14);
+    expect(u.sections).toHaveLength(15);
+    expect(new Set(u.sections.map((s) => s.id)).size).toBe(15);
     expect(u.sections.every((s) => s.summary && s.source && s.ask)).toBe(true);
     expect(u.sections.every((s) => !s.wholeBusinessOnly)).toBe(true);
   });
@@ -49,7 +49,18 @@ describe('Business Update', () => {
   it('copies as text with the data date and the internal-only label', () => {
     const text = updateAsText(buildBusinessUpdate('all', '3 Nov 2026', conv));
     expect(text.startsWith('HK ELI Business Update · Whole business · data as of close 3 Nov 2026')).toBe(true);
-    expect(text).toContain('14. Tenor and knock-in mix');
+    expect(text).toContain('15. Tenor and knock-in mix');
     expect(text.trim().endsWith('Internal use only.')).toBe(true);
+  });
+
+  it('lists the team by RM, lowest rollover first, adding up to the branch rows', () => {
+    const team = buildBusinessUpdate('all', '3 Nov 2026', conv).sections.find((s) => s.id === 'team')!;
+    expect(team.table!.rows[0][0]).toBe('Srivalli T.');
+    expect(team.table!.rows[0][4]).toBe('29%');
+    expect(team.table!.flagged!.length).toBeGreaterThan(0);
+    const kt = BUSINESS_ROWS.find((r) => r.branch === 'Kwun Tong')!;
+    const ktRms = team.table!.rows.filter((r) => r[1] === 'Kwun Tong');
+    expect(ktRms.reduce((s, r) => s + Number(r[2]), 0)).toBe(kt.matured);
+    expect(ktRms.reduce((s, r) => s + Number(r[3]), 0)).toBe(kt.rolled);
   });
 });

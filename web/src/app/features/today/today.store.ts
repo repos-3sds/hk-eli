@@ -3,7 +3,10 @@ import { rxResource } from '@angular/core/rxjs-interop';
 import { of } from 'rxjs';
 import { APP_CONFIG } from '../../core/config/app-config';
 import { TodayDataSource } from '../../core/data/today-data-source';
-import { aggregatesCover } from '../../core/models/scope';
+import { aggregatesCover, matchesAggregate } from '../../core/models/scope';
+import { ROLLOVER_BASELINE_PCT } from '../../core/data/business.fixture';
+import { demandLines } from '../../core/shelf/shelf';
+import { RM_ROWS } from '../../core/update/business-update';
 import { BookScope, Lead, MOMENT_TYPES, MomentType, Pocket, scopeLabel } from '../../core/models/today.models';
 import { usdCompact } from './shared/format';
 import { BusinessClock } from '../../core/time/business-clock';
@@ -120,8 +123,39 @@ export class TodayStore {
     }
     const below = this.pocketsBelow().length;
     const pockets = below === 0 ? 'rollover is at or above the line everywhere' : `${below} ${below === 1 ? 'pocket is' : 'pockets are'} below the rollover line`;
-    return `${matures}; ${pockets}.`;
+    switch (this.session.role()) {
+      case 'pm':
+        return this.pmHeadline();
+      case 'tsm':
+        return this.tsmHeadline(pockets);
+      default:
+        return `${matures}; ${pockets}.`;
+    }
   });
+
+  /** The PM reads demand against limits first (R21): the busiest name and how close the book is to its limits. */
+  private pmHeadline(): string {
+    const demand = demandLines();
+    const busiest = [...demand].sort((a, b) => b.quotes - a.quotes)[0];
+    const near = demand.filter((d) => d.limitState !== 'green');
+    const atLimit = demand.filter((d) => d.limitState === 'red').map((d) => d.underlying);
+    const quotes = demand.reduce((s, d) => s + d.quotes, 0);
+    const lead = `${busiest.underlying} is the most asked-for name, ${busiest.quotes} of ${quotes} quotes this week`;
+    if (!near.length) return `${lead}; every name has room under its limit.`;
+    return `${lead}; ${near.length} ${near.length === 1 ? 'name is' : 'names are'} close to the limit${atLimit.length ? `, ${atLimit.join(' and ')} at it` : ''}.`;
+  }
+
+  /** The TSM reads pockets and their team first (R41): where rollover is below the line and which RM to talk to. */
+  private tsmHeadline(pockets: string): string {
+    const team = RM_ROWS.filter((r) => matchesAggregate(r, this.scope()))
+      .map((r) => ({ rm: r.rm, ro: Math.round((r.rolled / r.matured) * 100) }))
+      .filter((r) => r.ro < ROLLOVER_BASELINE_PCT)
+      .sort((a, b) => a.ro - b.ro);
+    const lowest = this.pocketsBelow()[0];
+    const where = lowest ? `, lowest ${lowest.branch} · ${lowest.segment} at ${lowest.rolloverPct}%` : '';
+    const rms = team.length ? ` ${team.length} ${team.length === 1 ? 'RM is' : 'RMs are'} below the line, starting with ${team[0].rm} at ${team[0].ro}%.` : ' Every RM is at or above the line.';
+    return `${pockets.charAt(0).toUpperCase()}${pockets.slice(1)}${where}.${rms}`;
+  }
 
   /** "12 clients need attention": the count line that used to be the headline. */
   readonly attentionLine = computed(() => {

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -8,6 +8,10 @@ import { HandoffOpener } from '../../core/handoff/handoff-opener';
 import { HandoffStore } from '../../core/handoff/handoff.store';
 import { AlertsStore } from '../../core/alerts/alerts.store';
 import { WIDGET_TABS } from './widget-tabs';
+import { FirstRun } from '../help/first-run';
+import { FirstRunStore } from '../help/first-run.store';
+import { ROLE_HOME_TABS } from '../../core/help/help-content';
+import { SessionService } from '../../core/session/session.service';
 
 /**
  * The Digimarkets widget: orange caps title bar with link, pin, pop-out and close, the 80 px
@@ -15,7 +19,7 @@ import { WIDGET_TABS } from './widget-tabs';
  */
 @Component({
   selector: 'eli-widget-frame',
-  imports: [MatIconModule, MatTooltipModule, RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [MatIconModule, MatTooltipModule, RouterLink, RouterLinkActive, RouterOutlet, FirstRun],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="widget" [attr.aria-label]="appName">
@@ -40,6 +44,7 @@ import { WIDGET_TABS } from './widget-tabs';
               <mat-icon [svgIcon]="tab.icon" aria-hidden="true" />
               <span class="tab-label">
                 {{ tab.label }}
+                @if (forYou().includes(tab.path)) { <span class="for-you" aria-hidden="true"></span><span class="eli-visually-hidden">, suggested for your role</span> }
                 @let badge = tab.path === 'alerts' ? alerts.count() : tab.badge;
                 @if (badge) {
                   <span class="badge" [attr.aria-label]="badge + ' new'">{{ badge }}</span>
@@ -49,6 +54,7 @@ import { WIDGET_TABS } from './widget-tabs';
           }
         </nav>
         <div class="content">
+          @if (firstRun.show()) { <eli-first-run /> }
           <router-outlet />
         </div>
       </div>
@@ -64,6 +70,10 @@ export class WidgetFrame {
   protected readonly handoff = inject(HandoffStore);
   protected readonly alerts = inject(AlertsStore);
   protected readonly handoffs = inject(HandoffOpener);
+  protected readonly firstRun = inject(FirstRunStore);
+  protected readonly session = inject(SessionService);
+  /** The role's home tabs get a small "for you" mark, so a first-time user knows where to start. */
+  protected readonly forYou = computed(() => ROLE_HOME_TABS[this.session.role()]);
 
   protected togglePin(): void {
     this.pinned.update((v) => !v);

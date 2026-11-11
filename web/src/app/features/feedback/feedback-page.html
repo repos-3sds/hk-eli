@@ -4,10 +4,13 @@
     <p class="lede">What the launch users said about each view, {{ range() }}. Good feedback is the gate for going wider, so this is read every week.</p>
   </div>
   <div class="tools">
-    <button matButton="outlined" type="button" (click)="copy()" [disabled]="week().total === 0"><mat-icon svgIcon="clipboard-copy" />Copy summary</button>
+    <button matButton="outlined" type="button" (click)="copy()" [disabled]="load.state() !== 'ready' || week().total === 0"><mat-icon svgIcon="clipboard-copy" />Copy summary</button>
   </div>
 </header>
 
+@if (load.state() !== 'ready') {
+<eli-load-state [load]="load" what="Feedback" emptyTitle="No feedback yet this week." emptyText="Ratings appear here as people use the thumbs at the foot of each view, list and chat answer." [skeleton]="[90, 200, 200]" />
+} @else {
 @if (hasSamples()) {
   <p class="preview" role="note"><mat-icon svgIcon="eye" aria-hidden="true" />Earlier days show sample ratings. Your own ratings from this session are added as you give them. The gateway keeps them for real once connected.</p>
 }
@@ -64,5 +67,6 @@
       }
     </section>
   </div>
+}
 }
 <p class="foot">Internal use only. Not for clients.</p>

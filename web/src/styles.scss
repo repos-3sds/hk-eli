@@ -188,3 +188,19 @@ button {
   border-radius: 0 !important;
   border-left: 1px solid var(--eli-border);
 }
+
+/* A term with a hover definition (eliTerm). The dotted line says "there is more here". */
+.eli-term {
+  text-decoration: underline dotted;
+  text-decoration-color: var(--eli-text-muted);
+  text-underline-offset: 3px;
+  cursor: help;
+  &:focus-visible { outline: 2px solid var(--eli-accent-orange); outline-offset: 2px; border-radius: 2px; }
+}
+
+/* Multi-line tooltip, for lists such as "Yes: headroom under the limit". */
+.eli-tip-lines .mdc-tooltip__surface {
+  max-width: 340px !important;
+  white-space: pre-line;
+  text-align: left !important;
+}

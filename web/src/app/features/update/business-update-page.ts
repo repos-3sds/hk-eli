@@ -4,6 +4,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
+import { LoadState } from '../../core/data/load-state';
+import { pageLoad } from '../../core/data/page-load';
 import { FeedbackButtons } from '../../core/feedback/feedback-buttons';
 import { FreshnessClocks } from '../../core/freshness/freshness-clocks';
 import { FreshnessStore } from '../../core/freshness/freshness';
@@ -17,17 +19,18 @@ import { ScopeSwitch } from '../today/shared/scope-switch';
 import { ScheduleOpener } from '../schedules/schedule-opener';
 
 /**
- * The Business Update tab (R2): the monthly Tableau routine as 14 sections, sliced by the same scope switch
+ * The Business Update tab (R2): the monthly Tableau routine as 15 sections, sliced by the same scope switch
  * as Today, every section stamped with its data date. Figures are computed; nothing here is written by AI.
  */
 @Component({
   selector: 'eli-business-update-page',
-  imports: [MatButtonModule, MatIconModule, MatTooltipModule, ScopeSwitch, FreshnessClocks, FeedbackButtons],
+  imports: [MatButtonModule, MatIconModule, MatTooltipModule, ScopeSwitch, FreshnessClocks, FeedbackButtons, LoadState],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './business-update-page.html',
   styleUrl: './business-update-page.scss',
 })
 export class BusinessUpdatePage {
+  protected readonly load = pageLoad('The overnight positions dataset did not answer in time.');
   private readonly clock = inject(BusinessClock);
   private readonly handoff = inject(HandoffStore);
   private readonly router = inject(Router);
@@ -55,7 +58,7 @@ export class BusinessUpdatePage {
     const box = this.host.nativeElement.querySelector('.sections') as HTMLElement | null;
     const target = this.host.nativeElement.querySelector(`#sec-${id}`) as HTMLElement | null;
     if (box && target) {
-      box.scrollTo({ top: target.offsetTop - box.offsetTop, behavior: 'smooth' });
+      box.scrollTo({ top: box.scrollTop + target.getBoundingClientRect().top - box.getBoundingClientRect().top, behavior: 'smooth' });
       target.focus({ preventScroll: true });
     }
   }

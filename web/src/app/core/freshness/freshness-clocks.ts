@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { FreshnessStore } from './freshness';
+import { Term } from '../help/term';
 
 /**
  * The two clocks as small pills: "Data as of close Mon 2 Nov" and "Prices 09:05 HKT today".
@@ -8,16 +9,16 @@ import { FreshnessStore } from './freshness';
  */
 @Component({
   selector: 'eli-freshness-clocks',
-  imports: [MatIconModule],
+  imports: [MatIconModule, Term],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (store.value(); as f) {
       <div class="clocks" role="group" aria-label="How fresh the figures are">
         <span class="clock" [class.warn]="f.state === 'run-failed'">
-          <mat-icon svgIcon="database" aria-hidden="true" />{{ store.dataClock() }}
+          <mat-icon svgIcon="database" aria-hidden="true" /><span eliTerm="data-clock">{{ store.dataClock() }}</span>
         </span>
         <span class="clock" [class.warn]="!f.pricesToday">
-          <mat-icon svgIcon="clock" aria-hidden="true" />{{ store.priceClock() }}
+          <mat-icon svgIcon="clock" aria-hidden="true" /><span eliTerm="price-clock">{{ store.priceClock() }}</span>
         </span>
       </div>
       @if (!compact() && store.warning(); as w) {

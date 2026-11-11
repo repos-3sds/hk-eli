@@ -5,6 +5,7 @@ import { MockTodayDataSource } from '../../core/data/mock-today-data-source';
 import { TodayDataSource } from '../../core/data/today-data-source';
 import { TEST_CONFIG } from '../../testing/test-config';
 import { TodayStore } from './today.store';
+import { SessionService } from '../../core/session/session.service';
 
 async function settle(): Promise<void> {
   for (let i = 0; i < 5; i++) {
@@ -77,6 +78,15 @@ describe('TodayStore', () => {
     expect(store.headline()).toBe('USD 11.98m matures in the next 10 business days; 3 pockets are below the rollover line.');
     expect(store.briefSummary()).toMatch(/^12 clients need attention: 6 maturities, 2 likely knock-outs, 1 stock delivery, 1 idle client and 2 open RFQs\. Start with Chan Tai Man/);
     expect(store.suggestions()[0]).toBe('Brief me on Chan');
+  });
+
+  it('writes the headline for each launch role: PM on demand and limits, TSM on pockets and team', async () => {
+    const store = await setup();
+    const session = TestBed.inject(SessionService);
+    session.switchRole('pm');
+    expect(store.headline()).toBe('NVDA is the most asked-for name, 214 of 576 quotes this week; 1 name is close to the limit, NVDA at it.');
+    session.switchRole('tsm');
+    expect(store.headline()).toBe('3 pockets are below the rollover line, lowest Kwun Tong · Treasures at 45%. 5 RMs are below the line, starting with Srivalli T. at 29%.');
   });
 
   it('undoes Not today', async () => {

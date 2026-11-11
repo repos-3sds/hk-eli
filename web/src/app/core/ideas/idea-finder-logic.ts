@@ -101,16 +101,21 @@ export function filterBlockers(warehouse: readonly WarehouseIdea[], f: IdeaFilte
 }
 
 /** Where the trade would take the client's most affected underlying. */
-export function concentrationEffect(idea: Pick<WarehouseIdea, 'underlyings'>, client: FixtureClient, notionalUsd: number): ConcentrationEffect {
+/** Where the trade takes each name in the idea. A worst-of counts towards every name in it. */
+export function concentrationEffects(idea: Pick<WarehouseIdea, 'underlyings'>, client: FixtureClient, notionalUsd: number): ConcentrationEffect[] {
   const out = client.eliOutstandingUsd;
   const total = out + notionalUsd;
   const per = notionalUsd / idea.underlyings.length;
-  const effects = idea.underlyings.map((u) => {
+  return idea.underlyings.map((u) => {
     const fromPct = client.concentration.find((c) => c.underlying === u)?.sharePct ?? 0;
     const toPct = total > 0 ? ((fromPct / 100) * out + per) / total * 100 : 100;
     return { underlying: u, fromPct, toPct: Math.round(toPct * 10) / 10, limitPct: CONCENTRATION_LIMIT_PCT };
   });
-  return effects.reduce((a, b) => (b.toPct > a.toPct ? b : a));
+}
+
+/** The name with the highest share after the trade: the one the limit rule checks. */
+export function concentrationEffect(idea: Pick<WarehouseIdea, 'underlyings'>, client: FixtureClient, notionalUsd: number): ConcentrationEffect {
+  return concentrationEffects(idea, client, notionalUsd).reduce((a, b) => (b.toPct > a.toPct ? b : a));
 }
 
 export function couponLine(warehouse: readonly WarehouseIdea[]): number {
@@ -130,7 +135,7 @@ export function checkSignal(signalId: string, idea: WarehouseIdea, ctx: { coupon
     case 'vol-rich':
       return result(idea.volRank >= 70, `Vol rank ${idea.volRank} of 100`);
     case 'rm-traded':
-      return result(idea.rmTrades >= 3, `${idea.rmTrades} HK RMs this week`);
+      return result(idea.rmTrades >= 3, `${idea.rmTrades} HK ${idea.rmTrades === 1 ? 'RM' : 'RMs'} this week`);
     case 'rfq-busy':
       return result(idea.rfqs5d >= 10, `${idea.rfqs5d} RFQs in 5 days`);
     case 'fills':

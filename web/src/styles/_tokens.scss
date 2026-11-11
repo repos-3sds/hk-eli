@@ -26,19 +26,25 @@
   // Text
   --eli-text-strong: #ffffff;
   --eli-text-primary: #e5e5e5;
-  --eli-text-muted: #828ea9;
-  --eli-text-muted-2: #9ba4ab;
+  // Muted text is lightened from the style guide's #828ea9 / #9ba4ab so it passes WCAG AA (4.5:1) on cards
+  // (#303a50) and rows (#32394e), not only on the canvas.
+  --eli-text-muted: #9ca6bb;
+  --eli-text-muted-2: #a3acb3;
+  --eli-text-muted-card: #a6b0c6;
   --eli-text-rail-idle: rgb(255 255 255 / 50%);
-  --eli-text-workspace-idle: #9b9b9b;
+  --eli-text-workspace-idle: #b8b8b8; // lightened from #9b9b9b for 4.5:1 on the idle tab
 
   // Accents and status (meaning is never carried by colour alone: every chip has a word)
   --eli-accent-orange: #ff932e;
   --eli-accent-blue: #1a78d1;
   --eli-accent-blue-hover: #1668b6;
-  --eli-accent-link: #4ea0ff;
+  --eli-accent-link: #63abff; // lightened from #4ea0ff for 4.5:1 on cards
   --eli-status-positive: #2b9f87;
   --eli-status-negative: #ff3333;
   --eli-status-badge: #ff4724;
+  // Status colours as text: lighter tints that pass 4.5:1 on cards. Bars, edges and dots keep the full colours.
+  --eli-status-negative-text: #ff8080;
+  --eli-status-positive-text: #5cb5a3;
   --eli-focus-ring: #4ea0ff;
 
   // Moment types (left edge of a moment chip)

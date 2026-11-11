@@ -1,9 +1,12 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Term } from '../../core/help/term';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { LoadState } from '../../core/data/load-state';
+import { pageLoad } from '../../core/data/page-load';
 import { FeedbackButtons } from '../../core/feedback/feedback-buttons';
 import { FreshnessClocks } from '../../core/freshness/freshness-clocks';
 import { STARTER_PACKS } from '../../core/ideas/idea-warehouse.fixture';
@@ -19,12 +22,13 @@ import { MyPacksStore } from '../idea-finder/my-packs.store';
  */
 @Component({
   selector: 'eli-shelf-page',
-  imports: [MatButtonModule, MatCheckboxModule, MatIconModule, MatTooltipModule, FreshnessClocks, FeedbackButtons],
+  imports: [MatButtonModule, MatCheckboxModule, MatIconModule, MatTooltipModule, FreshnessClocks, FeedbackButtons, LoadState, Term],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './shelf-page.html',
   styleUrl: './shelf-page.scss',
 })
 export class ShelfPage {
+  protected readonly load = pageLoad('The RFQ log and digibank quote log did not answer in time.');
   protected readonly store = inject(ShelfStore);
   private readonly myPacks = inject(MyPacksStore);
   private readonly clock = inject(BusinessClock);

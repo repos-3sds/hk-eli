@@ -205,10 +205,26 @@
 }
 
 .content {
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+}
+
+// The routed tab fills what the first-run guide leaves.
+.content > ::ng-deep :not(eli-first-run):not(router-outlet) {
+  flex: 1;
+  min-height: 0;
+}
+
+// A small "for you" dot on the role's home tabs.
+.for-you {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--eli-accent-link);
 }
 
 // Compact widget: the rail becomes an icon row at the top.

@@ -5,7 +5,7 @@
   <div class="layout">
   <div class="terms">
   <div class="field">
-    <span class="label" id="stocks-l">Stocks <span class="muted">(up to {{ maxStocks }}; two or more make a worst-of)</span></span>
+    <span class="label" id="stocks-l">Stocks <span class="muted">(up to {{ maxStocks }}; two or more make a <span eliTerm="worst-of">worst-of</span>)</span></span>
     <div class="chips" role="group" aria-labelledby="stocks-l">
       @for (t of stocks(); track t) {
         <span class="chip">{{ t }}<button type="button" class="x" (click)="remove(t)" [attr.aria-label]="'Remove ' + t"><mat-icon svgIcon="x" /></button></span>
@@ -37,7 +37,7 @@
       </mat-button-toggle-group>
     </div>
     <div class="field">
-      <span class="label" id="strike-l">Strike</span>
+      <span class="label" id="strike-l"><span eliTerm="strike">Strike</span></span>
       <mat-button-toggle-group hideSingleSelectionIndicator aria-labelledby="strike-l" [value]="strike()" (change)="strike.set($event.value)">
         @for (s of strikes; track s) { <mat-button-toggle [value]="s">{{ s }}%</mat-button-toggle> }
       </mat-button-toggle-group>

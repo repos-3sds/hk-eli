@@ -6,6 +6,9 @@
   <p class="preview" role="note"><mat-icon svgIcon="eye" aria-hidden="true" />Design preview. Rules are checked against today's demo data; they run on real data in MVP2.</p>
 </header>
 
+@if (load.state() !== 'ready') {
+<eli-load-state [load]="load" what="Alerts" emptyTitle="No data to check rules against yet." emptyText="Rules are checked against last night's dataset. They will show what fires once the next overnight refresh lands." [skeleton]="[180, 180, 140]" />
+} @else {
 <div class="grid">
   <div class="col">
     <section class="card" aria-labelledby="now-h">
@@ -118,5 +121,6 @@
     }
   </section>
 </div>
+}
 <eli-feedback class="feedback" topic="Alerts preview" />
 <p class="trust"><mat-icon svgIcon="info" aria-hidden="true" />Conditions are rules on data, not AI. Internal use only.</p>

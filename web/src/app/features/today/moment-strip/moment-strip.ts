@@ -1,4 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, output, signal } from '@angular/core';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { GLOSSARY, TermKey } from '../../../core/help/help-content';
 import { MatIconModule } from '@angular/material/icon';
 import { ScopeSwitch } from '../shared/scope-switch';
 import { MOMENT_LABELS, MOMENT_TYPES, Moment, MomentType } from '../../../core/models/today.models';
@@ -11,7 +13,7 @@ const CHIPS_PER_DAY = 3;
 /** The next 10 business days of maturities, likely knock-outs, deliveries, idle clients and open RFQs. */
 @Component({
   selector: 'eli-moment-strip',
-  imports: [MatIconModule, ScopeSwitch, MomentChip, EliDatePipe, OffsetPipe],
+  imports: [MatIconModule, ScopeSwitch, MomentChip, EliDatePipe, OffsetPipe, MatTooltipModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './moment-strip.html',
   styleUrl: './moment-strip.scss',
@@ -23,6 +25,8 @@ export class MomentStrip {
 
   protected readonly types = MOMENT_TYPES;
   protected readonly typeLabels = MOMENT_LABELS;
+  protected readonly defs = GLOSSARY;
+  protected readonly termOf: Record<MomentType, TermKey> = { maturity: 'maturing', knockout: 'ko', exercised: 'exercised', idle: 'idle', rfq: 'rfq' };
   protected readonly expandedDays = signal<ReadonlySet<number>>(new Set());
   protected readonly skeletonDays = Array.from({ length: 10 }, (_, i) => i);
 

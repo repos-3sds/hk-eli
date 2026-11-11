@@ -65605,16 +65605,18 @@ function filterBlockers(warehouse, f) {
   if (f.exclude.length) candidates.push(["exclude", `No ${f.exclude.join(", ")}`, { exclude: [] }]);
   return candidates.map(([key, label, relax]) => ({ key, label, wouldPass: warehouse.filter((w) => passesFilters(w, { ...f, ...relax })).length })).sort((a, b) => b.wouldPass - a.wouldPass);
 }
-function concentrationEffect(idea, client, notionalUsd) {
+function concentrationEffects(idea, client, notionalUsd) {
   const out2 = client.eliOutstandingUsd;
   const total = out2 + notionalUsd;
   const per = notionalUsd / idea.underlyings.length;
-  const effects = idea.underlyings.map((u2) => {
+  return idea.underlyings.map((u2) => {
     const fromPct = client.concentration.find((c) => c.underlying === u2)?.sharePct ?? 0;
     const toPct = total > 0 ? (fromPct / 100 * out2 + per) / total * 100 : 100;
     return { underlying: u2, fromPct, toPct: Math.round(toPct * 10) / 10, limitPct: CONCENTRATION_LIMIT_PCT };
   });
-  return effects.reduce((a, b) => b.toPct > a.toPct ? b : a);
+}
+function concentrationEffect(idea, client, notionalUsd) {
+  return concentrationEffects(idea, client, notionalUsd).reduce((a, b) => b.toPct > a.toPct ? b : a);
 }
 function couponLine(warehouse) {
   const sorted = [...warehouse].map((w) => w.couponPct).sort((a, b) => a - b);
@@ -65632,7 +65634,7 @@ function checkSignal(signalId, idea, ctx) {
     case "vol-rich":
       return result(idea.volRank >= 70, `Vol rank ${idea.volRank} of 100`);
     case "rm-traded":
-      return result(idea.rmTrades >= 3, `${idea.rmTrades} HK RMs this week`);
+      return result(idea.rmTrades >= 3, `${idea.rmTrades} HK ${idea.rmTrades === 1 ? "RM" : "RMs"} this week`);
     case "rfq-busy":
       return result(idea.rfqs5d >= 10, `${idea.rfqs5d} RFQs in 5 days`);
     case "fills":
