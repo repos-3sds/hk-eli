@@ -70,6 +70,22 @@
                   "output": "config"
                 }
               ]
+            },
+            "empty": {
+              "assets": [
+                {
+                  "glob": "**/*",
+                  "input": "public",
+                  "ignore": [
+                    "config/app-config.json"
+                  ]
+                },
+                {
+                  "glob": "app-config.json",
+                  "input": "config/empty",
+                  "output": "config"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"
@@ -86,6 +102,9 @@
             "gateway": {
               "buildTarget": "web:build:development,gateway",
               "proxyConfig": "proxy.conf.json"
+            },
+            "empty": {
+              "buildTarget": "web:build:development,empty"
             }
           },
           "defaultConfiguration": "development"

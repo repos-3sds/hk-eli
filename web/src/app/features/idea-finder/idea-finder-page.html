@@ -1,7 +1,7 @@
 <header class="top">
   <div class="titles">
     <h2 class="title">Find ideas that line up</h2>
-    <p class="lede">Say what the RM or branch asked for. Pick the signals that matter. Ideas that meet more of them rank higher; there is no AI score.</p>
+    <p class="lede"><strong>Find what fits a client from today's shelf.</strong> Say what the RM or branch asked for. Pick the signals that matter. Ideas that meet more of them rank higher; there is no AI score.</p>
     <eli-freshness-clocks class="clocks" />
   </div>
   <form class="ask" (submit)="$event.preventDefault(); store.read()" aria-label="Describe what the RM or branch asked for">
@@ -50,7 +50,7 @@
         <p class="res-sub">
           Ranked by how many of your {{ store.picked().length }} signals line up, then by coupon. Ideas close to a limit rank lower; ideas over one are hidden.
           @if (store.client(); as c) { Concentration shown for {{ c.name }} with {{ r.notionalUsd | usd }}. }
-          Indicative. {{ freshness.priceClock() ?? 'Prices loading' }}.
+          <span eliTerm="indicative">Indicative</span>. {{ freshness.priceClock() ?? 'Prices loading' }}.
         </p>
         <button type="button" class="eli-link build" (click)="openBuilder()"><mat-icon svgIcon="sliders" aria-hidden="true" />Nothing quite fits? Build my own ELI</button>
         @if (store.clientSignalsWithoutClient()) {
@@ -71,9 +71,11 @@
               <span>No ideas pass, and no single filter is to blame. Several of them together rule everything out.</span>
             }
           } @else {
-            <span>The idea warehouse has nothing for today yet.</span>
+            <span>The idea warehouse has nothing for today yet. This morning's ideas arrive after the 09:05 pricing run; you can still build your own ELI.</span>
           }
-          <button matButton="outlined" type="button" (click)="store.clearFilters()">Clear all filters</button>
+          @if (r.warehouseSize > 0) {
+            <button matButton="outlined" type="button" (click)="store.clearFilters()">Clear all filters</button>
+          }
           <button matButton="outlined" type="button" (click)="openBuilder()">Build my own ELI</button>
         </div>
       } @else {
@@ -84,22 +86,22 @@
                 <span class="rank">{{ i + 1 }}</span>
                 <span class="what">
                   <span class="idea-title">{{ m.title }}</span>
-                  <span class="terms">Coupon {{ m.terms.couponPct }}% p.a. · KI {{ m.terms.kiPct }}% · strike {{ m.terms.strikePct }}%
+                  <span class="terms"><span eliTerm="coupon">Coupon</span> {{ m.terms.couponPct }}% p.a. · <span eliTerm="ki">KI</span> {{ m.terms.kiPct }}% · <span eliTerm="strike">strike</span> {{ m.terms.strikePct }}%
                     @if (!freshness.pricesReady()) { <span class="stale-tag">Yesterday's price</span> }
                   </span>
                   @if (m.limitState === 'amber') {
                     <span class="lower"><mat-icon svgIcon="triangle-alert" aria-hidden="true" />Ranked lower: {{ m.limitReason }}</span>
                   }
                 </span>
-                <span class="conf" [attr.aria-label]="m.met + ' of ' + m.checks.length + ' signals line up'">
+                <span class="conf" tabindex="0" [attr.aria-label]="signalsLabel(m)" [matTooltip]="signalsLabel(m)" matTooltipClass="eli-tip-lines">
+                  <span class="count"><strong>{{ m.met }} of {{ m.checks.length }}</strong> signals</span>
                   <span class="dots" aria-hidden="true">
-                    @for (c of m.checks; track c.signalId) {<span class="dot" [class.on]="c.met"></span>}
+                    @for (c of orderedChecks(m); track c.signalId) {<span class="dot" [class.on]="c.met"></span>}
                   </span>
-                  <span class="count">{{ m.met }}/{{ m.checks.length }}</span>
                 </span>
                 <span class="effect">
                   @if (m.effect; as e) {
-                    <eli-concentration-bar [underlying]="e.underlying" [fromPct]="e.fromPct" [toPct]="e.toPct" [limitPct]="e.limitPct" />
+                    <eli-concentration-bar [underlying]="e.underlying" [fromPct]="e.fromPct" [toPct]="e.toPct" [limitPct]="e.limitPct" [names]="namesFor(m)" />
                   } @else {
                     <span class="muted">Pick a client to see concentration</span>
                   }

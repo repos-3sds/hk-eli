@@ -5,7 +5,7 @@
     <span class="rule" aria-hidden="true"></span>
     <div class="legend" role="group" aria-label="Show moment types">
       @for (t of types; track t) {
-        <button type="button" class="legend-chip" [class.off]="!isActive(t)" [attr.aria-pressed]="isActive(t)" (click)="store.toggleType(t)">
+        <button type="button" class="legend-chip" [class.off]="!isActive(t)" [attr.aria-pressed]="isActive(t)" (click)="store.toggleType(t)" [matTooltip]="defs[termOf[t]].definition" matTooltipPosition="above">
           <eli-moment-chip [type]="t">{{ typeLabels[t] }}</eli-moment-chip>
         </button>
       }

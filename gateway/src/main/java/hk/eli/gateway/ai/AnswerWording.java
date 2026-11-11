@@ -53,7 +53,8 @@ public class AnswerWording {
     ChatAnswer result = answer;
     if (answer.fallback() || index < 0) {
       outcome = "skipped";
-      reason = answer.fallback() ? "Question not understood; suggestions only" : "No text to word";
+      reason = !answer.fallback() ? "No text to word"
+          : "advice".equals(intent) ? "Forecast or advice question; declined without AI" : "Question not understood; suggestions only";
     } else if (!model.enabled()) {
       outcome = "template";
       reason = "Wording model off";

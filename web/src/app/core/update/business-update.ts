@@ -1,5 +1,5 @@
 /**
- * The Business Update (R2): the monthly Tableau routine as 14 sections, sliced by the same scope as Today.
+ * The Business Update (R2): the monthly Tableau routine as 15 sections, sliced by the same scope as Today.
  * Pure functions over the demo business data, so the figures agree with Today's headline and pockets.
  * Every figure is invented. Parity with the real Tableau views is checked once that list is shared.
  */
@@ -32,6 +32,28 @@ export const BUSINESS_ROWS: readonly BusinessRow[] = [
   { branch: 'Mong Kok', segment: 'Treasures', channel: 'advisory', notionalMtdUsd: 7_400_000, notionalPrevUsd: 7_100_000, trades: 27, rfqs: 81, rfqsTraded: 24, matured: 9, rolled: 6, activeClients: 190, idleClients: 47 },
   { branch: 'Tsim Sha Tsui', segment: 'Treasures', channel: 'advisory', notionalMtdUsd: 8_000_000, notionalPrevUsd: 7_600_000, trades: 29, rfqs: 70, rfqsTraded: 25, matured: 8, rolled: 6, activeClients: 170, idleClients: 40 },
   { branch: 'Digibank', segment: 'Self-directed', channel: 'digibank', notionalMtdUsd: 9_600_000, notionalPrevUsd: 8_800_000, trades: 140, rfqs: 520, rfqsTraded: 71, matured: 50, rolled: 41, activeClients: 640, idleClients: 120 },
+];
+
+/** Month to date by RM, for the TSM's team view (R41). Matured and rolled add up to the branch rows above. */
+export interface RmRow {
+  readonly rm: string;
+  readonly branch: string;
+  readonly segment: string;
+  readonly matured: number;
+  readonly rolled: number;
+  /** ELI notional maturing in the next 10 business days for this RM's clients. */
+  readonly maturingUsd: number;
+}
+
+export const RM_ROWS: readonly RmRow[] = [
+  { rm: 'Jason Yu', branch: 'Central', segment: 'Treasure Private', matured: 34, rolled: 30, maturingUsd: 2_600_000 },
+  { rm: 'Amy Tse', branch: 'Central', segment: 'Treasures', matured: 28, rolled: 24, maturingUsd: 1_900_000 },
+  { rm: 'Srivalli T.', branch: 'Kwun Tong', segment: 'Treasures', matured: 7, rolled: 2, maturingUsd: 2_900_000 },
+  { rm: 'Ivy Ng', branch: 'Kwun Tong', segment: 'Treasures', matured: 4, rolled: 3, maturingUsd: 900_000 },
+  { rm: 'Mandy Chow', branch: 'Mong Kok', segment: 'Treasures', matured: 6, rolled: 4, maturingUsd: 1_000_000 },
+  { rm: 'Kenneth Lo', branch: 'Mong Kok', segment: 'Treasures', matured: 3, rolled: 2, maturingUsd: 450_000 },
+  { rm: 'Peter Leung', branch: 'Tsim Sha Tsui', segment: 'Treasures', matured: 5, rolled: 4, maturingUsd: 700_000 },
+  { rm: 'Rachel Kwok', branch: 'Tsim Sha Tsui', segment: 'Treasures', matured: 3, rolled: 2, maturingUsd: 280_000 },
 ];
 
 export const TOP_UNDERLYINGS: readonly { underlying: string; notionalUsd: number; trades: number }[] = [
@@ -83,6 +105,30 @@ export interface BusinessUpdate {
   readonly scopeName: string;
   readonly dataDate: string;
   readonly sections: readonly UpdateSection[];
+}
+
+/** The team by RM, lowest rollover first, so the TSM sees who to talk to. Digibank has no RM, so it is left out. */
+export function teamSection(scope: BookScope, coarse: boolean, where: string): UpdateSection {
+  const team = RM_ROWS.filter((r) => matchesAggregate(r, scope))
+    .map((r) => ({ ...r, ro: pct(r.rolled, r.matured) }))
+    .sort((a, b) => a.ro - b.ro || b.maturingUsd - a.maturingUsd);
+  const below = team.filter((r) => r.ro < ROLLOVER_BASELINE_PCT);
+  return {
+    id: 'team',
+    title: 'Team by RM',
+    summary: team.length
+      ? `${team.length} ${team.length === 1 ? 'RM' : 'RMs'} in ${where}; ${below.length ? `${below.length} below the ${ROLLOVER_BASELINE_PCT}% rollover line, lowest ${below[0].rm} at ${below[0].ro}% with ${usdM(below[0].maturingUsd)} maturing in the next 10 business days` : `all at or above the ${ROLLOVER_BASELINE_PCT}% rollover line`}.`
+      : `No RMs in ${where}. Digibank clients are self-directed.`,
+    table: {
+      columns: ['RM', 'Branch', 'Matured MTD', 'Rolled', 'Rollover', 'Maturing next 10 days'],
+      numeric: [false, false, true, true, true, true],
+      rows: team.map((r) => [r.rm, r.branch, String(r.matured), String(r.rolled), `${r.ro}%`, usdM(r.maturingUsd)]),
+      flagged: team.map((r, i) => (r.ro < ROLLOVER_BASELINE_PCT ? i : -1)).filter((i) => i >= 0),
+    },
+    source: 'Blotter, RM hierarchy',
+    wholeBusinessOnly: coarse,
+    ask: 'Which RMs are below the rollover line this month?',
+  };
 }
 
 export function rowsInScope(scope: BookScope): BusinessRow[] {
@@ -245,6 +291,7 @@ export function buildBusinessUpdate(scope: BookScope, dataDate: string, conversi
       wholeBusinessOnly: coarse,
       ask: `Rank the branches by notional this month`,
     },
+    teamSection(scope, coarse, where),
     {
       id: 'segments',
       title: 'Segments and channels',

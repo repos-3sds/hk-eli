@@ -17,7 +17,7 @@
 .a-name { color: var(--eli-text-strong); font-weight: var(--eli-weight-semibold); }
 .a-meta { margin-left: auto; color: var(--eli-text-muted-2); font-size: var(--eli-font-size-s); }
 .a-why { display: flex; flex-direction: column; gap: var(--eli-space-1); margin: 0; padding: 0; list-style: none; color: var(--eli-text-primary); font-size: var(--eli-font-size-s);
-  li { display: flex; align-items: flex-start; gap: var(--eli-space-2); } mat-icon { flex: none; width: 14px; height: 14px; margin-top: 2px; color: var(--eli-status-positive); }
+  li { display: flex; align-items: flex-start; gap: var(--eli-space-2); } mat-icon { flex: none; width: 14px; height: 14px; margin-top: 2px; color: var(--eli-status-positive-text); }
   strong { color: var(--eli-text-strong); font-weight: var(--eli-weight-semibold); } }
 .a-acts { display: flex; flex-wrap: wrap; gap: var(--eli-space-4); }
 .empty { margin: 0; color: var(--eli-text-muted-2); }
@@ -33,7 +33,7 @@
 .sentence { display: flex; align-items: center; gap: var(--eli-space-3); margin: 0; color: var(--eli-text-primary); }
 .conds { display: flex; flex-direction: column; gap: var(--eli-space-2); margin: 0; padding: 0; list-style: none; font-size: var(--eli-font-size-s); color: var(--eli-text-muted-2);
   li { display: flex; align-items: flex-start; gap: var(--eli-space-3); } mat-icon { flex: none; width: 14px; height: 14px; margin-top: 2px; color: var(--eli-text-muted); }
-  li.met { color: var(--eli-text-primary); mat-icon { color: var(--eli-status-positive); } } .ev { color: var(--eli-text-muted); } }
+  li.met { color: var(--eli-text-primary); mat-icon { color: var(--eli-status-positive-text); } } .ev { color: var(--eli-text-muted); } }
 .r-foot { --mat-standard-button-toggle-height: 30px; --mat-standard-button-toggle-label-text-size: 13px; display: flex; align-items: center; gap: var(--eli-space-4); flex-wrap: wrap; }
 .today { color: var(--eli-text-muted-2); font-size: var(--eli-font-size-s); &.fires { color: var(--eli-accent-orange); font-weight: var(--eli-weight-semibold); } }
 .grow { flex: 1; }

@@ -10,10 +10,18 @@
   mat-icon { width: 16px; height: 16px; } }
 .input { flex: 1; min-width: 0; border: 0; outline: 0; resize: none; padding: 0; background: none; color: var(--eli-text-primary); font: inherit; line-height: 20px; &::placeholder { color: var(--eli-text-muted); } }
 
-.note { margin: 0; color: var(--eli-text-muted); font-size: var(--eli-font-size-s); &.error { color: var(--eli-status-negative); } }
+.note { margin: 0; color: var(--eli-text-muted); font-size: var(--eli-font-size-s); &.error { color: var(--eli-status-negative-text); } }
 
 .body { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: var(--eli-space-7); flex: 1; min-height: 0; }
-@container widget (max-width: 1000px) { .body { grid-template-columns: 1fr; overflow: auto; } .picker { overflow: visible; } }
+// Narrow widget: stack packs above results and let the whole tab scroll, header included, so the ranked ideas are not
+// squeezed under the header. The packs keep their own short scroll, and nothing shares a row (which made the two
+// overlap at 1024px).
+@container widget (max-width: 1000px) {
+  :host { overflow: auto; }
+  .body { flex: none; grid-template-columns: minmax(0, 1fr); grid-auto-rows: max-content; align-content: start; overflow: visible; }
+  .picker { max-height: 240px; overflow: auto; }
+  .results { overflow: visible; padding-right: 0; }
+}
 
 
 .results { display: flex; flex-direction: column; gap: var(--eli-space-5); min-height: 0; overflow: auto; padding-right: var(--eli-space-2); }
@@ -29,18 +37,24 @@
 .what { display: flex; flex-direction: column; gap: var(--eli-space-1); min-width: 0; }
 .idea-title { color: var(--eli-text-strong); font-weight: var(--eli-weight-semibold); }
 .terms { color: var(--eli-text-muted-2); font-size: var(--eli-font-size-s); font-variant-numeric: tabular-nums; }
-.conf { display: inline-flex; align-items: center; gap: var(--eli-space-4); }
+.conf { display: inline-flex; flex-direction: column; align-items: flex-start; gap: var(--eli-space-2); border-radius: var(--eli-radius-s); cursor: help; &:focus-visible { outline: 2px solid var(--eli-accent-orange); outline-offset: 2px; } }
 .dots { display: inline-flex; gap: var(--eli-space-2); flex-wrap: wrap; max-width: 70px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; border: 1px solid var(--eli-text-muted-2); &.on { border-color: var(--eli-accent-link); background: var(--eli-accent-link); } }
-.count { color: var(--eli-text-strong); font-weight: var(--eli-weight-semibold); }
+.count { color: var(--eli-text-muted-card, var(--eli-text-muted)); font-size: var(--eli-font-size-s); white-space: nowrap; strong { color: var(--eli-text-strong); font-weight: var(--eli-weight-semibold); } }
 .effect eli-concentration-bar { max-width: 240px; }
 .muted { color: var(--eli-text-muted); font-size: var(--eli-font-size-s); }
-.acts { display: flex; align-items: center; gap: var(--eli-space-3); .chev { width: 14px; height: 14px; } }
+.acts { display: flex; align-items: center; gap: var(--eli-space-3); .chev { width: 14px; height: 14px; } button { white-space: nowrap; } }
+// Mid and narrow widgets: the concentration readout moves to its own line under the terms, so no column is squeezed
+// and Copy terms never wraps.
+@container widget (max-width: 1360px) {
+  .row { grid-template-columns: 24px minmax(0, 1fr) auto auto; row-gap: var(--eli-space-3); }
+  .effect { grid-column: 2 / -1; grid-row: 2; }
+}
 .evidence { width: calc(100% - 2 * var(--eli-space-7)); margin: 0 var(--eli-space-7) var(--eli-space-6); border-collapse: collapse; font-size: var(--eli-font-size-s);
   th { padding: var(--eli-space-3) var(--eli-space-4); color: var(--eli-text-muted); font-weight: var(--eli-weight-semibold); text-align: left; border-bottom: 1px solid var(--eli-border); }
   td { padding: var(--eli-space-4); color: var(--eli-text-primary); border-bottom: 1px solid var(--eli-border); }
   tr:last-child td { border-bottom: 0; } }
-.yn { color: var(--eli-text-muted-2); &.yes { color: var(--eli-status-positive); font-weight: var(--eli-weight-semibold); } }
+.yn { color: var(--eli-text-muted-2); &.yes { color: var(--eli-status-positive-text); font-weight: var(--eli-weight-semibold); } }
 .more { align-self: flex-start; font-size: var(--eli-font-size-m); }
 .state { display: flex; align-items: center; gap: var(--eli-space-6); padding: var(--eli-space-7); border-radius: var(--eli-radius-s); background: var(--eli-bg-surface); color: var(--eli-text-primary);
   mat-icon { flex: none; width: 20px; height: 20px; color: var(--eli-text-muted-2); } span { flex: 1; }
@@ -57,11 +71,12 @@
   mat-icon { width: 16px; height: 16px; flex: none; color: var(--eli-accent-orange); } span { flex: 1; } }
 .hidden-limits { margin-top: var(--eli-space-5); padding: var(--eli-space-5) var(--eli-space-6); border-radius: var(--eli-radius-s); background: var(--eli-bg-surface); }
 .hl-head { display: inline-flex; align-items: center; gap: var(--eli-space-3); padding: 0; border: 0; background: none; color: var(--eli-text-strong); font: inherit; font-weight: var(--eli-weight-semibold); cursor: pointer;
-  mat-icon { width: 14px; height: 14px; color: var(--eli-status-negative); } .chev { color: var(--eli-text-muted-2); }
+  mat-icon { width: 14px; height: 14px; color: var(--eli-status-negative-text); } .chev { color: var(--eli-text-muted-2); }
   &[aria-expanded='true'] .chev { transform: rotate(180deg); } }
 .hl-sub { margin: var(--eli-space-3) 0; color: var(--eli-text-muted-2); font-size: var(--eli-font-size-s); }
 .hl-list { display: flex; flex-direction: column; gap: var(--eli-space-4); margin: 0; padding: 0; list-style: none;
   li { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--eli-space-2) var(--eli-space-4); padding: var(--eli-space-3) 0; border-top: 1px solid var(--eli-border); }
   .idea-title { color: var(--eli-text-strong); font-weight: var(--eli-weight-semibold); } .muted { color: var(--eli-text-muted-2); font-size: var(--eli-font-size-s); }
-  .hl-why { flex-basis: 100%; color: var(--eli-status-negative); font-size: var(--eli-font-size-s); } }
+  .hl-why { flex-basis: 100%; color: var(--eli-status-negative-text); font-size: var(--eli-font-size-s); } }
 .feedback { margin-top: var(--eli-space-3); }
+.lede strong { color: var(--eli-text-strong); font-weight: var(--eli-weight-semibold); }

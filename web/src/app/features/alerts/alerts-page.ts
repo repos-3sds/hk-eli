@@ -9,6 +9,8 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
 import { AlertRule, metCount } from '../../core/alerts/alerts';
 import { AlertsStore } from '../../core/alerts/alerts.store';
+import { LoadState } from '../../core/data/load-state';
+import { pageLoad } from '../../core/data/page-load';
 import { FeedbackButtons } from '../../core/feedback/feedback-buttons';
 import { HandoffOpener } from '../../core/handoff/handoff-opener';
 import { HandoffStore } from '../../core/handoff/handoff.store';
@@ -26,12 +28,13 @@ import { ScheduleOpener } from '../schedules/schedule-opener';
  */
 @Component({
   selector: 'eli-alerts-page',
-  imports: [FormsModule, MatButtonModule, MatButtonToggleModule, MatIconModule, MatSlideToggleModule, MatTooltipModule, FeedbackButtons],
+  imports: [FormsModule, MatButtonModule, MatButtonToggleModule, MatIconModule, MatSlideToggleModule, MatTooltipModule, FeedbackButtons, LoadState],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './alerts-page.html',
   styleUrl: './alerts-page.scss',
 })
 export class AlertsPage {
+  protected readonly load = pageLoad('The overnight dataset did not answer in time, so rules could not be checked.');
   protected readonly store = inject(AlertsStore);
   protected readonly session = inject(SessionService);
   private readonly handoff = inject(HandoffStore);

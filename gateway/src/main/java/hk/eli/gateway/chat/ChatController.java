@@ -29,7 +29,10 @@ public class ChatController {
       throw new IllegalArgumentException("Questions are limited to 1,000 characters.");
     }
     ChatAnswer computed = chat.answer(question);
-    String intent = computed.fallback() ? "fallback" : ChatService.intentOf(question.text(), true);
+    String intent = ChatService.intentOf(question.text(), question.clientId() != null, true);
+    if (computed.fallback() && !intent.equals("advice")) {
+      intent = "fallback";
+    }
     return wording.word(computed, question.text(), intent, Caller.from(req));
   }
 }

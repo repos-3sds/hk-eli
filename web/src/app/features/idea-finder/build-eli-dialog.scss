@@ -13,7 +13,7 @@
   mat-icon { width: 14px; height: 14px; } }
 .x { display: grid; place-items: center; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--eli-text-muted-2); cursor: pointer; &:hover { background: var(--eli-bg-row); color: var(--eli-text-strong); } }
 .result { display: flex; flex-direction: column; gap: var(--eli-space-5); padding: var(--eli-space-7); border: 1px solid var(--eli-border); border-radius: var(--eli-radius-m); background: var(--eli-bg-canvas); }
-.empty { margin: 0; color: var(--eli-text-muted-2); &.error { color: var(--eli-status-negative); } }
+.empty { margin: 0; color: var(--eli-text-muted-2); &.error { color: var(--eli-status-negative-text); } }
 .coupon { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--eli-space-3); transition: opacity 120ms; &.stale { opacity: 0.55; } }
 .big { color: var(--eli-text-strong); font-size: 30px; line-height: 36px; font-weight: var(--eli-weight-semibold); }
 .pa { color: var(--eli-text-muted-2); }
@@ -21,8 +21,8 @@
 .drivers { margin: 0; padding-left: var(--eli-space-8); color: var(--eli-text-muted-2); font-size: var(--eli-font-size-s); }
 .conc { display: flex; flex-direction: column; gap: var(--eli-space-2); }
 .checks { display: flex; flex-direction: column; gap: var(--eli-space-3); margin: 0; padding: 0; list-style: none;
-  li { display: flex; align-items: center; gap: var(--eli-space-4); color: var(--eli-text-strong); mat-icon { width: 16px; height: 16px; color: var(--eli-status-positive); } }
-  li.no mat-icon { color: var(--eli-status-negative); } }
+  li { display: flex; align-items: center; gap: var(--eli-space-4); color: var(--eli-text-strong); mat-icon { width: 16px; height: 16px; color: var(--eli-status-positive-text); } }
+  li.no mat-icon { color: var(--eli-status-negative-text); } }
 .actions { gap: var(--eli-space-4); }
 .why { flex: 1; color: var(--eli-text-muted-2); font-size: var(--eli-font-size-s); }
 .price-wait { height: 56px; }

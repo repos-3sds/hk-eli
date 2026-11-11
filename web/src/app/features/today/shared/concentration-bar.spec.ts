@@ -17,7 +17,7 @@ describe('ConcentrationBar', () => {
   it('is plain under the warning line', () => {
     const el = render({ underlying: 'AMD', fromPct: 14, limitPct: 25 });
     expect(el.className).not.toMatch(/warn|over/);
-    expect(el.textContent).toContain('AMD 14.0% of book · limit 25%');
+    expect(el.textContent).toContain('AMD 14.0% · limit 25%');
   });
 
   it('warns near the limit', () => {
@@ -27,6 +27,6 @@ describe('ConcentrationBar', () => {
   it('says over limit in words when an idea would breach it', () => {
     const el = render({ underlying: 'NVDA', fromPct: 23.1, toPct: 27.9, limitPct: 25 });
     expect(el.classList).toContain('over');
-    expect(el.textContent).toContain('NVDA 23.1% → 27.9% of book · limit 25% (over limit)');
+    expect(el.textContent).toContain('NVDA 23.1% → 27.9% · limit 25%, over limit');
   });
 });

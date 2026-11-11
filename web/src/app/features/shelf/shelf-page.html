@@ -1,11 +1,14 @@
 <header class="top">
   <div class="titles">
     <h2 class="title">Shelf</h2>
-    <p class="lede">What clients ask for, next to how full the book is. Pick tomorrow's shelf before the pricing cut-off, publish starter packs, and see where digibank clients stop.</p>
+    <p class="lede"><strong>Choose what the desk prices for tomorrow.</strong> The shelf is the supply: the ELIs priced before opening for every RM and digibank. Weigh what clients ask for against how full the book is, pick before the cut-off, and publish starter packs. To find what fits one client from today's shelf, use Ideas.</p>
     <eli-freshness-clocks class="clocks" />
   </div>
 </header>
 
+@if (load.state() !== 'ready') {
+<eli-load-state [load]="load" what="The shelf console" emptyTitle="No quotes or shelf ideas in last night's data." emptyText="Demand, the shelf and the digibank funnel fill in after the next overnight refresh. If this stays empty past 09:00, the RFQ log feed may not have run." [skeleton]="[260, 200, 160]" />
+} @else {
 <div class="grid">
   <div class="col">
     <section class="card demand" aria-labelledby="dem-h">
@@ -14,7 +17,7 @@
       <div class="table-wrap">
         <table class="tbl">
           <caption class="eli-visually-hidden">Demand by underlying against concentration</caption>
-          <thead><tr><th scope="col">Underlying</th><th scope="col" class="num">Quotes</th><th scope="col" class="num">Traded</th><th scope="col" class="num">Quote to trade</th><th scope="col" class="num">Digibank</th><th scope="col">Most asked</th><th scope="col">Book share</th></tr></thead>
+          <thead><tr><th scope="col">Underlying</th><th scope="col" class="num">Quotes</th><th scope="col" class="num">Traded</th><th scope="col" class="num"><span eliTerm="q2t">Quote to trade</span></th><th scope="col" class="num"><span eliTerm="self-directed">Digibank</span></th><th scope="col">Most asked</th><th scope="col"><span eliTerm="concentration">Book share</span></th></tr></thead>
           <tbody>
             @for (d of demand; track d.underlying) {
               <tr [attr.data-limit]="d.limitState">
@@ -64,7 +67,7 @@
   <div class="col">
     <section class="card shelf" aria-labelledby="shelf-h">
       <div class="card-head">
-        <h3 id="shelf-h" class="card-h">Shelf for {{ forDate() }}</h3>
+        <h3 id="shelf-h" class="card-h"><span eliTerm="shelf">Shelf</span> for {{ forDate() }}</h3>
         <span class="cut" [class.passed]="cutoff().passed"><mat-icon svgIcon="clock" aria-hidden="true" />{{ cutoff().text }}</span>
       </div>
       <p class="sub">Tick the ideas to bulk price before opening. Busiest in RFQs first. Ideas on a name at its limit cannot be picked. Cut-off time to be confirmed by the desk.</p>
@@ -90,7 +93,7 @@
       }
     </section>
     <section class="card packs" aria-labelledby="packs-h">
-      <h3 id="packs-h" class="card-h">Starter packs for everyone</h3>
+      <h3 id="packs-h" class="card-h"><span eliTerm="starter-pack">Starter packs</span> for everyone</h3>
       <p class="sub">A published pack shows in every launch user's Ideas tab, under "From the product team".</p>
       <ul class="plist">
         @for (p of publishable(); track p.name) {
@@ -111,5 +114,6 @@
 
 
 </div>
+}
 <eli-feedback class="feedback" topic="Shelf console" />
 <p class="trust"><mat-icon svgIcon="info" aria-hidden="true" />Demo figures from the RFQ log, digibank quote log, outstanding stock and idea warehouse. Internal use only.</p>

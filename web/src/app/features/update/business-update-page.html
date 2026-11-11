@@ -4,9 +4,10 @@
     <p class="lede">The monthly Tableau routine, section by section, for {{ update().scopeName === 'Whole business' ? 'the whole business' : update().scopeName }}. Figures are computed from data; nothing here is written by AI.</p>
     <eli-freshness-clocks class="clocks" />
     @if (isTsm()) {
-      <div class="start" role="group" aria-label="Start here">
+      <div class="start" role="group" aria-label="Start here" [class.off]="load.state() !== 'ready'" [attr.inert]="load.state() !== 'ready' ? '' : null">
         <span class="start-lbl">Start here</span>
-        <button type="button" class="start-btn" (click)="go('branches')"><mat-icon svgIcon="layers" aria-hidden="true" />Team performance by branch</button>
+        <button type="button" class="start-btn" (click)="go('team')"><mat-icon svgIcon="users" aria-hidden="true" />Team by RM</button>
+        <button type="button" class="start-btn" (click)="go('branches')"><mat-icon svgIcon="layers" aria-hidden="true" />Branches</button>
         <button type="button" class="start-btn" (click)="go('handoffs')"><mat-icon svgIcon="clipboard-list" aria-hidden="true" />Hand-off lists and linked conversion</button>
         <button type="button" class="start-btn" (click)="go('rollover')"><mat-icon svgIcon="refresh-cw" aria-hidden="true" />Pockets below the rollover line</button>
       </div>
@@ -14,11 +15,14 @@
   </div>
   <div class="tools">
     <eli-scope-switch [value]="scope()" (changed)="scope.set($event)" />
-    <button matButton="outlined" type="button" (click)="schedule.open({ template: 'business-update', scope: scope() })"><mat-icon svgIcon="calendar-plus" />Schedule</button>
-    <button matButton="outlined" type="button" (click)="copyAll()"><mat-icon svgIcon="clipboard-copy" />Copy update</button>
+    <button matButton="outlined" type="button" (click)="schedule.open({ template: 'business-update', scope: scope() })" [disabled]="load.state() !== 'ready'"><mat-icon svgIcon="calendar-plus" />Schedule</button>
+    <button matButton="outlined" type="button" (click)="copyAll()" [disabled]="load.state() !== 'ready'"><mat-icon svgIcon="clipboard-copy" />Copy update</button>
   </div>
 </header>
 
+@if (load.state() !== 'ready') {
+<eli-load-state class="gate" [load]="load" what="The Business Update" emptyTitle="No positions in last night's data for this scope." emptyText="The 15 sections fill in after the next overnight refresh. Try Whole business, or check again after 09:00." [skeleton]="[140, 220, 220]" />
+} @else {
 <div class="body">
   <nav class="toc eli-scroll" aria-label="Sections">
     <ol>
@@ -79,3 +83,4 @@
     <p class="trust"><mat-icon svgIcon="info" aria-hidden="true" />Demo figures. Parity with the launch users' Tableau views is checked once that list is shared. Internal use only.</p>
   </div>
 </div>
+}

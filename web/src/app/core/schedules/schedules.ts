@@ -11,7 +11,7 @@ export type Frequency = 'daily' | 'weekly' | 'monthly';
 export type Channel = 'email' | 'teams' | 'in-app';
 
 export const TEMPLATES: readonly { id: ReportTemplate; label: string; detail: string }[] = [
-  { id: 'business-update', label: 'Business Update', detail: 'All 14 sections, as on the Update tab' },
+  { id: 'business-update', label: 'Business Update', detail: 'All 15 sections, as on the Update tab' },
   { id: 'pockets', label: 'Pockets below the rollover line', detail: 'Pockets under 80% with their maturing notional' },
   { id: 'handoff-conversion', label: 'Hand-off lists and linked conversion', detail: 'Lists handed out, windows open and linked trades' },
   { id: 'digibank-funnel', label: 'Digibank quote funnel', detail: 'Quotes to trades, and where people drop off' },

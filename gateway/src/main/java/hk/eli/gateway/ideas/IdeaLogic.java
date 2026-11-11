@@ -167,7 +167,7 @@ public final class IdeaLogic {
       case "top-coupon" -> r.apply(idea.couponPct() >= ctx.couponLine(), plain(idea.couponPct()) + "% against the " + plain(ctx.couponLine()) + "% top-quartile line");
       case "coupon-up" -> r.apply(idea.couponChangeBp() >= 50, (idea.couponChangeBp() >= 0 ? "+" : "") + fixed(idea.couponChangeBp() / 100.0, 2) + " points on last week");
       case "vol-rich" -> r.apply(idea.volRank() >= 70, "Vol rank " + idea.volRank() + " of 100");
-      case "rm-traded" -> r.apply(idea.rmTrades() >= 3, idea.rmTrades() + " HK RMs this week");
+      case "rm-traded" -> r.apply(idea.rmTrades() >= 3, idea.rmTrades() + " HK " + (idea.rmTrades() == 1 ? "RM" : "RMs") + " this week");
       case "rfq-busy" -> r.apply(idea.rfqs5d() >= 10, idea.rfqs5d() + " RFQs in 5 days");
       case "fills" -> r.apply(idea.fillRatePct() >= 60, idea.fillRatePct() + "% of RFQs traded");
       case "deep-ki" -> r.apply(idea.kiPct() <= 65, "KI " + plain(idea.kiPct()) + "%");

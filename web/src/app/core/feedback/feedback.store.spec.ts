@@ -1,3 +1,4 @@
+import { onTestFinished, vi } from 'vitest';
 import { APP_CONFIG } from '../config/app-config';
 import { TEST_CONFIG } from '../../testing/test-config';
 import { TestBed } from '@angular/core/testing';
@@ -50,6 +51,12 @@ describe('weekly feedback summary', () => {
   });
 
   it('adds this session to the sample entries from earlier in the week', () => {
+    // Ratings are stamped with the real time; pin it inside the test clock's week (asOfDate 3 Nov 2026).
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-03T10:00:00+08:00'));
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
     const store = TestBed.inject(FeedbackStore);
     const before = store.week().total;
     store.rate('Ideas results', 'up');

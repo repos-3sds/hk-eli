@@ -101,7 +101,9 @@ import { UsdPipe } from '../today/shared/format';
           }
         }
       }
-      <eli-trust-line [businessDate]="answer().businessDate" [sources]="answer().sources" reference="chat" />
+      @if (!answer().fallback) {
+        <eli-trust-line [businessDate]="answer().businessDate" [sources]="answer().sources" reference="chat" />
+      }
       @if (answer().parity; as p) {
         <p class="parity" [class]="p.status" [attr.role]="p.status === 'mismatch' ? 'note' : null">
           <mat-icon [svgIcon]="p.status === 'match' ? 'check' : p.status === 'mismatch' ? 'triangle-alert' : 'info'" aria-hidden="true" />
@@ -121,7 +123,7 @@ import { UsdPipe } from '../today/shared/format';
   styles: `
     .parity { display: flex; align-items: flex-start; gap: var(--eli-space-3); margin: 0; color: var(--eli-text-muted-2); font-size: var(--eli-font-size-s);
       mat-icon { flex: none; width: 14px; height: 14px; margin-top: 2px; }
-      &.match mat-icon { color: var(--eli-status-positive); }
+      &.match mat-icon { color: var(--eli-status-positive-text); }
       &.mismatch { padding: var(--eli-space-3) var(--eli-space-5); border-left: 3px solid var(--eli-accent-orange); border-radius: var(--eli-radius-s); background: var(--eli-bg-row); color: var(--eli-text-primary); mat-icon { color: var(--eli-accent-orange); } }
       &.unchecked { color: var(--eli-text-muted); } }
     .card { display: flex; flex-direction: column; gap: var(--eli-space-7); padding: var(--eli-space-7) var(--eli-space-8); border: 1px solid var(--eli-separator); border-radius: var(--eli-radius-m); background: var(--eli-bg-dock); }

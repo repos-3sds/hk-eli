@@ -1,65 +1,111 @@
 import { PARITY_RESULTS, ParityTopic } from '../parity/tableau-parity';
-import { Injectable, inject } from '@angular/core';
+import { DOCUMENT, Injectable, inject } from '@angular/core';
+import { APP_CONFIG } from '../config/app-config';
+import { currentScenario } from '../data/page-load';
 import { Observable, catchError, forkJoin, map, of, switchMap } from 'rxjs';
 import { BOOK_CONCENTRATION, ROLLOVER_BASELINE_PCT, ROLLOVER_POCKETS, UNMET_DEMAND } from '../data/business.fixture';
 import { FIXTURE_CLIENTS } from '../data/today.fixture';
 import { TodayDataSource } from '../data/today-data-source';
 import { MomentStrip } from '../models/today.models';
 import { offsetLabel, shortDate } from '../time/business-calendar';
+import { IdeaFinderDataSource } from '../ideas/idea-finder-data-source';
+import { IdeaResults, NO_FILTERS } from '../ideas/idea-finder.models';
+import { STARTER_PACKS } from '../ideas/idea-warehouse.fixture';
+import { ClientContext } from '../models/today.models';
 import { ChatDataSource } from './chat-data-source';
+import { DECLINE_TEXT, FALLBACK_TEXT } from './chat-scope';
 import { AnswerBlock, ChatAnswer, ChatQuestion, ClientRowsBlock } from './chat.models';
 
 const SOURCES = ['EQD master', 'outstanding stock', 'RFQ log'];
-const FALLBACK_FOLLOW_UPS = ['Who matures this week?', 'Which knock-outs are close to the barrier?', 'Brief me on Chan'];
+const FALLBACK_FOLLOW_UPS = ['Where is rollover below 80% this month?', 'Who matures this week?', 'Which knock-outs are close to the barrier?'];
+
+/** The Ideas tab opens a client's ideas with this pack ("Show rollover ideas", "See why in Ideas"); chat uses the same one. */
+export const CALL_PREP_PACK = 'rollover';
+
+// Question intents, shared word for word with the gateway (ChatService.java). Order matters: first match wins.
+const ADVICE =
+  /\b(should (i|we|he|she|they|the client|\w+) (buy|sell|invest|hold|switch|add|exit|get out)|buy or sell|recommend\w*|forecast|predict\w*|price target|what will \S+(?: \S+)? do|will \S+(?: \S+)? (go up|go down|rise|fall|drop|rally|crash)|is it a good (time|idea)|worth buying|good buy)\b/;
+const HISTORY = /\b(trade|traded|trades|history|rfqs?|last 90)\b/;
+const BRIEF = /\b(prepare|prep|before i call|know about|call with|tell me about|brief me|brief on|summary of|summari[sz]e|overview|update on|status of)\b/;
+const ROLLOVER = /\broll(ed|s|ing)?[ -]?overs?\b/;
+const CONCENTRATION = /concentrat|against limit|limits?\b|exposure|heaviest|book share|closest to (its |the )?limit/;
+const UNMET = /not traded|quoted and not|unmet|demand|did ?n[o']t trade|didn't trade|unconverted|missed quotes|lost quotes/;
+const MATURITY = /matur|expir|falling due|coming due/;
+const KNOCKOUT = /knock|barrier|\bko\b/;
 
 /**
  * Answers a few kinds of question from the same Today data the screens use, so the demo stays consistent:
  * call prep for one client, maturities this week, knock-outs near the barrier. Anything else gets suggestions.
  * In the real system Stork AI words the answer; the figures still come from computed data.
  */
+/** What Chat says when the overnight data is empty. */
+const NO_DATA_TEXT = "There is nothing in last night's data to answer from yet: no positions, quotes or clients. The overnight refresh may not have landed. Try again after 09:00, or check the data clock.";
+
 @Injectable()
 export class MockChatDataSource extends ChatDataSource {
   private readonly today = inject(TodayDataSource);
+  private readonly config = inject(APP_CONFIG);
+  private readonly document = inject(DOCUMENT);
+  private readonly ideaFinder = inject(IdeaFinderDataSource);
   private counter = 0;
 
   ask(question: ChatQuestion): Observable<ChatAnswer> {
     const text = question.text.toLowerCase();
     const named = findClient(text);
+    const clientId = named ?? question.clientId;
     const id = `a-${++this.counter}`;
-    if (/\b(trade|traded|history|rfqs?|last 90)\b/.test(text) && (named ?? question.clientId)) {
-      return this.history(id, (named ?? question.clientId)!);
+    if (ADVICE.test(text)) {
+      return this.decline(id, clientId);
     }
-    if (/\b(prepare|prep|before i call|know about|call with|tell me about|brief me)\b/.test(text) && (named ?? question.clientId)) {
-      return this.callPrep(id, (named ?? question.clientId)!);
+    if (currentScenario(this.config, this.document) === 'empty') {
+      return this.noData(id);
     }
-    if (/rollover/.test(text) && /(below|under|ratio|pocket|baseline)/.test(text)) {
-      return this.rollover(id);
-    }
-    if (/concentrat|against limit|limits?\b/.test(text)) {
-      return this.concentration(id);
-    }
-    if (/not traded|quoted and not|unmet|demand/.test(text)) {
+    if (UNMET.test(text)) {
       return this.unmetDemand(id);
     }
-    if (/matur/.test(text)) {
+    if (HISTORY.test(text) && clientId) {
+      return this.history(id, clientId);
+    }
+    if (BRIEF.test(text) && clientId) {
+      return this.callPrep(id, clientId);
+    }
+    if (ROLLOVER.test(text)) {
+      return this.rollover(id);
+    }
+    if (CONCENTRATION.test(text)) {
+      return this.concentration(id);
+    }
+    if (MATURITY.test(text)) {
       return this.byType(id, 'maturity', text.includes('next week') ? 'next' : 'this');
     }
-    if (/knock|barrier|\bko\b/.test(text)) {
+    if (KNOCKOUT.test(text)) {
       return this.byType(id, 'knockout', 'window');
     }
     if (named) {
       return this.callPrep(id, named);
     }
     return this.today.getMorningBrief('all').pipe(
-      map((brief) => ({
-        id,
-        fallback: true,
-        businessDate: brief.businessDate,
-        sources: SOURCES,
-        blocks: [{ kind: 'text', text: 'I can only answer a few kinds of question in this demo: a brief on one client, maturities this week or next, and knock-outs close to the barrier. Try one of these.' }],
-        followUps: FALLBACK_FOLLOW_UPS,
-      })),
+      map((brief) => ({ id, fallback: true, businessDate: brief.businessDate, sources: [], blocks: [{ kind: 'text', text: FALLBACK_TEXT }], followUps: FALLBACK_FOLLOW_UPS })),
     );
+  }
+
+  /** Last night's data has not landed: say so plainly rather than answering from nothing. No figures, no sources. */
+  private noData(id: string): Observable<ChatAnswer> {
+    return this.today.getMorningBrief('all').pipe(
+      map((brief) => ({ id, fallback: true, businessDate: brief.businessDate, sources: [], blocks: [{ kind: 'text', text: NO_DATA_TEXT }], followUps: [] })),
+    );
+  }
+
+  /** Forecast or advice: say plainly that the tool does not do that, and offer facts instead. No figures, no sources. */
+  private decline(id: string, clientId: string | null): Observable<ChatAnswer> {
+    const client = clientId ? FIXTURE_CLIENTS.find((c) => c.id === clientId) : undefined;
+    const first = client?.name.split(' ')[0];
+    const followUps = first
+      ? [`Brief me on ${first}`, `What did ${first} trade in the last 90 days?`, 'Top concentrations against limit']
+      : ['Top concentrations against limit', 'What was quoted and not traded this week?', 'Who matures this week?'];
+    return this.today
+      .getMorningBrief('all')
+      .pipe(map((brief) => ({ id, fallback: true, businessDate: brief.businessDate, sources: [], blocks: [{ kind: 'text', text: DECLINE_TEXT }], followUps })));
   }
 
   private businessAnswer(id: string, blocks: AnswerBlock[], followUps: string[], sources: string[], topic: ParityTopic): Observable<ChatAnswer> {
@@ -137,7 +183,9 @@ export class MockChatDataSource extends ChatDataSource {
     return forkJoin({
       brief: this.today.getMorningBrief('all'),
       context: this.today.getClientContext(clientId),
-      ideas: this.today.getIdeas(clientId).pipe(catchError(() => of(null))),
+      ideas: this.ideaFinder
+        .search({ filters: { ...NO_FILTERS, clientId }, signalIds: STARTER_PACKS.find((p) => p.id === CALL_PREP_PACK)!.signalIds })
+        .pipe(catchError(() => of(null))),
     }).pipe(
       map(({ brief, context, ideas }) => {
         const lead = brief.leads.find((l) => l.clientId === clientId);
@@ -162,23 +210,24 @@ export class MockChatDataSource extends ChatDataSource {
         if (context.concentration.length > 0) {
           blocks.push({ kind: 'concentration', title: 'Concentration, share of ELI outstanding', lines: context.concentration.map((c) => ({ underlying: c.underlying, sharePct: c.sharePct, limitPct: c.limitPct })) });
         }
-        if (ideas && ideas.ideas.length > 0) {
+        if (ideas && ideas.matches.length > 0) {
           blocks.push({
             kind: 'ideas',
             clientId,
-            title: `Top ideas for USD ${Math.round(ideas.amountUsd / 1000)}k, indicative`,
-            ideas: ideas.ideas.slice(0, 3).map((i) => ({
-              id: i.id,
-              title: i.title,
-              tenor: i.tenor,
-              couponPct: i.terms.couponPct,
-              kiPct: i.terms.kiPct,
-              concentration: `${i.concentration.underlying} ${i.concentration.fromPct.toFixed(1)}% → ${i.concentration.toPct.toFixed(1)}%`,
+            title: `Top ideas for USD ${Math.round(ideas.notionalUsd / 1000)}k, indicative`,
+            ideas: ideas.matches.slice(0, 3).map((m) => ({
+              id: m.id,
+              title: m.title,
+              tenor: `${m.tenorMonths}M`,
+              couponPct: m.terms.couponPct,
+              kiPct: m.terms.kiPct,
+              concentration: m.effect ? `${m.effect.underlying} ${m.effect.fromPct.toFixed(1)}% → ${m.effect.toPct.toFixed(1)}%` : '',
             })),
           });
-          if (ideas.callPrep.length > 0) {
-            blocks.push({ kind: 'bullets', title: 'Points for the owning RM', items: ideas.callPrep });
-          }
+        }
+        const facts = factsForRm(context, ideas);
+        if (facts.length > 0) {
+          blocks.push({ kind: 'bullets', title: 'Facts for the owning RM', items: facts });
         }
         return {
           id,
@@ -264,6 +313,30 @@ export class MockChatDataSource extends ChatDataSource {
       }),
     );
   }
+}
+
+/**
+ * Plain facts for the owning RM, from the client's book and the same ranking the Ideas tab shows.
+ * Facts only: nothing here tells anyone what to sell. Same sentences as the gateway.
+ */
+function factsForRm(context: ClientContext, ideas: IdeaResults | null): string[] {
+  const out: string[] = [];
+  if (context.maturingUsd > 0) {
+    out.push(`${usd(context.maturingUsd)} matures in the next 10 business days.`);
+  }
+  const top = [...context.concentration].sort((a, b) => b.sharePct - a.sharePct)[0];
+  if (top) {
+    out.push(`Largest holding is ${top.underlying} at ${top.sharePct}% of the client's ELI book, against a ${top.limitPct}% limit.`);
+  }
+  if (ideas && ideas.matches.length > 0) {
+    const m = ideas.matches[0];
+    out.push(`Idea 1 meets ${m.met} of ${m.checks.length} rollover signals. The evidence for each is under Why in Ideas.`);
+  }
+  if (ideas && ideas.hiddenByLimits.length > 0) {
+    const n = ideas.hiddenByLimits.length;
+    out.push(`${n} ${n === 1 ? 'idea is' : 'ideas are'} hidden because ${n === 1 ? 'it' : 'they'} would take a holding over its limit.`);
+  }
+  return out;
 }
 
 /** A client named in the question, matched on family name or full name. */

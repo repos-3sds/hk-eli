@@ -10,6 +10,7 @@ import { LaunchRole, SessionService } from '../../core/session/session.service';
 import { BusinessClock } from '../../core/time/business-clock';
 import { ChatAnswer } from '../../core/chat/chat.models';
 import { answerAsText } from '../../core/chat/answer-text';
+import { CAN_ANSWER } from '../../core/chat/chat-scope';
 import { AnswerCard } from './answer-card';
 import { ChatComposer } from './chat-composer';
 import { ANSWER_STAGES, ChatStore } from './chat.store';
@@ -65,6 +66,7 @@ export class ChatPage {
 
   protected readonly starters = computed(() => STARTERS[this.session.role()]);
   protected readonly stages = ANSWER_STAGES;
+  protected readonly canAnswer = CAN_ANSWER;
   protected readonly clients = FIXTURE_CLIENTS;
   /** The RM has scrolled up, away from the newest answer. */
   protected readonly awayFromBottom = signal(false);

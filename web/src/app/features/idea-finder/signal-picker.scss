@@ -32,3 +32,4 @@
 .save-input { height: 32px; padding: 0 var(--eli-space-5); border: 1px solid var(--eli-border); border-radius: var(--eli-radius-s); outline: 0; background: var(--eli-bg-input); color: var(--eli-text-primary); font: inherit; &:focus { border-color: var(--eli-accent-link); } }
 .save-hint { color: var(--eli-text-muted); font-size: var(--eli-font-size-xs); }
 .save-acts { display: flex; gap: var(--eli-space-4); }
+.pack.on .pack-blurb { color: var(--eli-text-primary); }

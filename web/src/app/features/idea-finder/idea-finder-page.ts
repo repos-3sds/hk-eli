@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, effect, inject, input, signal, untracked } from '@angular/core';
+import { Term } from '../../core/help/term';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -14,7 +15,8 @@ import { FIXTURE_CLIENTS } from '../../core/data/today.fixture';
 import { ownerOf } from '../../core/data/business.fixture';
 import { HandoffStore } from '../../core/handoff/handoff.store';
 import { HandoffOpener } from '../../core/handoff/handoff-opener';
-import { IdeaMatch } from '../../core/ideas/idea-finder.models';
+import { ConcentrationEffect, IdeaMatch } from '../../core/ideas/idea-finder.models';
+import { concentrationEffects } from '../../core/ideas/idea-finder-logic';
 import { IDEA_SIGNALS } from '../../core/ideas/idea-warehouse.fixture';
 import { BuildEliDialog, BuildEliData, BuiltEli } from './build-eli-dialog';
 import { ConcentrationBar } from '../today/shared/concentration-bar';
@@ -29,7 +31,7 @@ import { SignalPicker } from './signal-picker';
  */
 @Component({
   selector: 'eli-idea-finder-page',
-  imports: [FormsModule, MatButtonModule, MatIconModule, MatMenuModule, MatTooltipModule, ConcentrationBar, UsdPipe, SignalPicker, FocusChips, FreshnessClocks, FeedbackButtons],
+  imports: [FormsModule, MatButtonModule, MatIconModule, MatMenuModule, MatTooltipModule, ConcentrationBar, UsdPipe, SignalPicker, FocusChips, FreshnessClocks, FeedbackButtons, Term],
   providers: [IdeaFinderStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './idea-finder-page.html',
@@ -70,6 +72,23 @@ export class IdeaFinderPage {
         });
       }
     });
+  }
+
+  /** Met signals first, so the count reads at a glance; the same order as the dots. */
+  protected orderedChecks(m: IdeaMatch): readonly IdeaMatch['checks'][number][] {
+    return [...m.checks].sort((a, b) => Number(b.met) - Number(a.met));
+  }
+
+  /** "3 of 5 signals line up" and then each signal by name with yes or no, for the hover and screen readers. */
+  protected signalsLabel(m: IdeaMatch): string {
+    return [`${m.met} of ${m.checks.length} signals line up:`, ...this.orderedChecks(m).map((c) => `${c.met ? 'Yes' : 'No'}: ${this.signalName(c.signalId)}`)].join('\n');
+  }
+
+  /** Every name in a worst-of, for the concentration hover. Same rule as the ranking, so the highest matches the bar. */
+  protected namesFor(m: IdeaMatch): readonly ConcentrationEffect[] | null {
+    const client = this.store.client();
+    if (!client || m.underlyings.length < 2 || !this.store.results.hasValue()) return null;
+    return concentrationEffects(m, client, this.store.results.value().notionalUsd);
   }
 
   protected signalName(id: string): string {

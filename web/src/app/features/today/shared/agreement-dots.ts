@@ -1,21 +1,22 @@
 import { CdkConnectedOverlay, CdkOverlayOrigin, ConnectedPosition } from '@angular/cdk/overlay';
 import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { Signal } from '../../../core/models/today.models';
 import { SignalPanel } from './signal-panel';
 
 /** "●●●●●○ 5 of 6 signals agree". Pressing it opens the signals behind the count. */
 @Component({
   selector: 'eli-agreement-dots',
-  imports: [CdkConnectedOverlay, CdkOverlayOrigin, SignalPanel],
+  imports: [CdkConnectedOverlay, CdkOverlayOrigin, MatTooltipModule, SignalPanel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <button type="button" class="dots" cdkOverlayOrigin #origin="cdkOverlayOrigin" [attr.aria-expanded]="open()" aria-haspopup="dialog" (click)="open.set(!open())">
+      <span class="label"><strong>{{ met() }} of {{ signals().length }}</strong> signals agree</span>
       <span class="row" aria-hidden="true">
         @for (s of ordered(); track s.id) {
-          <span class="dot" [class.on]="s.met"></span>
+          <span class="dot" [class.on]="s.met" [matTooltip]="(s.met ? 'Yes: ' : 'No: ') + s.name"></span>
         }
       </span>
-      <span class="label">{{ met() }} of {{ signals().length }} signals agree</span>
     </button>
     <ng-template cdkConnectedOverlay [cdkConnectedOverlayOrigin]="origin" [cdkConnectedOverlayOpen]="open()" [cdkConnectedOverlayPositions]="positions"
       [cdkConnectedOverlayHasBackdrop]="true" cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
@@ -33,6 +34,7 @@ import { SignalPanel } from './signal-panel';
     .row { display: inline-flex; gap: var(--eli-space-2); }
     .dot { width: 8px; height: 8px; border-radius: 50%; border: 1px solid var(--eli-text-muted-2); }
     .dot.on { border-color: var(--eli-accent-link); background: var(--eli-accent-link); }
+    .label strong { color: var(--eli-text-strong); font-weight: var(--eli-weight-semibold); }
   `,
 })
 export class AgreementDots {

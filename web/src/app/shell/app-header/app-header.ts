@@ -3,6 +3,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
+import { HelpOpener } from '../help/help-opener';
 import { LAUNCH_ROLES, LaunchRole, ROLE_LABELS, START_VIEWS, SessionService } from '../../core/session/session.service';
 
 /** The Digimarkets top bar: logo, workspace tabs, greeting and platform actions (HK ELI Figma 1:11321). */
@@ -37,9 +38,12 @@ import { LAUNCH_ROLES, LaunchRole, ROLE_LABELS, START_VIEWS, SessionService } fr
         </mat-menu>
         <span class="sep" aria-hidden="true"></span>
         <button type="button" class="icon-btn" matTooltip="Add widget" aria-label="Add widget"><mat-icon svgIcon="dm-plus" /></button>
-        <button type="button" class="icon-btn" matTooltip="Help and feedback" aria-label="Help and feedback" [matMenuTriggerFor]="helpMenu"><mat-icon svgIcon="dm-faq" /></button>
+        <button type="button" class="icon-btn" matTooltip="Help, glossary and feedback" aria-label="Help, glossary and feedback" [matMenuTriggerFor]="helpMenu"><mat-icon svgIcon="dm-faq" /></button>
         <mat-menu #helpMenu="matMenu" xPosition="before">
-          <button mat-menu-item type="button" (click)="router.navigateByUrl('/feedback')"><mat-icon svgIcon="message-square" />Feedback this week</button>
+          <button mat-menu-item type="button" (click)="help.open('start')"><mat-icon svgIcon="list-checks" />Getting started</button>
+          <button mat-menu-item type="button" (click)="help.open('ask')"><mat-icon svgIcon="message-square" />What can I ask?</button>
+          <button mat-menu-item type="button" (click)="help.open('glossary')"><mat-icon svgIcon="file-text" />Glossary</button>
+          <button mat-menu-item type="button" (click)="router.navigateByUrl('/feedback')"><mat-icon svgIcon="thumbs-up" />Feedback this week</button>
         </mat-menu>
         <button type="button" class="icon-btn" matTooltip="Log out" aria-label="Log out"><mat-icon svgIcon="dm-logout" /></button>
       </div>
@@ -83,6 +87,7 @@ import { LAUNCH_ROLES, LaunchRole, ROLE_LABELS, START_VIEWS, SessionService } fr
 export class AppHeader {
   protected readonly session = inject(SessionService);
   protected readonly router = inject(Router);
+  protected readonly help = inject(HelpOpener);
 
   /** Demo: switching role opens that role's start view, as signing in would. */
   protected switchRole(role: LaunchRole): void {

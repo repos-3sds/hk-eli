@@ -11,7 +11,8 @@
     "test:watch": "ng test",
     "export-seed": "esbuild scripts/export-seed.ts --bundle --platform=node --format=esm --outfile=scripts/.export-seed.mjs --log-level=warning && node scripts/.export-seed.mjs",
     "export-golden": "esbuild scripts/export-golden.ts --bundle --platform=node --format=esm --outfile=scripts/.export-golden.mjs --tsconfig=tsconfig.json --log-level=warning && node scripts/.export-golden.mjs",
-    "start:gateway": "ng serve --configuration gateway"
+    "start:gateway": "ng serve --configuration gateway",
+    "start:empty": "ng serve --configuration empty --port 4300"
   },
   "private": true,
   "engines": {

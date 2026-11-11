@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { Term } from '../../core/help/term';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -37,7 +38,7 @@ export const MAX_STOCKS = 3;
  */
 @Component({
   selector: 'eli-build-eli-dialog',
-  imports: [MatDialogModule, MatButtonModule, MatButtonToggleModule, MatIconModule, MatMenuModule, ConcentrationBar, UsdPipe],
+  imports: [MatDialogModule, MatButtonModule, MatButtonToggleModule, MatIconModule, MatMenuModule, ConcentrationBar, UsdPipe, Term],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './build-eli-dialog.html',
   styleUrl: './build-eli-dialog.scss',
