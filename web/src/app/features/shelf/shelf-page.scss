@@ -50,3 +50,4 @@ tr[data-limit='red'] .sfill { background: var(--eli-status-negative); }
 .sfill2 { position: absolute; inset: 0 auto 0 0; border-radius: 5px; background: var(--eli-moment-rfq, var(--eli-status-positive)); }
 .scount { color: var(--eli-text-strong); text-align: right; font-variant-numeric: tabular-nums; }
 .trust { display: flex; align-items: center; gap: var(--eli-space-3); margin: 0; color: var(--eli-text-muted); font-size: var(--eli-font-size-s); mat-icon { width: 14px; height: 14px; flex: none; } }
+.lede strong { color: var(--eli-text-strong); font-weight: var(--eli-weight-semibold); }
