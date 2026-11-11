@@ -71,9 +71,11 @@
               <span>No ideas pass, and no single filter is to blame. Several of them together rule everything out.</span>
             }
           } @else {
-            <span>The idea warehouse has nothing for today yet.</span>
+            <span>The idea warehouse has nothing for today yet. This morning's ideas arrive after the 09:05 pricing run; you can still build your own ELI.</span>
           }
-          <button matButton="outlined" type="button" (click)="store.clearFilters()">Clear all filters</button>
+          @if (r.warehouseSize > 0) {
+            <button matButton="outlined" type="button" (click)="store.clearFilters()">Clear all filters</button>
+          }
           <button matButton="outlined" type="button" (click)="openBuilder()">Build my own ELI</button>
         </div>
       } @else {
