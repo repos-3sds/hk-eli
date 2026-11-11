@@ -1,9 +1,11 @@
+import { DOCUMENT } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { APP_CONFIG } from '../../core/config/app-config';
+import { currentScenario } from '../../core/data/page-load';
 import { HandoffOpener } from '../../core/handoff/handoff-opener';
 import { HandoffStore } from '../../core/handoff/handoff.store';
 import { AlertsStore } from '../../core/alerts/alerts.store';
@@ -45,7 +47,7 @@ import { SessionService } from '../../core/session/session.service';
               <span class="tab-label">
                 {{ tab.label }}
                 @if (forYou().includes(tab.path)) { <span class="for-you" aria-hidden="true"></span><span class="eli-visually-hidden">, suggested for your role</span> }
-                @let badge = tab.path === 'alerts' ? alerts.count() : tab.badge;
+                @let badge = tab.path === 'alerts' ? (noData ? 0 : alerts.count()) : tab.badge;
                 @if (badge) {
                   <span class="badge" [attr.aria-label]="badge + ' new'">{{ badge }}</span>
                 }
@@ -71,6 +73,8 @@ export class WidgetFrame {
   protected readonly alerts = inject(AlertsStore);
   protected readonly handoffs = inject(HandoffOpener);
   protected readonly firstRun = inject(FirstRunStore);
+  /** With no overnight data, no alert can fire, so the Alerts badge stays off. */
+  protected readonly noData = currentScenario(inject(APP_CONFIG), inject(DOCUMENT)) === 'empty';
   protected readonly session = inject(SessionService);
   /** The role's home tabs get a small "for you" mark, so a first-time user knows where to start. */
   protected readonly forYou = computed(() => ROLE_HOME_TABS[this.session.role()]);

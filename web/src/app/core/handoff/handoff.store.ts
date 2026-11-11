@@ -1,5 +1,6 @@
+import { currentScenario } from '../data/page-load';
 import { HttpClient } from '@angular/common/http';
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { DOCUMENT, Injectable, computed, inject, signal } from '@angular/core';
 import { APP_CONFIG } from '../config/app-config';
 import { SessionService, ROLE_LABELS } from '../session/session.service';
 import { BusinessClock } from '../time/business-clock';
@@ -28,7 +29,8 @@ export class HandoffStore {
   readonly saveError = signal<string | null>(null);
 
   readonly draft = signal<readonly HandoffItem[]>([]);
-  readonly records = signal<readonly HandoffRecord[]>(PAST_HANDOFFS);
+  /** Earlier hand-offs. None on the empty demo, where there is no overnight data to have handed off from. */
+  readonly records = signal<readonly HandoffRecord[]>(currentScenario(this.config, inject(DOCUMENT)) === 'empty' ? [] : PAST_HANDOFFS);
   readonly tab = signal<'draft' | 'sent'>('draft');
 
   readonly count = computed(() => this.draft().length);

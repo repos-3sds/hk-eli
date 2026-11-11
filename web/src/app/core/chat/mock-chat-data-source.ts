@@ -1,5 +1,7 @@
 import { PARITY_RESULTS, ParityTopic } from '../parity/tableau-parity';
-import { Injectable, inject } from '@angular/core';
+import { DOCUMENT, Injectable, inject } from '@angular/core';
+import { APP_CONFIG } from '../config/app-config';
+import { currentScenario } from '../data/page-load';
 import { Observable, catchError, forkJoin, map, of, switchMap } from 'rxjs';
 import { BOOK_CONCENTRATION, ROLLOVER_BASELINE_PCT, ROLLOVER_POCKETS, UNMET_DEMAND } from '../data/business.fixture';
 import { FIXTURE_CLIENTS } from '../data/today.fixture';
@@ -36,9 +38,14 @@ const KNOCKOUT = /knock|barrier|\bko\b/;
  * call prep for one client, maturities this week, knock-outs near the barrier. Anything else gets suggestions.
  * In the real system Stork AI words the answer; the figures still come from computed data.
  */
+/** What Chat says when the overnight data is empty. */
+const NO_DATA_TEXT = "There is nothing in last night's data to answer from yet: no positions, quotes or clients. The overnight refresh may not have landed. Try again after 09:00, or check the data clock.";
+
 @Injectable()
 export class MockChatDataSource extends ChatDataSource {
   private readonly today = inject(TodayDataSource);
+  private readonly config = inject(APP_CONFIG);
+  private readonly document = inject(DOCUMENT);
   private readonly ideaFinder = inject(IdeaFinderDataSource);
   private counter = 0;
 
@@ -49,6 +56,9 @@ export class MockChatDataSource extends ChatDataSource {
     const id = `a-${++this.counter}`;
     if (ADVICE.test(text)) {
       return this.decline(id, clientId);
+    }
+    if (currentScenario(this.config, this.document) === 'empty') {
+      return this.noData(id);
     }
     if (UNMET.test(text)) {
       return this.unmetDemand(id);
@@ -76,6 +86,13 @@ export class MockChatDataSource extends ChatDataSource {
     }
     return this.today.getMorningBrief('all').pipe(
       map((brief) => ({ id, fallback: true, businessDate: brief.businessDate, sources: [], blocks: [{ kind: 'text', text: FALLBACK_TEXT }], followUps: FALLBACK_FOLLOW_UPS })),
+    );
+  }
+
+  /** Last night's data has not landed: say so plainly rather than answering from nothing. No figures, no sources. */
+  private noData(id: string): Observable<ChatAnswer> {
+    return this.today.getMorningBrief('all').pipe(
+      map((brief) => ({ id, fallback: true, businessDate: brief.businessDate, sources: [], blocks: [{ kind: 'text', text: NO_DATA_TEXT }], followUps: [] })),
     );
   }
 
