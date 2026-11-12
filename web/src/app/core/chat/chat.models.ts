@@ -84,4 +84,26 @@ export interface ChatAnswer {
   readonly fallback: boolean;
   /** How the figures compare with the Tableau view users know (R36). Absent when no view applies. */
   readonly parity?: TableauParity;
+  /** The skills-service run behind this answer. The fields below are only set when the HK ELI skills service answered. */
+  readonly runId?: string;
+  /** LIVE or MOCK. MOCK answers carry a "Demo data" badge. */
+  readonly sourceMode?: string;
+  /** complete, or partial when some requested parts were not available. */
+  readonly status?: 'complete' | 'partial';
+  /** What the answer does not cover, in plain words. Also set when the gateway answered because the service was down. */
+  readonly limitations?: readonly string[];
+  /** Where each figure came from. */
+  readonly evidence?: readonly EvidenceRecord[];
+}
+
+/** One figure's provenance: the metric and its dimensions, value, unit, data date, LIVE or MOCK, source and scope. */
+export interface EvidenceRecord {
+  readonly id: string;
+  readonly label: string;
+  readonly value: string | null;
+  readonly unit: string | null;
+  readonly asOf: string | null;
+  readonly sourceMode: string | null;
+  readonly source: string;
+  readonly scope?: string;
 }

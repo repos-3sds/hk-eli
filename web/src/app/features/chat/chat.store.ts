@@ -5,6 +5,15 @@ import { ChatAnswer } from '../../core/chat/chat.models';
 import { FeedbackStore } from '../../core/feedback/feedback.store';
 import { FIXTURE_CLIENTS } from '../../core/data/today.fixture';
 
+/** What went wrong, in words: the gateway's own reason when a service behind it is down, otherwise a timeout. */
+export function errorText(err: unknown): string {
+  const e = err as { status?: number; error?: { detail?: unknown } } | null;
+  if (e?.status === 503 && typeof e.error?.detail === 'string') {
+    return e.error.detail;
+  }
+  return 'The answer did not come back in time. Nothing was sent anywhere.';
+}
+
 export type TurnStatus = 'pending' | 'done' | 'error' | 'stopped';
 export type Feedback = 'up' | 'down' | null;
 
@@ -136,9 +145,9 @@ export class ChatStore {
         this.finish(turnId);
         this.patch(turnId, { status: 'done', answer, answeredAt: new Date() });
       },
-      error: () => {
+      error: (err: unknown) => {
         this.finish(turnId);
-        this.patch(turnId, { status: 'error', error: 'The answer did not come back in time. Nothing was sent anywhere.' });
+        this.patch(turnId, { status: 'error', error: errorText(err) });
       },
     });
   }

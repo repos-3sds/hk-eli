@@ -1,0 +1,4 @@
+[submodule "skills-service"]
+	path = skills-service
+	url = https://github.com/niharika9714/HK_ELI.git
+	ignore = untracked

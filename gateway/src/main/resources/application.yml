@@ -43,6 +43,13 @@ eli:
     adapter: gemini
     model: ${STORK_AI_MODEL:gemini-default}
     timeout: 4s
+  # HK ELI skills service (Niharika's HK_ELI, typed eli.* skills over the SQLite book). Off unless switched on.
+  skills:
+    enabled: ${ELI_SKILLS_ENABLED:false}
+    base-url: ${ELI_SKILLS_URL:http://127.0.0.1:8031}
+    profile: synthetic-hk-rm
+    timeout: 15s
+    poll-interval: 150ms
 
 management:
   endpoints:

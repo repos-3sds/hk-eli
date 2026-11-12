@@ -4,7 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { Subject, of } from 'rxjs';
 import { ChatDataSource } from '../../core/chat/chat-data-source';
 import { ChatAnswer } from '../../core/chat/chat.models';
-import { ChatStore } from './chat.store';
+import { ChatStore, errorText } from './chat.store';
 
 const ANSWER: ChatAnswer = { id: 'a1', blocks: [{ kind: 'text', text: 'Hi' }], followUps: [], businessDate: '2026-11-02', sources: [], fallback: false };
 
@@ -68,5 +68,16 @@ describe('ChatStore', () => {
     store.send('Hello', null);
     store.rate(store.turns()[0].id, 'up');
     expect(store.turns()[0].feedback).toBe('up');
+  });
+});
+
+describe('errorText', () => {
+  it('passes on why a service behind the gateway is down', () => {
+    expect(errorText({ status: 503, error: { detail: 'The skills service is not reachable. Try again in a moment.' } }))
+      .toBe('The skills service is not reachable. Try again in a moment.');
+  });
+
+  it('says it timed out otherwise', () => {
+    expect(errorText(new Error('timeout'))).toContain('did not come back in time');
   });
 });

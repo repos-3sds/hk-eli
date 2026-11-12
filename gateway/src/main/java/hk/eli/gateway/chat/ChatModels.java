@@ -67,10 +67,30 @@ public final class ChatModels {
   @JsonInclude(JsonInclude.Include.NON_NULL)
   public record Parity(String view, String status, String detail) {}
 
+  /**
+   * One figure's provenance from the HK ELI skills service: where the number came from, its date, scope and unit.
+   * label is the metric with its dimensions, e.g. "notional · NVDA".
+   */
   @JsonInclude(JsonInclude.Include.NON_NULL)
-  public record ChatAnswer(String id, List<Block> blocks, List<String> followUps, String businessDate, List<String> sources, boolean fallback, Parity parity) {
+  public record Evidence(String id, String label, String value, String unit, String asOf, String sourceMode, String source, String scope) {}
+
+  /**
+   * An answer. The last five fields are optional and only set when the HK ELI skills service answered: run id,
+   * LIVE or MOCK, complete or partial, what the answer does not cover, and the evidence behind its figures.
+   */
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  public record ChatAnswer(String id, List<Block> blocks, List<String> followUps, String businessDate, List<String> sources, boolean fallback, Parity parity,
+      String runId, String sourceMode, String status, List<String> limitations, List<Evidence> evidence) {
+    public ChatAnswer(String id, List<Block> blocks, List<String> followUps, String businessDate, List<String> sources, boolean fallback, Parity parity) {
+      this(id, blocks, followUps, businessDate, sources, fallback, parity, null, null, null, null, null);
+    }
+
     public ChatAnswer withBlocks(List<Block> b) {
-      return new ChatAnswer(id, b, followUps, businessDate, sources, fallback, parity);
+      return new ChatAnswer(id, b, followUps, businessDate, sources, fallback, parity, runId, sourceMode, status, limitations, evidence);
+    }
+
+    public ChatAnswer withLimitations(List<String> l) {
+      return new ChatAnswer(id, blocks, followUps, businessDate, sources, fallback, parity, runId, sourceMode, status, l, evidence);
     }
   }
 }

@@ -4,7 +4,7 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
-import { ChatAnswer } from '../../core/chat/chat.models';
+import { ChatAnswer, EvidenceRecord } from '../../core/chat/chat.models';
 import { MomentChip } from '../today/shared/moment-chip';
 import { ConcentrationBar } from '../today/shared/concentration-bar';
 import { TrustLine } from '../today/shared/trust-line';
@@ -17,6 +17,15 @@ import { UsdPipe } from '../today/shared/format';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <article class="card" [class.fallback]="answer().fallback">
+      @if (answer().sourceMode; as mode) {
+        <div class="origin">
+          <span class="mode" [class.mock]="mode.includes('MOCK')">{{ mode.includes('MOCK') ? 'Demo data · not live' : 'Live data' }}</span>
+          <span class="origin-text">Answered by the HK ELI skills service</span>
+        </div>
+      }
+      @if (answer().status === 'partial') {
+        <p class="partial" role="note"><mat-icon svgIcon="triangle-alert" aria-hidden="true" />Partial answer: some parts were not available. See the notes below.</p>
+      }
       @for (b of answer().blocks; track $index) {
         @switch (b.kind) {
           @case ('text') {
@@ -101,6 +110,34 @@ import { UsdPipe } from '../today/shared/format';
           }
         }
       }
+      @if (answer().limitations?.length) {
+        <section class="notes" aria-label="What this answer does not cover">
+          <h4 class="block-title">Notes</h4>
+          <ul>
+            @for (l of answer().limitations; track l) {<li>{{ l }}</li>}
+          </ul>
+        </section>
+      }
+      @if (answer().evidence?.length) {
+        <details class="evidence">
+          <summary><mat-icon svgIcon="chevron-right" aria-hidden="true" />Evidence behind these figures ({{ answer().evidence!.length }})</summary>
+          <div class="table-wrap">
+            <table class="table">
+              <thead><tr><th scope="col">Figure</th><th scope="col" class="num">Value</th><th scope="col">As of</th><th scope="col">Source</th></tr></thead>
+              <tbody>
+                @for (e of answer().evidence; track e.id) {
+                  <tr>
+                    <td>{{ e.label }}</td>
+                    <td class="num">{{ evidenceValue(e) }}</td>
+                    <td>{{ e.asOf }}</td>
+                    <td class="src">{{ e.sourceMode }} · {{ e.source }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </details>
+      }
       @if (!answer().fallback) {
         <eli-trust-line [businessDate]="answer().businessDate" [sources]="answer().sources" reference="chat" />
       }
@@ -126,6 +163,22 @@ import { UsdPipe } from '../today/shared/format';
       &.match mat-icon { color: var(--eli-status-positive-text); }
       &.mismatch { padding: var(--eli-space-3) var(--eli-space-5); border-left: 3px solid var(--eli-accent-orange); border-radius: var(--eli-radius-s); background: var(--eli-bg-row); color: var(--eli-text-primary); mat-icon { color: var(--eli-accent-orange); } }
       &.unchecked { color: var(--eli-text-muted); } }
+    .origin { display: flex; align-items: center; gap: var(--eli-space-5); flex-wrap: wrap; }
+    .mode { display: inline-flex; align-items: center; height: 22px; padding: 0 var(--eli-space-5); border: 1px solid var(--eli-status-positive); border-radius: var(--eli-radius-pill); color: var(--eli-status-positive-text); font-size: var(--eli-font-size-xs); font-weight: var(--eli-weight-semibold); letter-spacing: 0.02em;
+      &.mock { border-color: var(--eli-accent-orange); color: var(--eli-accent-orange); } }
+    .origin-text { color: var(--eli-text-muted); font-size: var(--eli-font-size-s); }
+    .partial { display: flex; align-items: center; gap: var(--eli-space-3); margin: 0; padding: var(--eli-space-3) var(--eli-space-5); border-left: 3px solid var(--eli-accent-orange); border-radius: var(--eli-radius-s); background: var(--eli-bg-row); color: var(--eli-text-primary); font-size: var(--eli-font-size-s);
+      mat-icon { width: 14px; height: 14px; color: var(--eli-accent-orange); } }
+    .notes { display: flex; flex-direction: column; gap: var(--eli-space-3); padding-top: var(--eli-space-6); border-top: 1px solid var(--eli-separator);
+      ul { display: flex; flex-direction: column; gap: var(--eli-space-2); margin: 0; padding-left: var(--eli-space-7); color: var(--eli-text-muted-2); font-size: var(--eli-font-size-s); line-height: 18px; } }
+    .evidence { border-top: 1px solid var(--eli-separator); padding-top: var(--eli-space-5);
+      summary { display: inline-flex; align-items: center; gap: var(--eli-space-3); color: var(--eli-accent-link); font-size: var(--eli-font-size-s); cursor: pointer; list-style: none; border-radius: var(--eli-radius-s);
+        &::-webkit-details-marker { display: none; }
+        &:focus-visible { outline: 2px solid var(--eli-focus-ring); outline-offset: 2px; }
+        mat-icon { width: 14px; height: 14px; transition: transform var(--eli-motion-fast); } }
+      &[open] summary mat-icon { transform: rotate(90deg); }
+      .table-wrap { max-height: 260px; overflow: auto; margin-top: var(--eli-space-4); }
+      .src { color: var(--eli-text-muted); white-space: nowrap; } }
     .card { display: flex; flex-direction: column; gap: var(--eli-space-7); padding: var(--eli-space-7) var(--eli-space-8); border: 1px solid var(--eli-separator); border-radius: var(--eli-radius-m); background: var(--eli-bg-dock); }
     .card.fallback { border-left: 3px solid var(--eli-accent-link); }
     .text { margin: 0; color: var(--eli-text-primary); font-size: var(--eli-font-size-m); line-height: 22px; }
@@ -163,6 +216,17 @@ import { UsdPipe } from '../today/shared/format';
 export class AnswerCard {
   protected parityText(p: TableauParity): string {
     return parityLine(p, shortDate(this.answer().businessDate));
+  }
+
+  /** "USD 147.78m" for amounts, "24.63%" for ratios, the plain value otherwise. */
+  protected evidenceValue(e: EvidenceRecord): string {
+    if (e.value === null) return '–';
+    const n = Number(e.value);
+    if (Number.isNaN(n)) return e.value;
+    if (e.unit === 'USD') return n >= 1_000_000 ? `USD ${(n / 1_000_000).toFixed(2)}m` : `USD ${Math.round(n / 1000)}k`;
+    if (e.unit === 'ratio') return `${(n * 100).toFixed(2)}%`;
+    if (e.unit === 'percentage_points') return `${n.toFixed(1)}%`;
+    return n.toLocaleString('en-US');
   }
 
   readonly answer = input.required<ChatAnswer>();
