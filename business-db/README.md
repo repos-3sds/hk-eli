@@ -25,7 +25,7 @@ To use it in her service, copy the file to her `var/business.sqlite` before star
 | `positions` | 2,157 deals / 2,659 legs | Deals outstanding at the data date, one row per basket leg; USD 600m book |
 | `sales` | 2,672 | Every trade, including those for deals that have since matured |
 | `rfqs` | 967 | The named clients' RFQs and this month's RFQs per branch, segment and underlying |
-| `rollovers` | ~520 | Upcoming eligible maturities (contacted or not), and this month's matured deals (rolled or cashed) |
+| `rollovers` | 559 | 44 upcoming eligible maturities (contacted or not), plus deals that already matured (rolled or cashed), including this month's |
 | `maturities`, `branches`, `engagement`, `channel_events` | | Her layout, filled or derived from the rows above |
 | `market` | 16 | Symbols and volatility. Price is NULL because the seed has no prices |
 | `products`, `idea_warehouse` | 16 | The Ideas warehouse from `ideas.json` |
