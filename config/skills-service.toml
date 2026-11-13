@@ -3,7 +3,7 @@ dashboards = []
 
 [app]
 mode = "fixture"
-state_dir = "../var/skills"
+state_dir = "var/skills"  # replaced with an absolute path by scripts/start-skills.sh
 knowledge_root = "knowledge/mock-ui"
 secure_cookie = false
 io_concurrency = 8
