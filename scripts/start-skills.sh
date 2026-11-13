@@ -3,7 +3,8 @@
 # SKILLS_DIR is where her code lives: skills-service/ (the submodule) here, or .. when this folder sits inside her repo.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-SKILLS_DIR="$(cd "${SKILLS_DIR:-skills-service}" && pwd)"
+if [ -z "${SKILLS_DIR:-}" ]; then [ -f skills-service/run.py ] && SKILLS_DIR=skills-service || SKILLS_DIR=..; fi
+SKILLS_DIR="$(cd "$SKILLS_DIR" && pwd)"
 [ -f var/skills/business.sqlite ] || scripts/build-db.sh
 [ -x "$SKILLS_DIR/.venv/bin/python" ] || {
   uv venv -q --python 3.12 "$SKILLS_DIR/.venv"
