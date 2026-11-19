@@ -1,12 +1,18 @@
 # HK ELI Chatbot
 
-The HK ELI Chatbot is a Digimarkets widget for Hong Kong Equity-Linked Investment sales. This folder is the start of the new codebase. It sits on a branch of `hk_eli_stork_ai` until the new repository exists, and can be moved across as it is.
+The HK ELI Chatbot is a Digimarkets widget for Hong Kong Equity-Linked Investment sales. At launch it is for about 70 internal users (GFM WMS specialists, CBG Product Managers and CBG Treasury Sales Managers), internal use only. All data in this repo is fictional.
 
-| Part | What it is | Status |
-| --- | --- | --- |
-| [`web/`](web/README.md) | Angular 21 front end: Digimarkets shell, HK ELI widget, RM flow | Today tab built (mock data) |
-| gateway, services | Java 21 / Spring Boot 3.5 behind the API gateway, Stork AI orchestrator with the Gemini adapter | Not started |
+| Part | What it is |
+| --- | --- |
+| [`poc/`](poc/README.md) | The agent: a Python Stork pipeline (FastAPI) that reads the question, picks one of the 12 HK_ELI Tableau views and its filters, queries Tableau, checks every figure and writes the answer (Gemini optional). Ships with a mock Tableau on invented data; `TABLEAU_MODE=real` points it at a real server. |
+| [`web/`](web/README.md) | Angular 21 widget in the Digimarkets shell: Today, Chat and Prompts. Every figure and client comes from the agent. |
+| [`gateway/`](gateway/README.md) | Java 21 / Spring Boot 3.5 service built for the earlier UI. Kept as the bank-standard edge (SSO, limits, audit) the agent will sit behind. |
 
-All data is fictional.
+## Run
+
+```bash
+cd poc && python3 -m uvicorn hkeli_poc.app:app --port 8050   # the agent and mock Tableau
+cd web && npm install && npm start                          # http://localhost:4200, /api/stork proxied to :8050
+```
 
 *Will be part of Ask-MIRA in future.

@@ -3,7 +3,7 @@ import { TEST_CONFIG } from '../../testing/test-config';
 
 describe('app config', () => {
   it('accepts a complete config', () => {
-    expect(parseAppConfig({ ...TEST_CONFIG }).businessDaysAhead).toBe(10);
+    expect(parseAppConfig({ ...TEST_CONFIG }).gatewayBaseUrl).toBe('/api/stork');
   });
 
   it('defaults asOfDate to null', () => {
@@ -12,12 +12,8 @@ describe('app config', () => {
   });
 
   it('names the missing keys', () => {
-    const { gatewayBaseUrl: _a, briefLeadLimit: _b, ...rest } = TEST_CONFIG;
-    expect(() => parseAppConfig(rest)).toThrow(/gatewayBaseUrl, briefLeadLimit/);
-  });
-
-  it('rejects an unknown data source', () => {
-    expect(() => parseAppConfig({ ...TEST_CONFIG, dataSource: 'dify' })).toThrow(/dataSource/);
+    const { gatewayBaseUrl: _a, timeZone: _b, ...rest } = TEST_CONFIG;
+    expect(() => parseAppConfig(rest)).toThrow(/gatewayBaseUrl, timeZone/);
   });
 
   it('fails loudly when the file cannot be fetched', async () => {

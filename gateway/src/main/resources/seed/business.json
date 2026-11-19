@@ -1,0 +1,221 @@
+{
+  "rolloverBaselinePct": 80,
+  "pockets": [
+    {
+      "id": "p-kt-tr",
+      "branch": "Kwun Tong",
+      "segment": "Treasures",
+      "rolloverPct": 45,
+      "baselinePct": 80,
+      "maturingUsd": 3800000,
+      "maturedThisMonth": 11,
+      "rolledThisMonth": 5
+    },
+    {
+      "id": "p-mk-tr",
+      "branch": "Mong Kok",
+      "segment": "Treasures",
+      "rolloverPct": 67,
+      "baselinePct": 80,
+      "maturingUsd": 1450000,
+      "maturedThisMonth": 9,
+      "rolledThisMonth": 6
+    },
+    {
+      "id": "p-tst-tr",
+      "branch": "Tsim Sha Tsui",
+      "segment": "Treasures",
+      "rolloverPct": 75,
+      "baselinePct": 80,
+      "maturingUsd": 980000,
+      "maturedThisMonth": 8,
+      "rolledThisMonth": 6
+    },
+    {
+      "id": "p-cen-tp",
+      "branch": "Central",
+      "segment": "Treasure Private",
+      "rolloverPct": 88,
+      "baselinePct": 80,
+      "maturingUsd": 2600000,
+      "maturedThisMonth": 34,
+      "rolledThisMonth": 30
+    },
+    {
+      "id": "p-cen-tr",
+      "branch": "Central",
+      "segment": "Treasures",
+      "rolloverPct": 86,
+      "baselinePct": 80,
+      "maturingUsd": 1900000,
+      "maturedThisMonth": 28,
+      "rolledThisMonth": 24
+    },
+    {
+      "id": "p-dig",
+      "branch": "Digibank",
+      "segment": "Self-directed",
+      "rolloverPct": 82,
+      "baselinePct": 80,
+      "maturingUsd": 1250000,
+      "maturedThisMonth": 50,
+      "rolledThisMonth": 41
+    }
+  ],
+  "rows": [
+    {
+      "branch": "Central",
+      "segment": "Treasure Private",
+      "channel": "advisory",
+      "notionalMtdUsd": 18400000,
+      "notionalPrevUsd": 15200000,
+      "trades": 46,
+      "rfqs": 120,
+      "rfqsTraded": 41,
+      "matured": 34,
+      "rolled": 30,
+      "activeClients": 210,
+      "idleClients": 38
+    },
+    {
+      "branch": "Central",
+      "segment": "Treasures",
+      "channel": "advisory",
+      "notionalMtdUsd": 11200000,
+      "notionalPrevUsd": 12000000,
+      "trades": 39,
+      "rfqs": 98,
+      "rfqsTraded": 33,
+      "matured": 28,
+      "rolled": 24,
+      "activeClients": 260,
+      "idleClients": 51
+    },
+    {
+      "branch": "Kwun Tong",
+      "segment": "Treasures",
+      "channel": "advisory",
+      "notionalMtdUsd": 6100000,
+      "notionalPrevUsd": 8300000,
+      "trades": 22,
+      "rfqs": 75,
+      "rfqsTraded": 19,
+      "matured": 11,
+      "rolled": 5,
+      "activeClients": 180,
+      "idleClients": 64
+    },
+    {
+      "branch": "Mong Kok",
+      "segment": "Treasures",
+      "channel": "advisory",
+      "notionalMtdUsd": 7400000,
+      "notionalPrevUsd": 7100000,
+      "trades": 27,
+      "rfqs": 81,
+      "rfqsTraded": 24,
+      "matured": 9,
+      "rolled": 6,
+      "activeClients": 190,
+      "idleClients": 47
+    },
+    {
+      "branch": "Tsim Sha Tsui",
+      "segment": "Treasures",
+      "channel": "advisory",
+      "notionalMtdUsd": 8000000,
+      "notionalPrevUsd": 7600000,
+      "trades": 29,
+      "rfqs": 70,
+      "rfqsTraded": 25,
+      "matured": 8,
+      "rolled": 6,
+      "activeClients": 170,
+      "idleClients": 40
+    },
+    {
+      "branch": "Digibank",
+      "segment": "Self-directed",
+      "channel": "digibank",
+      "notionalMtdUsd": 9600000,
+      "notionalPrevUsd": 8800000,
+      "trades": 140,
+      "rfqs": 520,
+      "rfqsTraded": 71,
+      "matured": 50,
+      "rolled": 41,
+      "activeClients": 640,
+      "idleClients": 120
+    }
+  ],
+  "unmetDemand": [
+    {
+      "underlying": "NVDA",
+      "channel": "digibank",
+      "quotes": 214,
+      "traded": 31,
+      "topAsk": "3M · KI 70% · coupon 20%+"
+    },
+    {
+      "underlying": "TSLA",
+      "channel": "digibank",
+      "quotes": 166,
+      "traded": 22,
+      "topAsk": "3M · KI 65% · coupon 24%+"
+    },
+    {
+      "underlying": "AMD",
+      "channel": "advisory",
+      "quotes": 58,
+      "traded": 9,
+      "topAsk": "6M · KI 65% · coupon 17%"
+    },
+    {
+      "underlying": "0700.HK",
+      "channel": "digibank",
+      "quotes": 97,
+      "traded": 18,
+      "topAsk": "6M · KI 75% · coupon 12%"
+    },
+    {
+      "underlying": "META",
+      "channel": "advisory",
+      "quotes": 41,
+      "traded": 12,
+      "topAsk": "6M · KI 68% · coupon 15%"
+    }
+  ],
+  "bookConcentration": [
+    {
+      "underlying": "NVDA",
+      "sharePct": 24.63,
+      "limitPct": 25
+    },
+    {
+      "underlying": "TSLA",
+      "sharePct": 17.9,
+      "limitPct": 25
+    },
+    {
+      "underlying": "AMD",
+      "sharePct": 14.2,
+      "limitPct": 25
+    },
+    {
+      "underlying": "META",
+      "sharePct": 9.6,
+      "limitPct": 25
+    },
+    {
+      "underlying": "0700.HK",
+      "sharePct": 7.1,
+      "limitPct": 25
+    }
+  ],
+  "districtOfBranch": {
+    "Central": "Hong Kong Island",
+    "Kwun Tong": "Kowloon",
+    "Mong Kok": "Kowloon",
+    "Tsim Sha Tsui": "Kowloon"
+  }
+}

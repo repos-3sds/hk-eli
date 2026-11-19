@@ -1,0 +1,146 @@
+<title>HK ELI Workbook Changes POC</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/*APP_CSS*/
+/* Static page: single deliberate dark look. */
+:root{color-scheme:dark}
+body{background:var(--bg);color:var(--ink-2)}
+.top{top:env(safe-area-inset-top,0px);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:#0d121a}
+.frozen{font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:10px;padding:2px 9px}
+.main{min-width:0}
+.prose{max-width:760px}
+.prose h1{color:var(--ink);font-size:24px;font-weight:600;margin:0 0 var(--s3);text-wrap:balance}
+.prose h2{color:var(--ink);font-size:16px;font-weight:600;margin:var(--s5) 0 var(--s2)}
+.prose p,.prose li{color:var(--ink-2);line-height:1.6}
+.prose ol,.prose ul{padding-left:20px;margin:var(--s2) 0}
+.prose li{margin:4px 0}
+.prose .w{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--accent-ink);background:#1d2a3f;border-radius:4px;padding:1px 5px}
+.sum{width:100%;border-collapse:collapse;font-size:13px;margin-top:var(--s2)}
+.sum th{text-align:left;color:var(--muted);font-weight:500;padding:6px 8px 6px 0;border-bottom:1px solid var(--line)}
+.sum td{padding:8px 8px 8px 0;border-bottom:1px solid var(--line-2);vertical-align:top}
+.sum a{cursor:pointer}
+.scroll{overflow-x:auto}
+.flow{max-width:980px}
+.flow .msg{margin-bottom:var(--s3)}
+.flow .frame{margin:0 0 var(--s5)}
+.note{font-size:12.5px;color:var(--muted);margin:0 0 var(--s4)}
+@media (max-width:900px){.main{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}}
+</style>
+
+<header class="top">
+  <div class="brand">HK ELI Chatbot <small>POC on mock Tableau</small></div>
+  <span class="spacer"></span>
+  <span class="frozen">Frozen run of the POC · synthetic data</span>
+</header>
+<div class="cmp">
+  <aside class="side" aria-label="Sections">
+    <h2>Read this first</h2>
+    <div id="intro"></div>
+    <h2>Worksheet changes</h2>
+    <div id="list"></div>
+  </aside>
+  <main class="main" id="main" aria-live="polite"></main>
+</div>
+
+<template id="start">
+  <div class="prose">
+    <h1>Seven small worksheet changes, shown on a working chatbot</h1>
+    <p>The HK ELI Chatbot answers questions about the ELI book from the HK_ELI Tableau workbook. For every answer it reads the view's data through the REST API (Query View Data) as the signed-in user, and it embeds the same view beside the answer with the same filters. Code picks the view, the filters and the numbers. The language model only reads the question and words the answer.</p>
+    <p>This page is a frozen run of the working POC. It uses a mock HK_ELI workbook with the 12 views, fields and filters from the spec, filled with synthetic data. Each W page asks one real question on two copies of the workbook, as it is today and with the change. The pipeline is the same on both sides and nothing is special-cased.</p>
+    <h2>The seven changes</h2>
+    <div class="scroll"><table class="sum" id="sumt"><thead><tr><th>Change</th><th>What goes wrong today</th><th>Priority</th></tr></thead><tbody></tbody></table></div>
+    <h2>How an answer is made</h2>
+    <ol>
+      <li>Read the question: intent, grain, segment, district, branch, stock, window.</li>
+      <li>Read the data's business date and last refresh <span class="w">W2</span>.</li>
+      <li>Pick the view by the grain asked, from a registry keyed on record id <span class="w">W3</span>.</li>
+      <li>Build the plan: LIVE deals only, TRE lock, the maturity window <span class="w">W1</span> <span class="w">W4</span>.</li>
+      <li>Compile one filter spec into REST <code>vf_</code> filters and the embed's filters <span class="w">W6</span>.</li>
+      <li>Query View Data as the user, so row-level security applies.</li>
+      <li>Check the result: filters echoed, share and count columns present <span class="w">W5</span> <span class="w">W7</span>, totals reconcile <span class="w">W4</span>.</li>
+      <li>Write the answer only from numbers that came back, with predicted wording.</li>
+      <li>Show the view with the same scope, plus follow-ups from the allowed drill paths.</li>
+    </ol>
+    <h2>Where the mock takes the cautious reading</h2>
+    <ul>
+      <li>Views 8, 9 and 11 list no <code>deal_status</code> filter, so the mock includes matured deals in them today.</li>
+      <li>The share on views 2 and 3 is a table calculation, and the mock leaves it out of the data export.</li>
+      <li>View 8's segment-exclusion rule is unknown. With W4 the mock uses "excludes Treasures (TPC)" as a stand-in.</li>
+    </ul>
+    <p>These are the points we'd like you to confirm. If the real workbook already behaves well on any of them, that change becomes a quick yes.</p>
+    <h2>Also, could you share</h2>
+    <ul><li>The view list with each view's ID (LUID) and content URL.</li><li>Whether row-level security applies per user, especially on the detail view.</li></ul>
+  </div>
+</template>
+
+<script>/*DATA*/</script>
+<script>/*APP_JS*/</script>
+<script>
+const { el, renderAnswer } = window.POC;
+const D = window.STATIC_DATA;
+const list = document.getElementById("list"), intro = document.getElementById("intro"), main = document.getElementById("main");
+const SECTIONS = [{ id: "start", w: "▸", title: "Why we're asking", sub: "Summary and method" },
+                  { id: "flow", w: "▸", title: "The chat in use", sub: "Four questions, step by step" }];
+
+function frame(a, doc) {
+  const box = el("div", { class: "frame" });
+  if (!a.embed || !doc) { box.append(el("div", { class: "nochart" }, "No chart: an answer that failed its checks is not propped up by a chart.")); return box; }
+  const f = el("iframe", { title: `Embedded view ${a.embed.view}`, loading: "lazy" });
+  f.srcdoc = doc; box.append(f); return box;
+}
+function navBtn(s) {
+  return el("button", { class: "wlink", type: "button", "data-id": s.id, onclick: () => go(s.id) },
+    el("span", { class: "wtag" }, s.w), el("span", {}, s.title, el("small", {}, s.sub)));
+}
+intro.append(...SECTIONS.map(navBtn));
+list.append(...D.demos.map(d => navBtn({ id: d.id, w: d.w, title: d.title, sub: d.priority })));
+
+function start() {
+  const node = document.getElementById("start").content.cloneNode(true);
+  const tb = node.querySelector("#sumt tbody");
+  for (const d of D.demos) tb.append(el("tr", {},
+    el("td", {}, el("a", { onclick: () => go(d.id) }, `${d.w} · ${d.title}`)), el("td", {}, d.today), el("td", {}, d.priority)));
+  main.replaceChildren(node);
+}
+function flow() {
+  const wrap = el("div", { class: "flow" },
+    el("h1", { class: "title" }, "The chat in use"),
+    el("p", { class: "note" }, "Workbook with W1–W7. Each answer shows its scope, its data date, the checks that ran and the view it came from. The chart beside it uses the same filters."));
+  const notes = [
+    "1. A sales manager asks where the next 30 days of TRE maturity sits in D1. The bot picks the branch view, sends LIVE, D1 and in_n30, ranks branches and highlights the top one in the chart.",
+    "2. They tap the follow-up. The district, branch and window carry forward into the detail view: the position list to call, with RM and customer ID, and no invented contact details.",
+    "3. A risk question. A stock named in a distribution question means the stock as worst performer, so the bot highlights 9988 HK on the MTM bubble chart instead of filtering it away.",
+    "4. Out of scope. Maturity views are TRE only, so the bot says so plainly and shows no chart.",
+  ];
+  D.flow.forEach((a, i) => {
+    wrap.append(el("p", { class: "why" }, notes[i] || ""),
+      el("div", { class: "msg user" }, el("div", { class: "bubble" }, a.question)),
+      el("div", { class: "msg" }, renderAnswer(a, { maxRows: 6 })), frame(a, a.embed_doc));
+  });
+  main.replaceChildren(wrap);
+}
+function demo(d) {
+  const r = D.results[d.id];
+  main.replaceChildren(
+    el("h1", { class: "title" }, `${d.w} · ${d.title}`, el("span", { class: "pri" }, d.priority)),
+    el("div", { class: "ask" }, el("div", { class: "label" }, "What we ask the workbook owners"), el("div", {}, d.ask)),
+    el("div", { class: "ask" }, el("div", { class: "label" }, d.scenario === "stale" ? "Question (scenario: refresh failed 3 nights ago)" : "Question asked on both workbooks"),
+      el("p", { class: "q" }, d.question)),
+    el("div", { class: "cols" },
+      el("section", { class: "col" }, el("h3", {}, el("span", { class: "dot", style: "background:var(--warn)" }), "Workbook as today"),
+        el("p", { class: "why" }, d.today), renderAnswer(r.current, { maxRows: 6 }), frame(r.current, r.embeds.current)),
+      el("section", { class: "col" }, el("h3", {}, el("span", { class: "dot", style: "background:var(--ok)" }), `With ${d.w}`),
+        el("p", { class: "why" }, d.fixed), renderAnswer(r.proposed, { maxRows: 6 }), frame(r.proposed, r.embeds.proposed))),
+    el("p", { class: "specline" }, "Follows: " + d.spec));
+}
+function go(id) {
+  if (location.hash.slice(1) !== id) history.replaceState(null, "", "#" + id);
+  document.querySelectorAll(".wlink").forEach(b => b.setAttribute("aria-current", b.dataset.id === id));
+  const d = D.demos.find(x => x.id === id);
+  if (id === "flow") flow(); else if (d) demo(d); else start();
+  window.scrollTo(0, 0);
+}
+window.addEventListener("hashchange", () => go(location.hash.slice(1) || "start"));
+go(location.hash.slice(1) || "start");
+</script>

@@ -1,49 +1,42 @@
-import { Routes } from '@angular/router';
+import { inject } from '@angular/core';
+import { Router, Routes } from '@angular/router';
+import { START_VIEWS, SessionService } from './core/session/session.service';
 
+/**
+ * The widget's tabs. Launch users are GFM WMS, CBG PM and CBG TSM, so routes no longer carry an "rm" prefix.
+ * Old /rm/... links (walkthroughs, bookmarks) redirect to the same tab, keeping their query.
+ */
 export const routes: Routes = [
-  { path: '', pathMatch: 'full', redirectTo: 'rm/today' },
   {
-    path: 'rm',
-    children: [
-      { path: '', pathMatch: 'full', redirectTo: 'today' },
-      {
-        path: 'today',
-        title: 'Today · HK ELI Chatbot',
-        loadComponent: () => import('./features/today/today-layout').then((m) => m.TodayLayout),
-        children: [
-          { path: '', loadComponent: () => import('./features/today/brief/brief-page').then((m) => m.BriefPage) },
-          {
-            path: 'ideas/:clientId',
-            title: 'Ideas · HK ELI Chatbot',
-            loadComponent: () => import('./features/today/ideas/ideas-page').then((m) => m.IdeasPage),
-          },
-        ],
-      },
-      {
-        path: 'chat',
-        title: 'Chat · HK ELI Chatbot',
-        loadComponent: () => import('./features/placeholder/tab-placeholder').then((m) => m.TabPlaceholder),
-        data: { title: 'Chat', icon: 'message-square', purpose: 'Ask about a client, an underlying or an idea. Answers carry a trust line and saved questions. Built next.' },
-      },
-      {
-        path: 'ideas',
-        title: 'Ideas · HK ELI Chatbot',
-        loadComponent: () => import('./features/placeholder/tab-placeholder').then((m) => m.TabPlaceholder),
-        data: { title: 'Ideas', icon: 'lightbulb', purpose: 'Plain words become parameter chips, then the top five ideas with their concentration effect.' },
-      },
-      {
-        path: 'update',
-        title: 'Update · HK ELI Chatbot',
-        loadComponent: () => import('./features/placeholder/tab-placeholder').then((m) => m.TabPlaceholder),
-        data: { title: 'Update', icon: 'file-text', purpose: 'The scheduled Business Update, section by section.' },
-      },
-      {
-        path: 'alerts',
-        title: 'Alerts · HK ELI Chatbot',
-        loadComponent: () => import('./features/placeholder/tab-placeholder').then((m) => m.TabPlaceholder),
-        data: { title: 'Alerts', icon: 'bell', purpose: 'Plain-word rules, quiet hours and call lists.' },
-      },
-    ],
+    path: '',
+    pathMatch: 'full',
+    redirectTo: ({ queryParams }) => inject(Router).createUrlTree(['/', START_VIEWS[inject(SessionService).role()]], { queryParams }),
   },
-  { path: '**', redirectTo: 'rm/today' },
+  {
+    // Today is built from the same 12 HK_ELI Tableau views as the chat (discovery docs); every tile is a pipeline answer.
+    path: 'today',
+    title: 'Today · HK ELI Chatbot',
+    loadComponent: () => import('./features/book/book-page').then((m) => m.BookPage),
+  },
+  {
+    path: 'chat',
+    title: 'Chat · HK ELI Chatbot',
+    loadComponent: () => import('./features/chat/chat-page').then((m) => m.ChatPage),
+  },
+  {
+    // Every question by category, unique to each persona (Hawk: its own tab below Today and Chat).
+    path: 'library',
+    title: 'Prompt library · HK ELI Chatbot',
+    loadComponent: () => import('./features/library/library-page').then((m) => m.PromptLibraryPage),
+  },
+  // Old screens were removed (Hawk, 2026-11-20). Old links land on Today.
+  ...['ideas', 'shelf', 'update', 'alerts', 'feedback'].map((path) => ({ path, redirectTo: 'today' })),
+  // Old RM-first links.
+  { path: 'rm', pathMatch: 'full', redirectTo: 'today' },
+  { path: 'rm/today/ideas/:clientId', redirectTo: 'today' },
+  {
+    path: 'rm/:tab',
+    redirectTo: ({ params, queryParams }) => inject(Router).createUrlTree(['/', params['tab']], { queryParams }),
+  },
+  { path: '**', redirectTo: 'today' },
 ];

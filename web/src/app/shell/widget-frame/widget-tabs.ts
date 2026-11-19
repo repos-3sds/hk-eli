@@ -1,4 +1,4 @@
-/** The HK ELI Chatbot tabs for the RM view (Moment Console). */
+/** The HK ELI Chatbot tabs for the launch users. */
 export interface WidgetTab {
   readonly path: string;
   readonly label: string;
@@ -6,10 +6,9 @@ export interface WidgetTab {
   readonly badge?: number;
 }
 
-export const RM_TABS: readonly WidgetTab[] = [
+/** Only screens the discovery docs cover (Hawk, 2026-11-20): Today, Chat and the Prompt library. */
+export const WIDGET_TABS: readonly WidgetTab[] = [
   { path: 'today', label: 'Today', icon: 'sun' },
   { path: 'chat', label: 'Chat', icon: 'message-square' },
-  { path: 'ideas', label: 'Ideas', icon: 'lightbulb' },
-  { path: 'update', label: 'Update', icon: 'file-text' },
-  { path: 'alerts', label: 'Alerts', icon: 'bell', badge: 3 },
+  { path: 'library', label: 'Prompts', icon: 'list-checks' },
 ];

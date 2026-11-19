@@ -1,0 +1,142 @@
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { ChatAnswer } from '../../core/chat/chat.models';
+import { AnswerChart } from './answer-chart';
+import { AnswerEvidence, AnswerNotices } from './answer-evidence';
+import { AnswerText } from './answer-text';
+
+/** One answer: typed blocks (text, facts, client rows, bars, ideas, bullets), the trust line and follow-up questions. */
+@Component({
+  selector: 'eli-answer-card',
+  imports: [MatButtonModule, MatIconModule, AnswerChart, AnswerNotices, AnswerEvidence, AnswerText],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <article class="card" [class.fallback]="answer().fallback">
+      @if (answer().status || answer().scope || answer().tableauUrl) {
+        <div class="top">
+          @if (answer().status; as st) {<span class="outcome" [class]="'outcome ' + outcomeClass(st)">{{ outcomeLabel(st) }}</span>}
+          @if (answer().intent; as i) {<span class="scope">{{ i.replaceAll('_', ' ') }}</span>}
+          @if (answer().scope) {<span class="scope">{{ answer().scope }}</span>}
+          @if (answer().tableauUrl) {
+            <a class="tab-link" [href]="answer().tableauUrl" target="_blank" rel="noopener" title="The same Tableau view with the same filters">Open in Tableau<mat-icon svgIcon="external-link" aria-hidden="true" /></a>
+          }
+        </div>
+      }
+      @for (b of answer().blocks; track $index) {
+        @switch (b.kind) {
+          @case ('text') {
+            @if (answer().figures?.length) {
+              <eli-answer-text [text]="b.text" [figures]="answer().figures!" />
+            } @else {
+              <p class="text">{{ b.text }}</p>
+            }
+          }
+          @case ('table') {
+            <section class="block">
+              <h4 class="block-title">{{ b.title }}</h4>
+              <div class="table-wrap">
+                <table class="table">
+                  <thead><tr>@for (c of b.columns; track $index) {<th scope="col" [class.num]="b.numeric.includes($index)">{{ c }}</th>}</tr></thead>
+                  <tbody>
+                    @for (r of b.rows; track $index; let ri = $index) {
+                      <tr [class.flag]="b.flagged?.includes(ri)">
+                        @for (cell of r; track $index) {<td [class.num]="b.numeric.includes($index)">{{ cell }}</td>}
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+              @if (b.flagged?.length) {<p class="table-note"><span class="flag-mark" aria-hidden="true"></span>Below the baseline</p>}
+            </section>
+          }
+          @case ('chart') {
+            <eli-answer-chart [spec]="b.spec" />
+          }
+          @case ('notices') {
+            <eli-answer-notices [block]="b" />
+          }
+          @case ('evidence') {
+            <eli-answer-evidence [block]="b" [figures]="answer().figures ?? []" [model]="answer().model" [latencyMs]="answer().latencyMs" [tableauUrl]="answer().tableauUrl" />
+          }
+          @case ('bullets') {
+            <section class="block">
+              <h4 class="block-title">{{ b.title }}</h4>
+              <ul class="bullets">
+                @for (item of b.items; track item) {
+                  <li>{{ item }}</li>
+                }
+              </ul>
+            </section>
+          }
+        }
+      }
+      @if (answer().writtenBy; as w) {<p class="asof"><mat-icon svgIcon="sparkles" aria-hidden="true" />{{ w }}</p>}
+      @if (answer().refreshedAt) {
+        <p class="asof"><mat-icon svgIcon="info" aria-hidden="true" />Data as of {{ answer().businessDate }} · refreshed {{ refreshed() }} · {{ answer().sources.join(', ') }} · Figures from Tableau, checked before writing · Internal use only</p>
+      } @else if (!answer().fallback && answer().sources.length) {
+        <p class="asof"><mat-icon svgIcon="info" aria-hidden="true" />Data as of {{ answer().businessDate }} · {{ answer().sources.join(', ') }} · Figures from Tableau, checked before writing · Internal use only</p>
+      }
+      @if (showFollowUps() && answer().followUps.length) {
+        <div class="follow" role="group" aria-label="Ask next">
+          <span class="follow-label">Ask next</span>
+          @for (q of answer().followUps; track q) {
+            <button type="button" class="chip" (click)="followUp.emit(q)"><mat-icon svgIcon="sparkles" aria-hidden="true" />{{ q }}</button>
+          }
+        </div>
+      }
+    </article>
+  `,
+  styles: `
+    .top { display: flex; flex-wrap: wrap; align-items: center; gap: var(--eli-space-4); }
+    .outcome { padding: 2px var(--eli-space-5); border-radius: var(--eli-radius-pill); font-size: var(--eli-font-size-xs); font-weight: var(--eli-weight-semibold);
+      &.ok { background: rgb(43 159 135 / 18%); color: var(--eli-status-positive-text); } &.warn { background: rgb(255 147 46 / 16%); color: var(--eli-accent-orange); }
+      &.info { background: rgb(99 171 255 / 14%); color: var(--eli-accent-link); } &.bad { background: rgb(255 51 51 / 14%); color: var(--eli-status-negative-text); } }
+    .scope { padding: 2px var(--eli-space-5); border-radius: var(--eli-radius-pill); background: var(--eli-bg-row); color: var(--eli-text-muted-2); font-size: var(--eli-font-size-xs); }
+    .tab-link { display: inline-flex; align-items: center; gap: var(--eli-space-2); margin-left: auto; color: var(--eli-accent-link); font-size: var(--eli-font-size-s); text-decoration: none; &:hover { text-decoration: underline; } mat-icon { width: 13px; height: 13px; } }
+    .asof { display: flex; align-items: center; gap: var(--eli-space-3); margin: 0; color: var(--eli-text-muted); font-size: var(--eli-font-size-s); mat-icon { flex: none; width: 14px; height: 14px; } }
+    .card { display: flex; flex-direction: column; gap: var(--eli-space-7); padding: var(--eli-space-7) var(--eli-space-8); border: 1px solid var(--eli-separator); border-radius: var(--eli-radius-m); background: var(--eli-bg-dock); }
+    .card.fallback { border-left: 3px solid var(--eli-accent-link); }
+    .text { margin: 0; color: var(--eli-text-primary); font-size: var(--eli-font-size-m); line-height: 22px; }
+    .block { display: flex; flex-direction: column; gap: var(--eli-space-5); padding-top: var(--eli-space-6); border-top: 1px solid var(--eli-separator); }
+    .block-title { margin: 0; color: var(--eli-text-muted-2); font-size: var(--eli-font-size-xs); font-weight: var(--eli-weight-semibold); letter-spacing: 0.06em; text-transform: uppercase; }
+    .bullets { margin: 0; padding: 0; list-style: none; }
+    .bullets { display: flex; flex-direction: column; gap: var(--eli-space-4); padding-left: var(--eli-space-7); list-style: disc; color: var(--eli-text-primary); }
+    .table-wrap { overflow-x: auto; }
+    .table { width: 100%; border-collapse: collapse; font-size: var(--eli-font-size-s); font-variant-numeric: tabular-nums; }
+    .table th { padding: var(--eli-space-3) var(--eli-space-4); border-bottom: 1px solid var(--eli-border); color: var(--eli-text-muted); font-weight: var(--eli-weight-semibold); text-align: left; white-space: nowrap; }
+    .table td { padding: var(--eli-space-4); border-bottom: 1px solid var(--eli-separator); color: var(--eli-text-primary); }
+    .table .num { text-align: right; }
+    .table tr.flag td:first-child { box-shadow: inset 3px 0 0 var(--eli-accent-orange); }
+    .table tr.flag td { color: var(--eli-text-strong); }
+    .table-note { display: flex; align-items: center; gap: var(--eli-space-3); margin: 0; color: var(--eli-text-muted); font-size: var(--eli-font-size-s); }
+    .flag-mark { width: 3px; height: 12px; background: var(--eli-accent-orange); }
+    .follow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--eli-space-4); padding-top: var(--eli-space-6); border-top: 1px solid var(--eli-separator); }
+    .follow-label { margin-right: var(--eli-space-2); color: var(--eli-text-muted); font-size: var(--eli-font-size-s); }
+    .chip { display: inline-flex; align-items: center; gap: var(--eli-space-3); height: 28px; padding: 0 var(--eli-space-6); border: 1px solid var(--eli-border); border-radius: 14px; background: var(--eli-bg-dock); color: var(--eli-text-primary); font: inherit; font-size: var(--eli-font-size-s); cursor: pointer; &:hover { border-color: var(--eli-accent-link); color: var(--eli-text-strong); } mat-icon { width: 13px; height: 13px; color: var(--eli-accent-link); } }
+  `,
+})
+export class AnswerCard {
+
+
+  private static readonly OUTCOMES: Record<string, [string, string]> = {
+    OK: ['Answered', 'ok'], OK_WITH_WARNING: ['Answered with caveats', 'warn'], OK_FALLBACK: ['Short answer', 'warn'], PARTIAL: ['Partial', 'warn'],
+    NO_DATA: ['Nothing qualified', 'info'], NEEDS_CLARIFICATION: ['Needs clarification', 'info'], UNSUPPORTED: ["Can't answer from the views", 'bad'],
+    VALIDATION_FAILED: ['Failed checks', 'bad'], SYSTEM_ERROR: ['Service unavailable', 'bad'],
+  };
+  protected outcomeLabel(s: string): string {
+    return AnswerCard.OUTCOMES[s]?.[0] ?? s;
+  }
+  protected outcomeClass(s: string): string {
+    return AnswerCard.OUTCOMES[s]?.[1] ?? 'info';
+  }
+
+  protected refreshed(): string {
+    return (this.answer().refreshedAt ?? '').replace('T', ' ');
+  }
+
+  readonly answer = input.required<ChatAnswer>();
+  /** Only the newest answer offers follow-up questions, so older ones stay quiet. */
+  readonly showFollowUps = input(true);
+  readonly followUp = output<string>();
+}

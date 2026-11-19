@@ -1,0 +1,21 @@
+{
+  "id": "hkeli-intents",
+  "version": "1.0.0",
+  "about": "The intents this build answers, the grain of each, and an example. The understanding prompt may only return one of these ids; code validates it. Source: Intent Classification and View Routing transcripts, trimmed to what the 12 views can answer.",
+  "intents": [
+    {"id": "outstanding_total", "grain": "kpi", "example": "What is total outstanding ELI?"},
+    {"id": "segment_share", "grain": "segment", "example": "What share of outstanding ELI is TRE?"},
+    {"id": "segment_result_share", "grain": "segment_result", "example": "What percentage of outstanding ELI is TRE predicted KO?"},
+    {"id": "customer_count", "grain": "segment_result", "example": "How many TRE customers are predicted to KO?"},
+    {"id": "customer_count_maturity", "grain": "district", "example": "How many TRE customers in D1 have predicted maturity in the next 30 days?"},
+    {"id": "maturity_calendar", "grain": "date", "example": "How much TRE ELI is predicted to mature in the next 7 days?"},
+    {"id": "maturity_branch", "grain": "branch", "example": "Which branches in D1 have the largest TRE predicted maturity in the next 60 days?"},
+    {"id": "maturity_detail", "grain": "position", "example": "Which TRE clients have WPS 9988 HK maturing in the next 30 days?"},
+    {"id": "district", "grain": "district", "example": "Compare outstanding ELI across districts for TRE"},
+    {"id": "wps_exposure", "grain": "wps", "example": "Which worst-performing stocks carry the most outstanding ELI?"},
+    {"id": "mtm_distribution", "grain": "mtm_bin", "example": "Show me the MTM distribution on 9988 HK"},
+    {"id": "data_recency", "grain": "kpi", "example": "What is the latest trade date?"},
+    {"id": "data_as_of", "grain": "kpi", "example": "How fresh is the data?"},
+    {"id": "unknown", "grain": "", "example": "Anything outside the list above"}
+  ]
+}

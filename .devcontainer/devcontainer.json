@@ -1,0 +1,8 @@
+{
+  "name": "HK ELI Chatbot POC",
+  "image": "mcr.microsoft.com/devcontainers/python:1-3.12-bookworm",
+  "postCreateCommand": "pip install --require-hashes -r poc/requirements-dev.txt",
+  "postStartCommand": "cd poc && nohup uvicorn hkeli_poc.app:app --host 127.0.0.1 --port 8050 > /tmp/poc.log 2>&1 &",
+  "forwardPorts": [8050],
+  "portsAttributes": { "8050": { "label": "HK ELI POC", "onAutoForward": "openBrowser" } }
+}

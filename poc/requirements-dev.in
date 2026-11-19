@@ -1,0 +1,6 @@
+# Test-only dependencies (on top of requirements.in). pytest, pluggy and iniconfig are NOT yet proven in the
+# office JFrog: office/preflight.py proves them before install. Older pins are chosen on purpose (JFrog holds older sets).
+-r requirements.in
+pytest==8.3.4
+pluggy==1.5.0
+iniconfig==2.0.0
