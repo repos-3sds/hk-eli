@@ -80,12 +80,19 @@
                       <button matButton type="button" class="stop-btn" (click)="store.stop()"><span class="stop-mark" aria-hidden="true"></span>Stop</button>
                     </div>
                     <ol class="steps" role="status" aria-label="Working on the answer">
+                      @if (t.live; as live) {
+                        @for (s of live; track $index) {
+                          <li class="step done"><span class="mark" aria-hidden="true"><mat-icon svgIcon="check" /></span>{{ s }}</li>
+                        }
+                        <li class="step now"><span class="mark" aria-hidden="true"><span class="eli-spinner"></span></span>{{ live.length ? 'Next step…' : 'Starting…' }}</li>
+                      } @else {
                       @for (s of stages; track s; let i = $index) {
                         <li class="step" [class.done]="i < t.stage" [class.now]="i === t.stage">
                           <span class="mark" aria-hidden="true">
                             @if (i < t.stage) {<mat-icon svgIcon="check" />} @else if (i === t.stage) {<span class="eli-spinner"></span>} @else {<span class="ring"></span>}
                           </span>{{ s }}
                         </li>
+                      }
                       }
                     </ol>
                   }

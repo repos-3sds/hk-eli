@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, map, of, timeout } from 'rxjs';
+import { AskEvent } from './chat-data-source';
 import { APP_CONFIG } from '../config/app-config';
 import { ChatDataSource, StoredTurn } from './chat-data-source';
 import { AnswerBlock, ChartSpec, ChatAnswer, ChatQuestion } from './chat.models';
@@ -163,6 +164,21 @@ function writeIds(ids: string[]): void {
   }
 }
 
+function parseSse(chunk: string): { event: string; data: unknown } | null {
+  let event = 'message';
+  const data: string[] = [];
+  for (const line of chunk.split('\n')) {
+    if (line.startsWith('event:')) event = line.slice(6).trim();
+    else if (line.startsWith('data:')) data.push(line.slice(5).trimStart());
+  }
+  if (!data.length) return null;
+  try {
+    return { event, data: JSON.parse(data.join('\n')) };
+  } catch {
+    return null;
+  }
+}
+
 function safeDecode(s: string): string {
   try {
     return decodeURIComponent(s);
@@ -189,19 +205,102 @@ export class StorkClient {
     const body: Record<string, unknown> = { question, site: 'proposed' };
     const conv = background ? ([...this.backgroundIds][0] ?? null) : conversationId;
     if (conv) body['conversation_id'] = conv;
-    if (background) body['channel'] = 'insights';
+    body['channel'] = background ? 'insights' : 'chat';
     return this.http
       .post<StorkAnswer>(`${this.config.gatewayBaseUrl}/ask`, body)
       .pipe(
         timeout(this.config.requestTimeoutMs),
         map((a) => {
-          if (background && a.conversation_id && !this.backgroundIds.has(a.conversation_id)) {
-            this.backgroundIds.add(a.conversation_id);
-            writeIds([...this.backgroundIds]);
-          }
+          this.remember(a, background);
           return toChatAnswer(a, `s-${++this.counter}`);
         }),
       );
+  }
+
+  /**
+   * POST /api/v1/ask/stream (PR #8): one "stage" event per pipeline step as it finishes, then the answer.
+   * fetch with a reader, since EventSource can't POST. Unsubscribing (Stop) aborts the request.
+   * A server without the stream route (404/405) falls back to the plain /ask.
+   */
+  askStream(question: string, conversationId?: string | null, background = false): Observable<AskEvent> {
+    return new Observable<AskEvent>((sub) => {
+      const ctl = new AbortController();
+      const body: Record<string, unknown> = { question, site: 'proposed', channel: background ? 'insights' : 'chat' };
+      const conv = background ? ([...this.backgroundIds][0] ?? null) : conversationId;
+      if (conv) body['conversation_id'] = conv;
+      let fallback: { unsubscribe(): void } | null = null;
+      const idle = { t: 0 as unknown as ReturnType<typeof setTimeout> };
+      const arm = () => {
+        clearTimeout(idle.t);
+        idle.t = setTimeout(() => {
+          ctl.abort();
+          sub.error(new Error('timeout'));
+        }, this.config.requestTimeoutMs);
+      };
+      arm();
+      (async () => {
+        const res = await fetch(`${this.config.gatewayBaseUrl}/v1/ask/stream`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', accept: 'text/event-stream' },
+          body: JSON.stringify(body),
+          signal: ctl.signal,
+          credentials: 'same-origin',
+        });
+        if (res.status === 404 || res.status === 405 || !res.body) {
+          clearTimeout(idle.t);
+          fallback = this.ask(question, conversationId, background)
+            .pipe(map((answer): AskEvent => ({ kind: 'answer', answer })))
+            .subscribe(sub);
+          return;
+        }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const reader = res.body.getReader();
+        const dec = new TextDecoder();
+        let buf = '';
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          arm();
+          buf += dec.decode(value, { stream: true });
+          let cut: number;
+          while ((cut = buf.indexOf('\n\n')) >= 0) {
+            const chunk = buf.slice(0, cut);
+            buf = buf.slice(cut + 2);
+            const ev = parseSse(chunk);
+            if (!ev) continue;
+            if (ev.event === 'stage') {
+              const d = ev.data as { label?: string; name?: string };
+              sub.next({ kind: 'stage', label: d.label ?? d.name ?? 'Working' });
+            } else if (ev.event === 'answer') {
+              const a = ev.data as StorkAnswer;
+              this.remember(a, background);
+              clearTimeout(idle.t);
+              sub.next({ kind: 'answer', answer: toChatAnswer(a, `s-${++this.counter}`) });
+              sub.complete();
+              return;
+            } else if (ev.event === 'error') {
+              throw new Error('pipeline error');
+            }
+          }
+        }
+        throw new Error('stream ended without an answer');
+      })().catch((e) => {
+        clearTimeout(idle.t);
+        if (!ctl.signal.aborted) sub.error(e);
+      });
+      return () => {
+        clearTimeout(idle.t);
+        fallback?.unsubscribe();
+        ctl.abort();
+      };
+    });
+  }
+
+  private remember(a: StorkAnswer, background: boolean): void {
+    if (background && a.conversation_id && !this.backgroundIds.has(a.conversation_id)) {
+      this.backgroundIds.add(a.conversation_id);
+      writeIds([...this.backgroundIds]);
+    }
   }
 
   /** GET /api/v1/history: this user's stored questions (SQLite). Null when the server has no store. */
@@ -228,6 +327,12 @@ export class StorkChatDataSource extends ChatDataSource {
 
   ask(question: ChatQuestion): Observable<ChatAnswer> {
     return this.client.ask(question.text, question.conversationId, question.background ?? false);
+  }
+
+  override readonly streams = true;
+
+  override askStream(question: ChatQuestion): Observable<AskEvent> {
+    return this.client.askStream(question.text, question.conversationId, question.background ?? false);
   }
 
   override storedHistory(): Observable<readonly StoredTurn[] | null> {

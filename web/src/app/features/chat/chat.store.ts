@@ -1,6 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Subscription } from 'rxjs';
-import { ChatDataSource, StoredTurn } from '../../core/chat/chat-data-source';
+import { Subscription, map } from 'rxjs';
+import { AskEvent, ChatDataSource, StoredTurn } from '../../core/chat/chat-data-source';
 import { ChatAnswer } from '../../core/chat/chat.models';
 import { FeedbackStore } from '../../core/feedback/feedback.store';
 import { FIXTURE_CLIENTS } from '../../core/data/today.fixture';
@@ -16,6 +16,8 @@ export interface ChatTurn {
   readonly status: TurnStatus;
   /** While pending: which step the answer is on (0 find, 1 read, 2 write). */
   readonly stage: number;
+  /** Steps the pipeline reported as done, when it streams them (PR #8 /ask/stream). */
+  readonly live?: readonly string[];
   readonly answer?: ChatAnswer;
   readonly answeredAt?: Date;
   readonly error?: string;
@@ -118,7 +120,7 @@ export class ChatStore {
   }
 
   retry(turnId: string): void {
-    this.patch(turnId, { status: 'pending', stage: 0, error: undefined });
+    this.patch(turnId, { status: 'pending', stage: 0, live: undefined, error: undefined });
     this.run(turnId);
   }
 
@@ -181,11 +183,21 @@ export class ChatStore {
     if (!turn) {
       return;
     }
-    const timers = STAGE_DELAYS_MS.map((ms, i) => setTimeout(() => this.advance(turnId, i + 1), ms));
+    const streams = this.data.streams === true && typeof this.data.askStream === 'function';
+    const timers = streams ? [] : STAGE_DELAYS_MS.map((ms, i) => setTimeout(() => this.advance(turnId, i + 1), ms));
     const entry = { sub: new Subscription(), timers };
     this.running.set(turnId, entry);
-    entry.sub = this.data.ask({ text: turn.question, clientId: turn.clientId, conversationId: this.conversationId() }).subscribe({
-      next: (answer) => {
+    if (streams) this.patch(turnId, { live: [] });
+    const q = { text: turn.question, clientId: turn.clientId, conversationId: this.conversationId() };
+    const source = streams ? this.data.askStream(q) : this.data.ask(q).pipe(map((answer): AskEvent => ({ kind: 'answer', answer })));
+    entry.sub = source.subscribe({
+      next: (ev) => {
+        if (ev.kind === 'stage') {
+          const now = this.turns().find((t) => t.id === turnId);
+          if (now?.status === 'pending') this.patch(turnId, { live: [...(now.live ?? []), ev.label] });
+          return;
+        }
+        const answer = ev.answer;
         this.finish(turnId);
         this.patch(turnId, { status: 'done', answer, answeredAt: new Date() });
         if (answer.conversationId) {
