@@ -53,6 +53,8 @@ CALCS = {
     "calc_customers": ("Customers (all results)", "integer", "measure", "quantitative",
                        "MIN({EXCLUDE [predict_result] : COUNTD([cif_id])})"),
     "calc_max_trade_date": ("Max Trade Date", "string", "measure", "nominal", "MAX([trade_date])"),
+    "calc_in_scope": ("Segment In Scope", "string", "dimension", "nominal",
+                      "IF [bp_div_type] = 'Treasures(TPC)' THEN 'Excluded' ELSE 'In scope' END"),
     "calc_mtm_bin": ("MTM% (bin)", "integer", "dimension", "ordinal", "FLOOR([wps_mtm] / 5) * 5"),
 }
 W1 = ["days_to_pred_maturity", "in_n7", "in_n14", "in_n30", "in_n60", "in_n90"]
@@ -132,7 +134,7 @@ def sheet(name: str, *, rows=(), cols=(), mark="Automatic", color=None, size=Non
         if f not in fields:
             fields.append(f)
         if f in CALCS:
-            for dep in ("volume_bu", "predict_result", "cif_id", "trade_date", "wps_mtm"):
+            for dep in ("volume_bu", "predict_result", "cif_id", "trade_date", "wps_mtm", "bp_div_type"):
                 if f"[{dep}]" in CALCS[f][4] and dep not in fields:
                     fields.append(dep)
     deps = "".join(col_xml(f) for f in fields) + "".join(inst_xml(d, f) for d, f in uses)
@@ -195,7 +197,8 @@ def sheets():
               text=[SUM, ("avg", "wps_mtm")], fixed=[TRE, LIVE], shown=[*tre_shown, "wps"]),
         sheet("ALL_outstanding_District_n30d", rows=[N("bp_div_type"), N("cust_district")], cols=[SUM], mark="Bar",
               color=N("predict_result"), tooltip=[CUST],
-              fixed=[("bp_div_type", ["Treasures(TPC)"], True, True), LIVE], shown=["deal_status", "predict_maturity", *W1]),
+              fixed=[("calc_in_scope", ["In scope"], True, False), LIVE],
+              shown=["deal_status", "bp_div_type", "predict_maturity", *W1]),
         sheet("ALL_outstanding_simulation_n30d", rows=[N("wps")], cols=[SUM], mark="Bar", color=N("predict_result"),
               fixed=[LIVE], shown=["deal_status", "bp_div_type", "predict_maturity", *W1]),
         sheet("TRE_outstanding_simulation_n30d", rows=[N("wps")], cols=[SUM], mark="Bar", color=N("predict_result"),
