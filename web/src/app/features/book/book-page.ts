@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
-import { TableauPaneService } from '../tableau/tableau-pane.service';
 import { Router } from '@angular/router';
 import { ChatDataSource } from '../../core/chat/chat-data-source';
 import { ChatAnswer } from '../../core/chat/chat.models';
@@ -81,7 +80,7 @@ const CHIPS: Record<LaunchRole, readonly string[]> = {
                 <p class="c-detail">{{ i.detail }}</p>
                 <div class="c-foot">
                   <span class="src" [title]="'Worked out from the ' + i.source + ' Tableau view'">{{ i.source }}</span>
-                  @if (i.tableauUrl) {<button type="button" class="eli-link tab" (click)="showTableau(i)" title="Open Chat with this Tableau view beside it">Tableau</button>}
+                  @if (i.tableauUrl) {<a [href]="i.tableauUrl" target="_blank" rel="noopener" title="The same Tableau view with the same filters, in a new tab">Tableau ↗</a>}
                   <button type="button" class="eli-link more" (click)="ask(i.askMore)">Ask more</button>
                 </div>
               </article>
@@ -137,7 +136,6 @@ const CHIPS: Record<LaunchRole, readonly string[]> = {
 export class BookPage {
   private readonly data = inject(ChatDataSource);
   private readonly router = inject(Router);
-  private readonly pane = inject(TableauPaneService);
   private readonly session = inject(SessionService);
   private readonly clock = inject(BusinessClock);
 
@@ -184,12 +182,6 @@ export class BookPage {
       event.preventDefault();
       this.ask(this.draft());
     }
-  }
-
-  /** Opens Chat with the insight's Tableau view in the split view. */
-  protected showTableau(i: Insight): void {
-    this.pane.open({ view: i.source, url: i.tableauUrl! });
-    void this.router.navigate(['/chat']);
   }
 
   protected openLibrary(): void {

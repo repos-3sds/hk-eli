@@ -16,8 +16,6 @@ import { libraryFor } from '../../core/chat/prompt-library';
 import { AnswerCard } from './answer-card';
 import { ChatComposer } from './chat-composer';
 import { ANSWER_STAGES, ChatStore } from './chat.store';
-import { TableauPane } from '../tableau/tableau-pane';
-import { TableauPaneService } from '../tableau/tableau-pane.service';
 
 interface Starter {
   readonly icon: string;
@@ -55,28 +53,13 @@ const STARTERS: Record<LaunchRole, readonly Starter[]> = {
  */
 @Component({
   selector: 'eli-chat-page',
-  imports: [TableauPane, MatButtonModule, MatIconModule, MatMenuModule, MatTooltipModule, AnswerCard, ChatComposer],
+  imports: [MatButtonModule, MatIconModule, MatMenuModule, MatTooltipModule, AnswerCard, ChatComposer],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './chat-page.html',
   styleUrl: './chat-page.scss',
 })
 export class ChatPage {
   protected readonly store = inject(ChatStore);
-  protected readonly pane = inject(TableauPaneService);
-
-  /** Drag the divider to resize the Tableau split view. */
-  protected startResize(ev: PointerEvent): void {
-    ev.preventDefault();
-    const startX = ev.clientX;
-    const startW = this.pane.width();
-    const move = (e: PointerEvent) => this.pane.width.set(Math.max(320, Math.min(window.innerWidth * 0.7, startW + (startX - e.clientX))));
-    const up = () => {
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
-    };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
-  }
   private readonly router = inject(Router);
   private readonly session = inject(SessionService);
   private readonly clock = inject(BusinessClock);

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { EvidenceBlock, NoticesBlock } from '../../core/chat/chat.models';
 
 /** The validation caveats on an answer: predicted figures, workarounds, scope limits. */
@@ -45,7 +45,7 @@ export class AnswerNotices {
           <span class="src-ic" aria-hidden="true">▦</span>
           <div class="src-body">
             <div class="src-head"><b>{{ v.view }}</b><span class="muted">Tableau view · {{ v.rows }} rows read</span>
-              @if (tableauUrl()) {<button type="button" class="open" (click)="openTableau.emit()">Open in Tableau</button>}
+              @if (tableauUrl()) {<a [href]="tableauUrl()" target="_blank" rel="noopener">Open in Tableau ↗</a>}
             </div>
             <div class="mono req">{{ v.request }}</div>
             @if (v.proven.length) {<div class="muted">Proven by the catalog: {{ v.proven.join('; ') }}</div>}
@@ -81,7 +81,7 @@ export class AnswerNotices {
     .src-ic { color: var(--eli-accent-orange); }
     .src-body { display: flex; flex-direction: column; gap: var(--eli-space-2); min-width: 0; }
     .src-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--eli-space-5); color: var(--eli-text-strong); font-size: var(--eli-font-size-s);
-      .open { margin-left: auto; padding: 0; border: 0; background: none; color: var(--eli-accent-link); font: inherit; cursor: pointer; } }
+      a { margin-left: auto; color: var(--eli-accent-link); text-decoration: none; } }
     .req { color: var(--eli-text-muted); }
     .assume { margin: var(--eli-space-3) 0 0; }
     .steps { margin: 0; padding: 0 0 0 var(--eli-space-2); list-style: none; display: flex; flex-direction: column; font-size: var(--eli-font-size-xs); }
@@ -101,7 +101,6 @@ export class AnswerEvidence {
   readonly model = input<string | undefined>();
   readonly latencyMs = input<number | undefined>();
   readonly tableauUrl = input<string | undefined>();
-  readonly openTableau = output<void>();
 
   protected seconds(): string {
     const ms = this.latencyMs() ?? this.block().steps.reduce((s, x) => s + x.ms, 0);
