@@ -22,7 +22,17 @@ opens, e.g. `https://prod-apsoutheast-a.online.tableau.com/#/site/hkelipoc/home`
 
 Keep the **Client ID**, **Secret ID** and **Secret value**. Never paste them into chat or commit them.
 
-## 3. Upload the data
+## 3. Fast path: upload the ready workbook (replaces steps 3 and 4)
+
+`poc/tableau/HK_ELI.twbx` holds all 13 sheets with the synthetic data packed in (rebuild it with
+`python scripts/build_twbx.py tableau/HK_ELI.twbx`). On Tableau Cloud choose **New → Upload Workbook**,
+pick the file, keep the name `HK_ELI`, tick **Show sheets as tabs**, and upload. Then go to step 5.
+
+Checked on a live Tableau Cloud site (2026-11-20): every sheet's CSV export matches the mock's rows
+and totals, and URL filters (Cust District, In N30/In N60, Wps, Bp Div Type, Predict Result) give the
+same results as the mock.
+
+## 3b. Manual path: upload the data
 
 Download `hk_eli_positions.csv` (in the project files under `hk-eli-poc/`, or run
 `python scripts/export_tableau_data.py out/hk_eli_positions.csv`).
@@ -41,7 +51,7 @@ Create these calculated fields:
 | `Customers (all results)` | `{EXCLUDE [Predict Result] : COUNTD([Cif Id])}` | sheets 5, 6, 8 (W7) |
 | `MTM% (bin)` | right-click `Wps Mtm` → Create → Bins, size 5, then rename | sheet 11 |
 
-## 4. Build the sheets
+## 4. Manual path: build the sheets
 
 Name each sheet exactly as shown (no `#`). Put every field below on **Rows/Columns/Marks**, not in
 *Measure Values*, so the data export has one column per field. "Filter (shown)" means drag it to
