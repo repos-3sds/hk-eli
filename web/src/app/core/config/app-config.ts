@@ -1,7 +1,7 @@
 import { InjectionToken } from '@angular/core';
 
 /** Where the Today data comes from. `mock` uses the in-browser fixtures; `gateway` calls the API gateway. */
-export type DataSourceKind = 'mock' | 'gateway';
+export type DataSourceKind = 'mock' | 'gateway' | 'stork';
 
 /** Mock scenarios, so every state of the flow can be seen without a back end. */
 export type MockScenario = 'normal' | 'empty' | 'error' | 'slow';
@@ -59,8 +59,8 @@ export function parseAppConfig(raw: unknown): AppConfig {
   if (missing.length > 0) {
     throw new Error(`App config is missing: ${missing.join(', ')}`);
   }
-  if (value['dataSource'] !== 'mock' && value['dataSource'] !== 'gateway') {
-    throw new Error(`App config dataSource must be "mock" or "gateway"`);
+  if (!['mock', 'gateway', 'stork'].includes(value['dataSource'] as string)) {
+    throw new Error(`App config dataSource must be "mock", "gateway" or "stork"`);
   }
   return { asOfDate: null, ...value } as unknown as AppConfig;
 }

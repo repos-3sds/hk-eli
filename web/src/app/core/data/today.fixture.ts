@@ -127,9 +127,6 @@ export const FIXTURE_CLIENTS: readonly FixtureClient[] = [
   { id: 'c-3356', name: 'Kwok Dik', shortName: 'Kwok D.', segment: 'Treasures', cifMasked: '••3356', riskProfile: 4, eliOutstandingUsd: 580_000, maturingUsd: 160_000, lastTradeDaysAgo: 39, concentration: [{ underlying: 'AMD', sharePct: 12.0 }], outcomes: [], rfqs: [] },
 ];
 
-/** Team book adds two more RMs' clients on top of mine (the strip shows the scope switch working). */
-export const TEAM_ONLY_CLIENT_IDS: readonly string[] = ['c-9034', 'c-3356', 'c-4402'];
-
 export const FIXTURE_MOMENTS: readonly FixtureMoment[] = [
   { clientId: 'c-3310', type: 'idle', offset: 0 },
   { clientId: 'c-5502', type: 'rfq', offset: 0 },
