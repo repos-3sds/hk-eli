@@ -39,7 +39,7 @@ The internal deck's quote-count and district rollover figures are single example
 | Decision | Detail | By |
 | --- | --- | --- |
 | Orchestrator | No Dify. Stork AI is the orchestrator, using its Gemini adapter for now. | Product lead, 3 Nov |
-| Where AI is allowed | Figures, tables and lists are computed from data. The model only rewords the lead sentence of a chat answer, behind guardrails, with every call written to the prompt audit. See [gateway/README.md](../gateway/README.md). | Business vision principle 1, R1, R20 |
+| Where AI is allowed | Figures, tables and lists are computed from data. The model only rewords the lead sentence of a chat answer, behind guardrails, with every call written to the prompt audit. Now enforced by the agent in `poc/` (figure check against the Tableau rows, model-call log). | Business vision principle 1, R1, R20 |
 | Stack | The bank's engineering standards: Java 21 and Spring Boot 3.5, Angular 21 with Angular Material, MariaDB, Elasticsearch, OpenTelemetry and ELK, Vault, pinned versions, tests. Where the standards conflict with the points above (name, Stork AI, look), ours win. | Product lead, 3 Nov |
 | Look | A dark Digimarkets-style widget, following the Digimarkets style guide, not the NPA or Inter look | Product lead, 3 Nov |
 | Standalone screens | Screens work on their own. Widget-linking features (link icon, send to linked widgets) stay on screen but switched off. | Product lead, 3 Nov |
