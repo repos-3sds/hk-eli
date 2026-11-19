@@ -1,3 +1,4 @@
+import { APP_CONFIG } from '../../core/config/app-config';
 import { ChangeDetectionStrategy, Component, ElementRef, inject, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -19,6 +20,8 @@ import { ChatStore } from './chat.store';
 })
 export class ChatComposer {
   protected readonly store = inject(ChatStore);
+  /** With the Stork pipeline there is no client picker: answers come from the 12 HK_ELI views. */
+  protected readonly pipeline = inject(APP_CONFIG).dataSource === 'stork';
   protected readonly clients = FIXTURE_CLIENTS;
   private readonly input = viewChild.required<ElementRef<HTMLTextAreaElement>>('input');
 

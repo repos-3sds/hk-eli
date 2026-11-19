@@ -9,14 +9,24 @@ import { MomentChip } from '../today/shared/moment-chip';
 import { ConcentrationBar } from '../today/shared/concentration-bar';
 import { TrustLine } from '../today/shared/trust-line';
 import { UsdPipe } from '../today/shared/format';
+import { AnswerChart } from './answer-chart';
+import { AnswerEvidence, AnswerNotices } from './answer-evidence';
 
 /** One answer: typed blocks (text, facts, client rows, bars, ideas, bullets), the trust line and follow-up questions. */
 @Component({
   selector: 'eli-answer-card',
-  imports: [MatButtonModule, MatIconModule, RouterLink, MomentChip, ConcentrationBar, TrustLine, UsdPipe],
+  imports: [MatButtonModule, MatIconModule, RouterLink, MomentChip, ConcentrationBar, TrustLine, UsdPipe, AnswerChart, AnswerNotices, AnswerEvidence],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <article class="card" [class.fallback]="answer().fallback">
+      @if (answer().scope || answer().tableauUrl) {
+        <div class="top">
+          @if (answer().scope) {<span class="scope">{{ answer().scope }}</span>}
+          @if (answer().tableauUrl) {
+            <a class="tab-link" [href]="answer().tableauUrl" target="_blank" rel="noopener" title="The same Tableau view with the same filters">Open in Tableau<mat-icon svgIcon="external-link" aria-hidden="true" /></a>
+          }
+        </div>
+      }
       @for (b of answer().blocks; track $index) {
         @switch (b.kind) {
           @case ('text') {
@@ -89,6 +99,15 @@ import { UsdPipe } from '../today/shared/format';
               @if (b.flagged?.length) {<p class="table-note"><span class="flag-mark" aria-hidden="true"></span>Below the baseline</p>}
             </section>
           }
+          @case ('chart') {
+            <eli-answer-chart [spec]="b.spec" />
+          }
+          @case ('notices') {
+            <eli-answer-notices [block]="b" />
+          }
+          @case ('evidence') {
+            <eli-answer-evidence [block]="b" />
+          }
           @case ('bullets') {
             <section class="block">
               <h4 class="block-title">{{ b.title }}</h4>
@@ -101,7 +120,9 @@ import { UsdPipe } from '../today/shared/format';
           }
         }
       }
-      @if (!answer().fallback) {
+      @if (answer().refreshedAt) {
+        <p class="asof"><mat-icon svgIcon="info" aria-hidden="true" />Data as of {{ answer().businessDate }} · refreshed {{ refreshed() }} · {{ answer().sources.join(', ') }} · Figures from Tableau, checked before writing · Internal use only</p>
+      } @else if (!answer().fallback) {
         <eli-trust-line [businessDate]="answer().businessDate" [sources]="answer().sources" reference="chat" />
       }
       @if (answer().parity; as p) {
@@ -121,6 +142,10 @@ import { UsdPipe } from '../today/shared/format';
     </article>
   `,
   styles: `
+    .top { display: flex; align-items: center; gap: var(--eli-space-6); }
+    .scope { padding: 2px var(--eli-space-5); border-radius: var(--eli-radius-pill); background: var(--eli-bg-row); color: var(--eli-text-muted-2); font-size: var(--eli-font-size-xs); }
+    .tab-link { display: inline-flex; align-items: center; gap: var(--eli-space-2); margin-left: auto; color: var(--eli-accent-link); font-size: var(--eli-font-size-s); text-decoration: none; &:hover { text-decoration: underline; } mat-icon { width: 13px; height: 13px; } }
+    .asof { display: flex; align-items: center; gap: var(--eli-space-3); margin: 0; color: var(--eli-text-muted); font-size: var(--eli-font-size-s); mat-icon { flex: none; width: 14px; height: 14px; } }
     .parity { display: flex; align-items: flex-start; gap: var(--eli-space-3); margin: 0; color: var(--eli-text-muted-2); font-size: var(--eli-font-size-s);
       mat-icon { flex: none; width: 14px; height: 14px; margin-top: 2px; }
       &.match mat-icon { color: var(--eli-status-positive-text); }
@@ -163,6 +188,10 @@ import { UsdPipe } from '../today/shared/format';
 export class AnswerCard {
   protected parityText(p: TableauParity): string {
     return parityLine(p, shortDate(this.answer().businessDate));
+  }
+
+  protected refreshed(): string {
+    return (this.answer().refreshedAt ?? '').replace('T', ' ');
   }
 
   readonly answer = input.required<ChatAnswer>();

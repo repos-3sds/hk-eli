@@ -4,7 +4,7 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatIconModule } from '@angular/material/icon';
 import { Router } from '@angular/router';
 import { CAN_ANSWER } from '../../core/chat/chat-scope';
-import { ASK_EXAMPLES, GLOSSARY, ROLE_GUIDES } from '../../core/help/help-content';
+import { ASK_EXAMPLES, DISCOVERY_TERMS, GLOSSARY, ROLE_GUIDES } from '../../core/help/help-content';
 import { SessionService } from '../../core/session/session.service';
 import { FirstRunStore } from './first-run.store';
 
@@ -117,7 +117,7 @@ export class HelpSheet {
   protected readonly q = signal('');
   protected readonly terms = computed(() => {
     const q = this.q().trim().toLowerCase();
-    const all = Object.values(GLOSSARY).sort((a, b) => a.term.localeCompare(b.term));
+    const all = DISCOVERY_TERMS.map((k) => GLOSSARY[k]).sort((a, b) => a.term.localeCompare(b.term));
     return q ? all.filter((g) => g.term.toLowerCase().includes(q) || g.definition.toLowerCase().includes(q)) : all;
   });
 

@@ -43,7 +43,6 @@ import { LAUNCH_ROLES, LaunchRole, ROLE_LABELS, START_VIEWS, SessionService } fr
           <button mat-menu-item type="button" (click)="help.open('start')"><mat-icon svgIcon="list-checks" />Getting started</button>
           <button mat-menu-item type="button" (click)="help.open('ask')"><mat-icon svgIcon="message-square" />What can I ask?</button>
           <button mat-menu-item type="button" (click)="help.open('glossary')"><mat-icon svgIcon="file-text" />Glossary</button>
-          <button mat-menu-item type="button" (click)="router.navigateByUrl('/feedback')"><mat-icon svgIcon="thumbs-up" />Feedback this week</button>
         </mat-menu>
         <button type="button" class="icon-btn" matTooltip="Log out" aria-label="Log out"><mat-icon svgIcon="dm-logout" /></button>
       </div>

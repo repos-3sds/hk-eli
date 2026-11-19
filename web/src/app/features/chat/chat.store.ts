@@ -30,7 +30,7 @@ export interface PastConversation {
 }
 
 /** What the user sees while an answer is being put together, step by step. */
-export const ANSWER_STAGES = ['Finding the client and the question', 'Reading the blotter, fixings and RFQ log', 'Writing the answer'] as const;
+export const ANSWER_STAGES = ['Understanding the question', 'Reading the Tableau view', 'Checking the numbers and writing the answer'] as const;
 const STAGE_DELAYS_MS = [350, 900];
 
 /**

@@ -28,10 +28,8 @@ import { SessionService } from '../../core/session/session.service';
       <header class="title-bar">
         <h1 class="title">{{ appName }}</h1>
         <span class="internal" matTooltip="Internal use only until launch feedback is good. Nothing here goes to clients.">Internal use only</span>
-        <button type="button" class="handoff" (click)="handoffs.open()" [attr.aria-label]="'Hand-off list, ' + handoff.count() + ' to hand off'">
-          <mat-icon svgIcon="clipboard-list" aria-hidden="true" />Hand-off list
-          @if (handoff.count()) { <span class="hcount">{{ handoff.count() }}</span> }
-        </button>
+        <!-- Hand-off list hidden: hand-offs go beyond the discovery docs (Hawk, 2026-11-20). -->
+        <span class="handoff-gap" aria-hidden="true"></span>
         <div class="actions">
           <button type="button" class="act link off" matTooltip="Not linked to other widgets yet" aria-label="Widget links: not linked yet" aria-disabled="true"><mat-icon svgIcon="link" /></button>
           <button type="button" class="act pin" [class.on]="pinned()" [matTooltip]="pinned() ? 'Unpin' : 'Pin'" [attr.aria-pressed]="pinned()" aria-label="Pin widget" (click)="togglePin()"><mat-icon svgIcon="dm-pin" /></button>

@@ -39,8 +39,11 @@ export const GLOSSARY: Record<TermKey, GlossaryTerm> = {
   exercised: { term: 'Exercised', definition: 'The stock ended below the strike, so the client received shares instead of cash. A chance to talk about the shares now held.' },
   idle: { term: 'Idle 90+ days', definition: 'A client who has held ELIs before but has not traded one in 90 days or more.' },
   rfq: { term: 'Open RFQ', definition: 'A request for a price that was sent to the desk and has not yet been traded or closed.' },
-  maturing: { term: 'Maturing', definition: 'An ELI whose final date falls in the next 10 business days.' },
+  maturing: { term: 'Predicted maturity', definition: 'When the model expects the ELI to end: the next likely KO date, or the final date if no KO is expected. Shown for Treasures (HK) only.' },
 };
+
+/** The glossary terms the discovery docs use. Terms for the hidden screens (shelf, rollover, hand-offs) stay defined but are not shown. */
+export const DISCOVERY_TERMS: readonly TermKey[] = ['eli', 'ko', 'ki', 'barrier', 'strike', 'worst-of', 'tenor', 'coupon', 'exercised', 'data-clock', 'maturing'];
 
 /** What each launch role does first, in three steps. Shown once on first visit and any time under Help. */
 export interface GuideStep {
@@ -50,38 +53,31 @@ export interface GuideStep {
   readonly cta: string;
 }
 
-export const ROLE_GUIDES: Record<LaunchRole, readonly GuideStep[]> = {
-  wms: [
-    { title: 'See what needs you today', text: 'Today lists what matures and what is near a knock-out across the business, with how fresh the figures are.', path: '/today', cta: 'Open Today' },
-    { title: 'Get the facts on one client', text: 'Ask Chat "Brief me on Chan" for holdings, limits and what matures, ready for the owning RM.', path: '/chat', cta: 'Open Chat' },
-    { title: 'Find ideas and hand them off', text: 'Ideas ranks indicative ELIs against the signals you pick. Add the good ones to the hand-off list.', path: '/ideas', cta: 'Open Ideas' },
-  ],
-  pm: [
-    { title: 'Read demand next to the book', text: 'Shelf shows what was quoted this week, beside how full each name is against its limit.', path: '/shelf', cta: 'Open Shelf' },
-    { title: 'Pick tomorrow\'s shelf', text: 'Tick ideas before the pricing cut-off and copy the request for the desk.', path: '/shelf', cta: 'Pick the shelf' },
-    { title: 'Publish a starter pack', text: 'A published pack shows in every launch user\'s Ideas tab, under "From the product team".', path: '/ideas', cta: 'Open Ideas' },
-  ],
-  tsm: [
-    { title: 'See your team\'s month', text: 'Update starts with rollover by branch and by RM, against the 80% line.', path: '/update', cta: 'Open Update' },
-    { title: 'Act on a pocket', text: 'Pick a branch below the line and make a hand-off list of who matures there.', path: '/update', cta: 'See pockets' },
-    { title: 'Let the next one come to you', text: 'Set an alert, for example "rollover below 80% in a branch", instant or in the morning digest.', path: '/alerts', cta: 'Open Alerts' },
-  ],
-};
+/** The same three steps for every launch role: the screens the discovery docs cover. */
+const DISCOVERY_GUIDE: readonly GuideStep[] = [
+  { title: 'See the book at a glance', text: 'Today shows outstanding ELI, the predicted KO share, the next 30 days of Treasures maturities and the largest WPS exposures, each from a Tableau view.', path: '/today', cta: 'Open Today' },
+  { title: 'Ask in plain words', text: 'Ask Chat "Which branches have the most TRE maturities in the next 30 days?" The answer shows the figures, a chart and the Tableau view it came from.', path: '/chat', cta: 'Open Chat' },
+  { title: 'Check it in Tableau', text: 'Every answer has "Open in Tableau", which opens the same view with the same filters, so you can check the numbers yourself.', path: '/today', cta: 'Back to Today' },
+];
 
-/** Example questions Chat answers from data, grouped as a first-time user would look for them. */
+export const ROLE_GUIDES: Record<LaunchRole, readonly GuideStep[]> = { wms: DISCOVERY_GUIDE, pm: DISCOVERY_GUIDE, tsm: DISCOVERY_GUIDE };
+
+/** Example questions Chat answers from the HK_ELI Tableau views, grouped as a first-time user would look for them. */
 export const ASK_EXAMPLES: readonly { readonly topic: string; readonly question: string }[] = [
-  { topic: 'Maturities', question: 'Who matures this week?' },
-  { topic: 'Knock-outs', question: 'Which knock-outs are close to the barrier?' },
-  { topic: 'Rollover', question: 'Which branch has the worst rollover?' },
-  { topic: 'Concentration', question: 'Top concentrations against limit' },
-  { topic: 'Unmet demand', question: 'What was quoted and not traded this week?' },
-  { topic: 'One client', question: 'Brief me on Chan' },
-  { topic: 'Client history', question: 'What did Chan trade in the last 90 days?' },
+  { topic: 'Outstanding', question: 'What is the total outstanding ELI?' },
+  { topic: 'Segments', question: 'What share of outstanding ELI does each segment hold?' },
+  { topic: 'Predicted KO', question: 'What percentage of outstanding ELI is TRE predicted KO?' },
+  { topic: 'Maturities', question: 'Which branches have the most TRE maturities in the next 30 days?' },
+  { topic: 'Clients', question: 'Show the clients behind Central maturing in the next 30 days' },
+  { topic: 'WPS exposure', question: 'Which WPS has the largest outstanding ELI exposure overall?' },
+  { topic: 'Districts', question: 'Compare outstanding ELI across districts for TRE' },
+  { topic: 'MTM', question: 'Show the MTM distribution of outstanding ELI' },
+  { topic: 'Freshness', question: 'How fresh is the data?' },
 ];
 
 /** The tabs each role works in most, marked "For you" on the tab rail. */
 export const ROLE_HOME_TABS: Record<LaunchRole, readonly string[]> = {
-  wms: ['today', 'chat', 'ideas'],
-  pm: ['shelf', 'ideas'],
-  tsm: ['update', 'alerts'],
+  wms: ['today', 'chat'],
+  pm: ['today', 'chat'],
+  tsm: ['today', 'chat'],
 };

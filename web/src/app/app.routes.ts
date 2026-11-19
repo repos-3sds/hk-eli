@@ -13,48 +13,21 @@ export const routes: Routes = [
     redirectTo: ({ queryParams }) => inject(Router).createUrlTree(['/', START_VIEWS[inject(SessionService).role()]], { queryParams }),
   },
   {
+    // Today is built from the same 12 HK_ELI Tableau views as the chat (discovery docs); every tile is a pipeline answer.
     path: 'today',
     title: 'Today · HK ELI Chatbot',
-    loadComponent: () => import('./features/today/today-layout').then((m) => m.TodayLayout),
-    children: [
-      { path: '', loadComponent: () => import('./features/today/brief/brief-page').then((m) => m.BriefPage) },
-      // Older links to a client's ideas now open the Ideas tab with that client picked.
-      { path: 'ideas/:clientId', redirectTo: ({ params }) => `/ideas?client=${encodeURIComponent(params['clientId'])}` },
-    ],
+    loadComponent: () => import('./features/book/book-page').then((m) => m.BookPage),
   },
   {
     path: 'chat',
     title: 'Chat · HK ELI Chatbot',
     loadComponent: () => import('./features/chat/chat-page').then((m) => m.ChatPage),
   },
-  {
-    path: 'ideas',
-    title: 'Ideas · HK ELI Chatbot',
-    loadComponent: () => import('./features/idea-finder/idea-finder-page').then((m) => m.IdeaFinderPage),
-  },
-  {
-    path: 'shelf',
-    title: 'Shelf · HK ELI Chatbot',
-    loadComponent: () => import('./features/shelf/shelf-page').then((m) => m.ShelfPage),
-  },
-  {
-    path: 'update',
-    title: 'Update · HK ELI Chatbot',
-    loadComponent: () => import('./features/update/business-update-page').then((m) => m.BusinessUpdatePage),
-  },
-  {
-    path: 'alerts',
-    title: 'Alerts · HK ELI Chatbot',
-    loadComponent: () => import('./features/alerts/alerts-page').then((m) => m.AlertsPage),
-  },
-  {
-    path: 'feedback',
-    title: 'Feedback this week · HK ELI Chatbot',
-    loadComponent: () => import('./features/feedback/feedback-page').then((m) => m.FeedbackPage),
-  },
+  // Beyond the discovery docs, so hidden (Hawk, 2026-11-20). Old links land on Today.
+  ...['ideas', 'shelf', 'update', 'alerts', 'feedback'].map((path) => ({ path, redirectTo: 'today' })),
   // Old RM-first links.
   { path: 'rm', pathMatch: 'full', redirectTo: 'today' },
-  { path: 'rm/today/ideas/:clientId', redirectTo: ({ params }) => `/ideas?client=${encodeURIComponent(params['clientId'])}` },
+  { path: 'rm/today/ideas/:clientId', redirectTo: 'today' },
   {
     path: 'rm/:tab',
     redirectTo: ({ params, queryParams }) => inject(Router).createUrlTree(['/', params['tab']], { queryParams }),

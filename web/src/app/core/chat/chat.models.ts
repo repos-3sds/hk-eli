@@ -72,7 +72,62 @@ export interface TableBlock {
   readonly flagged?: readonly number[];
 }
 
-export type AnswerBlock = TextBlock | FactsBlock | ClientRowsBlock | ConcentrationBlock | IdeasBlock | BulletsBlock | TableBlock;
+/** Predicted results, in the order the charts stack them. "All" is a bar with no split. */
+export type PredictResult = 'KO' | 'EXP' | 'EXP(Below Strike)' | 'EX' | 'All';
+
+export interface ChartCategory {
+  readonly key: string;
+  readonly label: string;
+  readonly parts: readonly { readonly result: PredictResult; readonly value: number }[];
+  readonly total: number;
+  readonly note?: string;
+}
+
+export interface ChartPoint {
+  readonly x: number;
+  readonly y: number;
+  readonly size: number;
+  readonly result: PredictResult;
+  readonly label: string;
+}
+
+/** The chart the pipeline builds from the same Tableau view rows as the numbers. We draw it in our own style. */
+export type ChartSpec =
+  | { readonly kind: 'kpi'; readonly title?: string; readonly value: number; readonly label: string }
+  | { readonly kind: 'hbar'; readonly title?: string; readonly categories: readonly ChartCategory[]; readonly stacked?: boolean; readonly highlight?: readonly string[]; readonly unit?: 'hkd' | 'customers'; readonly more?: number }
+  | { readonly kind: 'columns'; readonly title?: string; readonly categories: readonly ChartCategory[] }
+  | { readonly kind: 'bubble'; readonly title?: string; readonly points: readonly ChartPoint[]; readonly highlight?: readonly string[] };
+
+export interface ChartBlock {
+  readonly kind: 'chart';
+  readonly spec: ChartSpec;
+}
+
+/** Caveats the validation step attached: predicted figures, workarounds, scope limits. */
+export interface NoticesBlock {
+  readonly kind: 'notices';
+  readonly items: readonly { readonly level: 'info' | 'warn' | 'error'; readonly label: string; readonly text: string }[];
+}
+
+/** How the answer was made: which Tableau view, which filters, how many rows, and each pipeline step. Always shown open. */
+export interface EvidenceBlock {
+  readonly kind: 'evidence';
+  readonly views: readonly { readonly view: string; readonly request: string; readonly rows: number; readonly proven: readonly string[] }[];
+  readonly steps: readonly { readonly n: number; readonly name: string; readonly detail: string; readonly ms: number }[];
+  readonly assumptions: readonly string[];
+}
+
+export type AnswerBlock =
+  | TextBlock
+  | FactsBlock
+  | ClientRowsBlock
+  | ConcentrationBlock
+  | IdeasBlock
+  | BulletsBlock
+  | TableBlock
+  | ChartBlock
+  | NoticesBlock
+  | EvidenceBlock;
 
 export interface ChatAnswer {
   readonly id: string;
@@ -84,4 +139,10 @@ export interface ChatAnswer {
   readonly fallback: boolean;
   /** How the figures compare with the Tableau view users know (R36). Absent when no view applies. */
   readonly parity?: TableauParity;
+  /** Pipeline answers: the population the figures cover, e.g. "TRE · predicted maturity next 30 days". */
+  readonly scope?: string;
+  /** Pipeline answers: when the Tableau data was refreshed (ISO), next to the business date. */
+  readonly refreshedAt?: string;
+  /** Pipeline answers: the same Tableau view with the same filters, one click away. */
+  readonly tableauUrl?: string;
 }
