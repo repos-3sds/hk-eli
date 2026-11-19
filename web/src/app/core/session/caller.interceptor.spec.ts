@@ -17,17 +17,17 @@ describe('callerInterceptor', () => {
     });
   });
 
-  it('tells the gateway who is asking, and follows a role switch', () => {
+  it('tells the agent API who is asking, and follows a role switch', () => {
     const http = TestBed.inject(HttpClient);
     const ctl = TestBed.inject(HttpTestingController);
-    http.get('/api/hk-eli/freshness').subscribe();
-    let req = ctl.expectOne('/api/hk-eli/freshness');
+    http.get('/api/stork/v1/ask').subscribe();
+    let req = ctl.expectOne('/api/stork/v1/ask');
     expect(req.request.headers.get('X-Eli-Role')).toBe('wms');
     expect(req.request.headers.get('X-Eli-User')).toBe('Kelly Lau');
     req.flush({});
     TestBed.inject(SessionService).switchRole('pm');
-    http.get('/api/hk-eli/feedback/week').subscribe();
-    req = ctl.expectOne('/api/hk-eli/feedback/week');
+    http.get('/api/stork/v1/history').subscribe();
+    req = ctl.expectOne('/api/stork/v1/history');
     expect(req.request.headers.get('X-Eli-Role')).toBe('pm');
     req.flush({});
   });

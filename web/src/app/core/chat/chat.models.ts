@@ -1,5 +1,3 @@
-import { TableauParity } from '../parity/tableau-parity';
-import { MomentType } from '../models/today.models';
 
 /**
  * The Chat tab's data contract. An answer is a list of typed blocks, so figures are shown
@@ -7,8 +5,6 @@ import { MomentType } from '../models/today.models';
  */
 export interface ChatQuestion {
   readonly text: string;
-  /** The client the question is about, if the RM picked one (picked on Today). */
-  readonly clientId: string | null;
   /** The server-side conversation this question continues, when the source stores conversations. */
   readonly conversationId?: string | null;
   /** Asked by the screen itself (Today's insights), not typed by the user: kept out of their chat history. */
@@ -18,44 +14,6 @@ export interface ChatQuestion {
 export interface TextBlock {
   readonly kind: 'text';
   readonly text: string;
-}
-
-export interface FactsBlock {
-  readonly kind: 'facts';
-  readonly items: readonly { readonly label: string; readonly value: string }[];
-}
-
-export interface ClientRowsBlock {
-  readonly kind: 'clients';
-  readonly title: string;
-  readonly rows: readonly {
-    readonly clientId: string;
-    readonly name: string;
-    readonly type: MomentType;
-    readonly when: string;
-    readonly amountUsd: number | null;
-    readonly note: string;
-  }[];
-}
-
-export interface ConcentrationBlock {
-  readonly kind: 'concentration';
-  readonly title: string;
-  readonly lines: readonly { readonly underlying: string; readonly sharePct: number; readonly limitPct: number }[];
-}
-
-export interface IdeasBlock {
-  readonly kind: 'ideas';
-  readonly clientId: string;
-  readonly title: string;
-  readonly ideas: readonly {
-    readonly id: string;
-    readonly title: string;
-    readonly tenor: string;
-    readonly couponPct: number;
-    readonly kiPct: number;
-    readonly concentration: string;
-  }[];
 }
 
 export interface BulletsBlock {
@@ -123,10 +81,6 @@ export interface EvidenceBlock {
 
 export type AnswerBlock =
   | TextBlock
-  | FactsBlock
-  | ClientRowsBlock
-  | ConcentrationBlock
-  | IdeasBlock
   | BulletsBlock
   | TableBlock
   | ChartBlock
@@ -141,8 +95,6 @@ export interface ChatAnswer {
   readonly sources: readonly string[];
   /** True when the question was not understood and the answer only suggests what to ask. */
   readonly fallback: boolean;
-  /** How the figures compare with the Tableau view users know (R36). Absent when no view applies. */
-  readonly parity?: TableauParity;
   /** Pipeline answers: the population the figures cover, e.g. "TRE · predicted maturity next 30 days". */
   readonly scope?: string;
   /** Pipeline answers: when the Tableau data was refreshed (ISO), next to the business date. */

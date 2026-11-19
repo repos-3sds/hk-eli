@@ -1,8 +1,15 @@
 {
-  "/api/hk-eli": {
-    "target": "http://localhost:8080",
+  "/api/stork": {
+    "target": "http://127.0.0.1:8050",
     "secure": false,
-    "changeOrigin": false,
+    "changeOrigin": true,
+    "pathRewrite": { "^/api/stork": "/api" },
+    "logLevel": "warn"
+  },
+  "/tableau": {
+    "target": "http://127.0.0.1:8050",
+    "secure": false,
+    "changeOrigin": true,
     "logLevel": "warn"
   }
 }

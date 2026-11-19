@@ -1,53 +1,25 @@
 import { InjectionToken } from '@angular/core';
 
-/** Where the Today data comes from. `mock` uses the in-browser fixtures; `gateway` calls the API gateway. */
-export type DataSourceKind = 'mock' | 'gateway' | 'stork';
-
-/** Mock scenarios, so every state of the flow can be seen without a back end. */
-export type MockScenario = 'normal' | 'empty' | 'error' | 'slow';
-
 /**
  * Runtime configuration, loaded from `config/app-config.json` before the app starts.
  * Nothing here is hardcoded in components: URLs, limits, windows and thresholds all live in the file.
  */
 export interface AppConfig {
   readonly appName: string;
-  readonly dataSource: DataSourceKind;
+  /** The agent's API: the Python Stork pipeline (proxied as /api/stork in development). */
   readonly gatewayBaseUrl: string;
   readonly requestTimeoutMs: number;
-  readonly mockLatencyMs: number;
-  readonly mockScenario: MockScenario;
   /** ISO date (YYYY-MM-DD) to pin "today" for demos; null means the real date in `timeZone`. */
   readonly asOfDate: string | null;
   readonly timeZone: string;
-  readonly businessDaysAhead: number;
   readonly marketHolidays: readonly string[];
-  readonly briefLeadLimit: number;
-  readonly signalsTotal: number;
-  /** Share of a client's limit at which a concentration bar turns to the warning colour. */
-  readonly concentrationWarnRatio: number;
-  readonly maturingWindowBusinessDays: number;
 }
 
 export const APP_CONFIG = new InjectionToken<AppConfig>('APP_CONFIG');
 
 export const CONFIG_URL = 'config/app-config.json';
 
-const REQUIRED_KEYS: readonly (keyof AppConfig)[] = [
-  'appName',
-  'dataSource',
-  'gatewayBaseUrl',
-  'requestTimeoutMs',
-  'mockLatencyMs',
-  'mockScenario',
-  'timeZone',
-  'businessDaysAhead',
-  'marketHolidays',
-  'briefLeadLimit',
-  'signalsTotal',
-  'concentrationWarnRatio',
-  'maturingWindowBusinessDays',
-];
+const REQUIRED_KEYS: readonly (keyof AppConfig)[] = ['appName', 'gatewayBaseUrl', 'requestTimeoutMs', 'timeZone', 'marketHolidays'];
 
 /** Checks the loaded file. A broken config fails loudly at start-up rather than silently later. */
 export function parseAppConfig(raw: unknown): AppConfig {
@@ -58,9 +30,6 @@ export function parseAppConfig(raw: unknown): AppConfig {
   const missing = REQUIRED_KEYS.filter((key) => value[key] === undefined);
   if (missing.length > 0) {
     throw new Error(`App config is missing: ${missing.join(', ')}`);
-  }
-  if (!['mock', 'gateway', 'stork'].includes(value['dataSource'] as string)) {
-    throw new Error(`App config dataSource must be "mock", "gateway" or "stork"`);
   }
   return { asOfDate: null, ...value } as unknown as AppConfig;
 }

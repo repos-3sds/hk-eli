@@ -29,7 +29,7 @@ export function firstSentence(text: string): string {
 const INSIGHTS: readonly DiscoveryQuestion[] = [D.outstanding, D.wps, D.calendar, D.branches];
 /** Two suggestions per persona, from its own library. */
 const CHIPS: Record<LaunchRole, readonly string[]> = {
-  wms: ['Show the clients behind Central maturing in the next 30 days', 'How many TRE customers are predicted to KO?'],
+  wms: ['Which clients have ELIs maturing in the next 30 days?', 'How many TRE customers are predicted to KO?'],
   pm: ['What share of outstanding ELI does each segment hold?', 'Which WPS has the largest outstanding ELI exposure overall?'],
   tsm: ['Compare outstanding ELI across districts for TRE', 'Which branches have the most TRE maturities in the next 30 days?'],
 };
@@ -139,7 +139,15 @@ export class BookPage {
   private readonly session = inject(SessionService);
   private readonly clock = inject(BusinessClock);
 
-  protected readonly chips = computed(() => CHIPS[this.session.role()]);
+  /**
+   * Two suggestions per role. The client one names the branch the agent found busiest (Today's hotspot insight),
+   * so no client or branch is typed into the screen.
+   */
+  protected readonly chips = computed(() => {
+    const base = CHIPS[this.session.role()];
+    const hot = this.insights().find((i) => i.id === 'hotspot');
+    return this.session.role() === 'wms' && hot ? [hot.askMore, base[1]] : base;
+  });
   protected readonly draft = signal('');
   protected readonly lines = signal<readonly Line[]>(INSIGHTS.map((q) => ({ q, status: 'loading' })));
 
@@ -205,7 +213,7 @@ export class BookPage {
       set({ q, status: 'done', answer: cached });
       return;
     }
-    this.data.ask({ text: q.question, clientId: null, background: true }).subscribe({
+    this.data.ask({ text: q.question, background: true }).subscribe({
       next: (answer) => {
         if (!answer.fallback) SESSION_CACHE.set(q.id, answer);
         set({ q, status: 'done', answer });

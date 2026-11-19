@@ -2,8 +2,6 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { Subscription, map } from 'rxjs';
 import { AskEvent, ChatDataSource, StoredTurn } from '../../core/chat/chat-data-source';
 import { ChatAnswer } from '../../core/chat/chat.models';
-import { FeedbackStore } from '../../core/feedback/feedback.store';
-import { FIXTURE_CLIENTS } from '../../core/data/today.fixture';
 
 export type TurnStatus = 'pending' | 'done' | 'error' | 'stopped';
 export type Feedback = 'up' | 'down' | null;
@@ -11,7 +9,6 @@ export type Feedback = 'up' | 'down' | null;
 export interface ChatTurn {
   readonly id: string;
   readonly question: string;
-  readonly clientId: string | null;
   readonly askedAt: Date;
   readonly status: TurnStatus;
   /** While pending: which step the answer is on (0 find, 1 read, 2 write). */
@@ -49,7 +46,6 @@ const STAGE_DELAYS_MS = [700, 1600, 2600, 3600];
 @Injectable({ providedIn: 'root' })
 export class ChatStore {
   private readonly data = inject(ChatDataSource);
-  private readonly feedback = inject(FeedbackStore);
   private counter = 0;
   private readonly running = new Map<string, { sub: Subscription; timers: ReturnType<typeof setTimeout>[] }>();
 
@@ -57,7 +53,6 @@ export class ChatStore {
   readonly history = signal<readonly PastConversation[]>([]);
   readonly draft = signal('');
   /** The client the next question is about, if any (picked on Today or in the ask box). */
-  readonly clientId = signal<string | null>(null);
 
   /** The server-side conversation the current turns belong to (SQLite), once the first answer names it. */
   readonly conversationId = signal<string | null>(null);
@@ -79,7 +74,6 @@ export class ChatStore {
   });
 
   readonly busy = computed(() => this.turns().some((t) => t.status === 'pending'));
-  readonly clientShortName = computed(() => FIXTURE_CLIENTS.find((c) => c.id === this.clientId())?.shortName ?? null);
   /** The conversation's name: its first question. */
   readonly title = computed(() => this.turns()[0]?.question ?? null);
   readonly lastQuestion = computed(() => this.turns().at(-1)?.question ?? null);
@@ -108,13 +102,13 @@ export class ChatStore {
     if (turn) this.draft.set(turn.question);
   }
 
-  send(question: string, clientId: string | null = this.clientId()): void {
+  send(question: string): void {
     const text = question.trim();
     if (!text || this.busy()) {
       return;
     }
     const id = `t-${++this.counter}`;
-    this.turns.update((t) => [...t, { id, question: text, clientId, askedAt: new Date(), status: 'pending', stage: 0, feedback: null }]);
+    this.turns.update((t) => [...t, { id, question: text, askedAt: new Date(), status: 'pending', stage: 0, feedback: null }]);
     this.draft.set('');
     this.run(id);
   }
@@ -137,17 +131,8 @@ export class ChatStore {
   rate(turnId: string, feedback: Feedback): void {
     this.patch(turnId, { feedback });
     const stored = this.turns().find((t) => t.id === turnId)?.answer?.turnId;
+    // Ratings are stored with the answer on the server (SQLite feedback table).
     if (stored && feedback) this.data.sendFeedback?.(stored, feedback === 'up' ? 1 : -1)?.subscribe();
-    // Chat answers count in the weekly feedback summary too (R40), one rating per question.
-    const turn = this.turns().find((t) => t.id === turnId);
-    if (turn) {
-      const topic = `Chat answer: ${turn.question.length > 60 ? turn.question.slice(0, 57) + '…' : turn.question}`;
-      if (feedback) {
-        this.feedback.rate(topic, feedback);
-      } else {
-        this.feedback.clear(topic);
-      }
-    }
   }
 
   /** Files the current conversation under History and starts an empty one. */
@@ -188,7 +173,7 @@ export class ChatStore {
     const entry = { sub: new Subscription(), timers };
     this.running.set(turnId, entry);
     if (streams) this.patch(turnId, { live: [] });
-    const q = { text: turn.question, clientId: turn.clientId, conversationId: this.conversationId() };
+    const q = { text: turn.question, conversationId: this.conversationId() };
     const source = streams ? this.data.askStream(q) : this.data.ask(q).pipe(map((answer): AskEvent => ({ kind: 'answer', answer })));
     entry.sub = source.subscribe({
       next: (ev) => {
@@ -217,7 +202,6 @@ export class ChatStore {
     return {
       id: `t-${++this.counter}`,
       question: s.question,
-      clientId: null,
       askedAt: at,
       answeredAt: at,
       status: 'done',

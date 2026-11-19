@@ -68,7 +68,7 @@ export const ASK_EXAMPLES: readonly { readonly topic: string; readonly question:
   { topic: 'Segments', question: 'What share of outstanding ELI does each segment hold?' },
   { topic: 'Predicted KO', question: 'What percentage of outstanding ELI is TRE predicted KO?' },
   { topic: 'Maturities', question: 'Which branches have the most TRE maturities in the next 30 days?' },
-  { topic: 'Clients', question: 'Show the clients behind Central maturing in the next 30 days' },
+  { topic: 'Clients', question: 'Which clients have ELIs maturing in the next 30 days?' },
   { topic: 'WPS exposure', question: 'Which WPS has the largest outstanding ELI exposure overall?' },
   { topic: 'Districts', question: 'Compare outstanding ELI across districts for TRE' },
   { topic: 'MTM', question: 'Show the MTM distribution of outstanding ELI' },

@@ -29,7 +29,7 @@ export const routes: Routes = [
     title: 'Prompt library · HK ELI Chatbot',
     loadComponent: () => import('./features/library/library-page').then((m) => m.PromptLibraryPage),
   },
-  // Beyond the discovery docs, so hidden (Hawk, 2026-11-20). Old links land on Today.
+  // Old screens were removed (Hawk, 2026-11-20). Old links land on Today.
   ...['ideas', 'shelf', 'update', 'alerts', 'feedback'].map((path) => ({ path, redirectTo: 'today' })),
   // Old RM-first links.
   { path: 'rm', pathMatch: 'full', redirectTo: 'today' },

@@ -22,7 +22,7 @@ export const DISCOVERY_QUESTIONS = {
   wps: { id: 'wps', icon: 'shield-alert', title: 'Largest WPS exposure', question: 'Which WPS has the largest outstanding ELI exposure overall?', view: 'ALL_outstanding_simulation_n30d' },
   mtm: { id: 'mtm', icon: 'chart-column', title: 'MTM distribution', question: 'Show the MTM distribution of outstanding ELI', view: 'ALL_outstanding_distribution_n30d' },
   koShare: { id: 'koShare', icon: 'chart-column', title: 'Predicted KO share', question: 'What percentage of outstanding ELI is TRE predicted KO?', view: 'all_outatanding_segment_result' },
-  clients: { id: 'clients', icon: 'user-round', title: 'Clients to follow up', question: 'Show the clients behind Central maturing in the next 30 days', view: 'TRE_maturity_detail_n30d' },
+  clients: { id: 'clients', icon: 'user-round', title: 'Clients to follow up', question: 'Which clients have ELIs maturing in the next 30 days?', view: 'TRE_maturity_detail_n30d' },
   freshness: { id: 'freshness', icon: 'history', title: 'Data freshness', question: 'How fresh is the data?', view: 'data_as_of' },
 } as const satisfies Record<string, DiscoveryQuestion>;
 

@@ -54,54 +54,6 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
-            },
-            "gateway": {
-              "assets": [
-                {
-                  "glob": "**/*",
-                  "input": "public",
-                  "ignore": [
-                    "config/app-config.json"
-                  ]
-                },
-                {
-                  "glob": "app-config.json",
-                  "input": "config/gateway",
-                  "output": "config"
-                }
-              ]
-            },
-            "empty": {
-              "assets": [
-                {
-                  "glob": "**/*",
-                  "input": "public",
-                  "ignore": [
-                    "config/app-config.json"
-                  ]
-                },
-                {
-                  "glob": "app-config.json",
-                  "input": "config/empty",
-                  "output": "config"
-                }
-              ]
-            },
-            "stork": {
-              "assets": [
-                {
-                  "glob": "**/*",
-                  "input": "public",
-                  "ignore": [
-                    "config/app-config.json"
-                  ]
-                },
-                {
-                  "glob": "app-config.json",
-                  "input": "config/stork",
-                  "output": "config"
-                }
-              ]
             }
           },
           "defaultConfiguration": "production"
@@ -113,18 +65,12 @@
               "buildTarget": "web:build:production"
             },
             "development": {
-              "buildTarget": "web:build:development"
-            },
-            "gateway": {
-              "buildTarget": "web:build:development,gateway",
+              "buildTarget": "web:build:development",
               "proxyConfig": "proxy.conf.json"
             },
-            "empty": {
-              "buildTarget": "web:build:development,empty"
-            },
             "stork": {
-              "buildTarget": "web:build:development,stork",
-              "proxyConfig": "proxy.stork.conf.json"
+              "buildTarget": "web:build:development",
+              "proxyConfig": "proxy.conf.json"
             }
           },
           "defaultConfiguration": "development"

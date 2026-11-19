@@ -3,7 +3,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { Router } from '@angular/router';
-import { CAN_ANSWER } from '../../core/chat/chat-scope';
+import { PIPELINE_CAN_ANSWER } from '../../core/chat/discovery-questions';
 import { ASK_EXAMPLES, DISCOVERY_TERMS, GLOSSARY, ROLE_GUIDES } from '../../core/help/help-content';
 import { SessionService } from '../../core/session/session.service';
 import { FirstRunStore } from './first-run.store';
@@ -111,7 +111,7 @@ export class HelpSheet {
     { id: 'ask', label: 'What can I ask?' },
     { id: 'glossary', label: 'Glossary' },
   ];
-  protected readonly canAnswer = CAN_ANSWER;
+  protected readonly canAnswer = PIPELINE_CAN_ANSWER;
   protected readonly examples = ASK_EXAMPLES;
   protected readonly steps = computed(() => ROLE_GUIDES[this.session.role()]);
   protected readonly q = signal('');

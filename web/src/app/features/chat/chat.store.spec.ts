@@ -29,7 +29,7 @@ describe('ChatStore', () => {
     ask.mockReturnValueOnce(failing);
     TestBed.configureTestingModule({ providers: [{ provide: APP_CONFIG, useValue: TEST_CONFIG }, { provide: ChatDataSource, useValue: { ask } }] });
     const store = TestBed.inject(ChatStore);
-    store.send('Hello', null);
+    store.send('Hello');
     failing.error(new Error('timeout'));
     expect(store.turns()[0].status).toBe('error');
     fail = false;
@@ -65,7 +65,7 @@ describe('ChatStore', () => {
   it('records feedback on an answer', () => {
     TestBed.configureTestingModule({ providers: [{ provide: APP_CONFIG, useValue: TEST_CONFIG }, { provide: ChatDataSource, useValue: { ask: () => of(ANSWER) } }] });
     const store = TestBed.inject(ChatStore);
-    store.send('Hello', null);
+    store.send('Hello');
     store.rate(store.turns()[0].id, 'up');
     expect(store.turns()[0].feedback).toBe('up');
   });

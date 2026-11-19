@@ -58,7 +58,7 @@ export const PROMPT_LIBRARY: readonly LibraryCategory[] = [
   {
     id: 'followup', title: 'Clients to follow up', icon: 'user-round', intents: ['maturity_detail'],
     prompts: [
-      { question: 'Show the clients behind Central maturing in the next 30 days', gives: 'Client, RM and position list for a branch', view: 'TRE_maturity_detail_n30d' , roles: ['wms', 'tsm'] },
+      { question: 'Which clients have ELIs maturing in the next 30 days?', gives: 'Client, RM and position list from the agent', view: 'TRE_maturity_detail_n30d' , roles: ['wms', 'tsm'] },
       { question: 'Who should sales follow up in Kwun Tong this month?', gives: 'Clients and RMs to call first', view: 'TRE_maturity_detail_n30d' , roles: ['tsm', 'wms'] },
       { question: 'Which TRE clients have WPS 9988 HK maturing in the next 30 days?', gives: 'Clients with one stock maturing', view: 'TRE_maturity_detail_n30d' , roles: ['wms'] },
       { question: 'Which TRE clients are predicted to expire below strike in the next 30 days?', gives: 'Clients who may receive shares', view: 'TRE_maturity_detail_n30d' , roles: ['wms', 'tsm'] },

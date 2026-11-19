@@ -1,37 +1,26 @@
-import { APP_CONFIG } from '../../core/config/app-config';
 import { ChangeDetectionStrategy, Component, ElementRef, inject, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
-import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { FIXTURE_CLIENTS } from '../../core/data/today.fixture';
 import { ChatStore } from './chat.store';
 
 /**
- * The ask box at the foot of Chat: grows with the question, carries the client the question is about
- * (or "Whole book"), sends on Enter, stops on Esc, and brings back the last question on the up arrow.
+ * The ask box at the foot of Chat: grows with the question, answers come from the 12 HK_ELI views via the agent,
+ * sends on Enter, stops on Esc, and brings back the last question on the up arrow.
  */
 @Component({
   selector: 'eli-chat-composer',
-  imports: [FormsModule, MatIconModule, MatMenuModule, MatTooltipModule],
+  imports: [FormsModule, MatIconModule, MatTooltipModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './chat-composer.html',
   styleUrl: './chat-composer.scss',
 })
 export class ChatComposer {
   protected readonly store = inject(ChatStore);
-  /** With the Stork pipeline there is no client picker: answers come from the 12 HK_ELI views. */
-  protected readonly pipeline = inject(APP_CONFIG).dataSource === 'stork';
-  protected readonly clients = FIXTURE_CLIENTS;
   private readonly input = viewChild.required<ElementRef<HTMLTextAreaElement>>('input');
 
   focus(): void {
     queueMicrotask(() => this.input().nativeElement.focus());
-  }
-
-  protected pickClient(id: string | null): void {
-    this.store.clientId.set(id);
-    this.focus();
   }
 
   protected onKeydown(event: KeyboardEvent): void {
