@@ -39,16 +39,21 @@ function renderAnswer(a, opts = {}) {
   const card = el("article", { class: "card", "aria-label": "Answer" });
   const top = el("div", { class: "card-top" }, el("span", { class: `badge ${cls}` }, label),
     a.scope ? el("span", { class: "scope" }, a.scope) : null);
-  if (a.embed && opts.onShow) top.append(el("button", { class: "paneBtn", type: "button", onclick: () => opts.onShow(a) }, "Show in pane"));
+  if (a.embed && opts.onShow) top.append(el("button", { class: "paneBtn", type: "button", title: "Load the live Tableau view with the same filters",
+    onclick: () => opts.onShow(a) }, "Open in Tableau ↗"));
   card.append(top, el("p", { class: "headline" }, a.headline || ""));
+  const chart = window.AnswerChart && a.chart ? window.AnswerChart.render(a.chart) : null;
+  if (chart) card.append(chart);
   if (a.bullets && a.bullets.length) card.append(el("ul", { class: "bullets" }, a.bullets.map(b => el("li", {}, b))));
   if (a.table && a.table.rows && a.table.rows.length) {
+    const host = chart ? el("details", { class: "ev tbl" }, el("summary", {}, "Show the numbers as a table")) : card;
+    if (chart) card.append(host);
     const t = el("table", { class: "t" });
     t.append(el("thead", {}, el("tr", {}, a.table.columns.map((c, i) => el("th", { class: a.table.rows[0] && isNum(a.table.rows[0][i]) ? "n" : null }, c)))));
     t.append(el("tbody", {}, a.table.rows.slice(0, opts.maxRows || 8).map(r => el("tr", {}, r.map(v => el("td", { class: isNum(v) ? "n" : null }, v))))));
-    card.append(el("div", { class: "twrap" }, t));
+    host.append(el("div", { class: "twrap" }, t));
     const hidden = (a.table.rows.length - (opts.maxRows || 8)) + (a.table.more || 0);
-    if (hidden > 0) card.append(el("div", { class: "more" }, `+ ${hidden} more rows in the view`));
+    if (hidden > 0) host.append(el("div", { class: "more" }, `+ ${hidden} more rows in the view`));
   }
   const cvs = (a.caveats || []).filter(c => (opts.showInfo !== false || c.level !== "info") && c.text !== a.headline);
   if (cvs.length) card.append(el("div", { class: "caveats" }, cvs.map(c =>

@@ -62,7 +62,7 @@ CALCS = {
                          "STR(ROUND(100 * SUM([volume_bu]) / MIN({FIXED : SUM([volume_bu])}), 1)) + '%'"),
     "calc_mtm_bin": ("MTM% (bin)", "integer", "dimension", "ordinal", "FLOOR([wps_mtm] / 5) * 5"),
 }
-RESULT_COLOURS = {"KO": "#2f7ed8", "EXP": "#8c9aa8", "EXP(Below Strike)": "#e4572e", "EX": "#3fa796"}
+RESULT_COLOURS = {"KO": "#3d8bfd", "EXP": "#6f7d91", "EXP(Below Strike)": "#ef6b4a", "EX": "#2bb3a3"}
 PALETTE = ("<style><style-rule element='mark'><encoding attr='color' field='[none:predict_result:nk]' type='palette'>"
            + "".join(f"<map to='{c}'><bucket>&quot;{k}&quot;</bucket></map>" for k, c in RESULT_COLOURS.items())
            + "</encoding></style-rule></style>")

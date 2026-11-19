@@ -58,7 +58,7 @@ def answer(question: str, http, site: str, scenario: str | None = None, user: st
     tr = Trace()
     client = TableauClient(http, site, user=user, scenario=scenario)
     out = {"question": question, "site": site, "scenario": scenario, "status": "OK", "reasons": [],
-           "caveats": [], "headline": "", "bullets": [], "table": None, "numbers": [],
+           "caveats": [], "headline": "", "bullets": [], "table": None, "chart": None, "numbers": [],
            "evidence": [], "embed": None, "followups": [], "as_of": None, "scope": "", "trace": tr.steps,
            "meta": {"understanding": "deterministic rules (Gemini adapter off in POC)",
                     "insight": "template over validated numbers"}}
@@ -150,11 +150,101 @@ def answer(question: str, http, site: str, scenario: str | None = None, user: st
     # 9-10 write and compose
     if out["status"] in ("OK",):
         _write(it, pl, cols, rows, out)
+        out["chart"] = _chart(it, pl, cols, rows)
     tr.add("Write answer", {"mode": "template", "numbers": len(out["numbers"])})
     if pl.view and out["status"] not in ("UNSUPPORTED", "VALIDATION_FAILED", "SYSTEM_ERROR"):
         out["embed"] = _embed(site, pl, scenario)
     tr.add("Compose", {"embed": bool(out["embed"]), "followups": len(out["followups"])})
     return _finish(out)
+
+
+RESULT_ORDER = ["KO", "EXP", "EXP(Below Strike)", "EX"]
+
+
+def _stacks(cols, rows, key_fn, label_fn=None):
+    """Group rows into categories (key_fn) with HKD split by predicted result, largest first."""
+    vi, ri = cols.index("Volume Bu"), _idx(cols, "Predict Result")
+    cats: dict = {}
+    for r in rows:
+        k = key_fn(r)
+        c = cats.setdefault(k, {"key": k, "label": label_fn(r) if label_fn else k, "parts": defaultdict(float)})
+        c["parts"][r[ri] if ri is not None else "All"] += float(r[vi] or 0)
+    out = []
+    for c in cats.values():
+        parts = [{"result": res, "value": round(c["parts"][res], 2)} for res in RESULT_ORDER + ["All"] if res in c["parts"]]
+        out.append({"key": c["key"], "label": c["label"], "parts": parts, "total": round(sum(p["value"] for p in parts), 2)})
+    return out
+
+
+def _chart(it, pl, cols, rows):
+    """A chart spec for our own renderer, built from the same view rows the answer used (never from the text)."""
+    if not rows:
+        return None
+    hl = list(pl.embed_highlight or [])
+    i = {c: n for n, c in enumerate(cols)}
+    if it.intent == "outstanding_total":
+        return {"kind": "kpi", "label": "Outstanding ELI", "value": float(rows[0][0] or 0), "unit": "HKD"}
+    if it.intent in ("data_as_of", "data_recency"):
+        return None
+    if it.intent in ("segment_share", "segment_result_share"):
+        ri = _idx(cols, "Predict Result")
+        cats = _stacks(cols, rows, lambda r: r[i["Bp Div Type"]], lambda r: short(r[i["Bp Div Type"]]))
+        share = defaultdict(float)
+        for r in rows:
+            share[r[i["Bp Div Type"]]] += float(r[i["Share Of All Segments"]] or 0)
+        for c in cats:
+            c["note"] = pct(share[c["key"]])
+        cats.sort(key=lambda c: -c["total"])
+        return {"kind": "hbar", "title": "Outstanding ELI by segment" + (" and predicted result" if ri is not None else ""),
+                "categories": cats, "highlight": hl, "stacked": ri is not None}
+    if it.intent == "customer_count":
+        cats = _stacks(cols, rows, lambda r: r[i["Bp Div Type"]], lambda r: short(r[i["Bp Div Type"]]))
+        cats.sort(key=lambda c: -c["total"])
+        return {"kind": "hbar", "title": "Outstanding ELI by segment and predicted result", "categories": cats,
+                "highlight": hl, "stacked": True}
+    if it.intent == "maturity_calendar":
+        cats = _stacks(cols, rows, lambda r: r[i["Predict Maturity"]], lambda r: _d(r[i["Predict Maturity"]]))
+        cats.sort(key=lambda c: c["key"])
+        return {"kind": "columns", "title": "TRE predicted maturity by date", "categories": cats, "highlight": hl}
+    if it.intent == "maturity_branch":
+        cats = _stacks(cols, rows, lambda r: r[i["Cust Branch"]],
+                       lambda r: f"{r[i['Cust Branch']]} · {r[i['Cust District']].replace('TRE-', '')}")
+        cats.sort(key=lambda c: -c["total"])
+        return {"kind": "hbar", "title": "TRE predicted maturity by branch", "categories": cats[:12], "more": max(0, len(cats) - 12),
+                "highlight": hl, "stacked": True}
+    if it.intent == "district":
+        cats = _stacks(cols, rows, lambda r: (r[i["Bp Div Type"]], r[i["Cust District"]]),
+                       lambda r: short(r[i["Bp Div Type"]]) + ("" if r[i["Cust District"]] in ("", "Null")
+                                                               else " · " + r[i["Cust District"]].replace("TRE-", "")))
+        cats.sort(key=lambda c: -c["total"])
+        for c in cats:
+            c["key"] = c["label"]
+        return {"kind": "hbar", "title": "Outstanding ELI by segment and district", "categories": cats, "highlight": hl,
+                "stacked": True}
+    if it.intent == "wps_exposure":
+        cats = _stacks(cols, rows, lambda r: r[i["Wps"]])
+        cats.sort(key=lambda c: -c["total"])
+        return {"kind": "hbar", "title": "Outstanding ELI by worst-performing stock", "categories": cats[:10],
+                "more": max(0, len(cats) - 10), "highlight": hl or [cats[0]["key"]], "stacked": True}
+    if it.intent == "mtm_distribution":
+        bi, ci, ri = i["MTM% (bin)"], i["Count of Asset Id"], i["Predict Result"]
+        wi = _idx(cols, "Wps")
+        pts = [{"x": int(str(r[bi]).rstrip("%")), "y": int(float(r[ci])), "size": float(r[i["Volume Bu"]] or 0),
+                "result": r[ri], "label": r[wi] if wi is not None else ""} for r in rows]
+        return {"kind": "bubble", "title": "Deals by MTM% bin (size = HKD)", "points": pts,
+                "highlight": [it.wps] if it.wps else hl, "x_label": "MTM% (bin)", "y_label": "Deal count"}
+    if it.intent == "customer_count_maturity":
+        key = "Cust Branch" if it.branch else "Cust District"
+        ci = i["Customers (all results)"]
+        seen = {}
+        for r in rows:
+            if r[i[key]] not in ("", "Null"):
+                seen[r[i[key]]] = int(float(r[ci]))
+        cats = [{"key": k, "label": k.replace("TRE-", ""), "parts": [{"result": "All", "value": n}], "total": n}
+                for k, n in sorted(seen.items(), key=lambda kv: -kv[1])]
+        return {"kind": "hbar", "title": "Distinct customers with predicted maturity", "categories": cats, "unit": "customers",
+                "highlight": hl, "stacked": False}
+    return None
 
 
 def _finish(out):

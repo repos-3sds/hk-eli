@@ -151,3 +151,29 @@ code,.mono{font-family:var(--mono);font-size:11.5px}
 }
 
 .twrap{overflow-x:auto;margin-top:var(--s3)}.twrap table.t{margin-top:0}
+
+/* answer charts (our design language; same numbers as the Tableau view) */
+:root{--r-ko:#3d8bfd;--r-exp:#6f7d91;--r-bs:#ef6b4a;--r-ex:#2bb3a3;--r-all:#3d8bfd}
+.ch{margin:var(--s3) 0 var(--s2);padding:var(--s3);background:var(--panel-2);border:1px solid var(--line-2);border-radius:var(--r)}
+.ch figcaption{font-size:12px;color:var(--muted);margin-bottom:var(--s2)}
+.ch .r-ko{background:var(--r-ko);fill:var(--r-ko)}.ch .r-exp{background:var(--r-exp);fill:var(--r-exp)}
+.ch .r-bs{background:var(--r-bs);fill:var(--r-bs)}.ch .r-ex{background:var(--r-ex);fill:var(--r-ex)}.ch .r-all{background:var(--r-all);fill:var(--r-all)}
+.ch-rows{display:grid;gap:6px}
+.ch-row{display:grid;grid-template-columns:minmax(84px,30%) 1fr auto;align-items:center;gap:var(--s2);font-size:12px}
+.ch-row.dim{opacity:.45}.ch-row.hl .ch-lab{color:var(--ink);font-weight:600}
+.ch-lab{color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ch-bar{display:flex;height:14px;border-radius:3px;overflow:hidden;background:var(--line-2)}
+.ch-bar span{display:block;height:100%}
+.ch-bar span+span{box-shadow:inset 1px 0 0 var(--panel-2)}
+.ch-val{color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}.ch-val small{color:var(--muted)}
+.ch-more{font-size:11px;color:var(--muted);margin-top:6px}
+.ch-legend{display:flex;flex-wrap:wrap;gap:var(--s3);margin-top:var(--s2);font-size:11px;color:var(--muted)}
+.ch-legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.ch-svg{width:100%;height:auto;display:block}
+.ch-grid{stroke:var(--line);stroke-width:1}
+.ch-axis{fill:var(--muted);font-size:10px;font-family:var(--font)}
+.ch-plab{fill:var(--ink);font-size:11px;font-weight:600;font-family:var(--font)}
+.ch-dot{fill-opacity:.8;stroke:var(--panel-2);stroke-width:1}.ch-dot.dim{fill-opacity:.18}
+.ch-kpi{padding:var(--s2) 0}.ch-kpi-v{font-size:28px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
+.ch-kpi-l{font-size:12px;color:var(--muted)}
+details.tbl{margin-top:var(--s2)}

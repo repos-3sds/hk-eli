@@ -8,7 +8,7 @@ from __future__ import annotations
 import html
 from collections import defaultdict
 
-RESULT_COLOURS = {"KO": "#2bb3a3", "EXP": "#4f8ff7", "EXP(Below Strike)": "#f2a83b", "EX": "#ef5d5d"}
+RESULT_COLOURS = {"KO": "#3d8bfd", "EXP": "#6f7d91", "EXP(Below Strike)": "#ef6b4a", "EX": "#2bb3a3"}  # same as chart.js and the workbook
 RESULT_ORDER = ["KO", "EXP", "EXP(Below Strike)", "EX"]
 INK = "#c9d1dc"
 MUTED = "#8a96a8"
