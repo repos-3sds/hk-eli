@@ -145,4 +145,6 @@ export interface ChatAnswer {
   readonly refreshedAt?: string;
   /** Pipeline answers: the same Tableau view with the same filters, one click away. */
   readonly tableauUrl?: string;
+  /** Pipeline answers: whether Gemini or the rules read the question and wrote the words. */
+  readonly writtenBy?: string;
 }

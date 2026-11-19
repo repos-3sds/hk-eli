@@ -26,6 +26,7 @@ export interface StorkAnswer {
   readonly scope?: string | null;
   readonly trace?: readonly { readonly n: number; readonly name: string; readonly detail: unknown; readonly ms: number }[];
   readonly assumptions?: readonly string[];
+  readonly meta?: { readonly understanding?: string; readonly insight?: string; readonly model?: string | null };
 }
 
 /** Statuses where the pipeline could not answer from data and only says what it can answer. */
@@ -91,7 +92,15 @@ export function toChatAnswer(a: StorkAnswer, id: string): ChatAnswer {
     fallback: NOT_ANSWERED.has(a.status),
     scope: a.scope ?? undefined,
     tableauUrl: a.embed ? (a.embed.src ?? a.embed.url) : undefined,
+    writtenBy: writtenBy(a.meta),
   };
+}
+
+/** Who read the question and who wrote the words, so users can see when Gemini answered and when rules did. */
+function writtenBy(meta: StorkAnswer['meta']): string | undefined {
+  if (!meta) return undefined;
+  const model = meta.model && meta.model !== 'off' ? meta.model : null;
+  return `Question read by ${meta.understanding ?? 'rules'} · words by ${meta.insight ?? 'template'}${model ? ` · ${model}` : ''}`;
 }
 
 function safeDecode(s: string): string {

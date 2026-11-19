@@ -120,6 +120,7 @@ import { AnswerEvidence, AnswerNotices } from './answer-evidence';
           }
         }
       }
+      @if (answer().writtenBy; as w) {<p class="asof"><mat-icon svgIcon="sparkles" aria-hidden="true" />{{ w }}</p>}
       @if (answer().refreshedAt) {
         <p class="asof"><mat-icon svgIcon="info" aria-hidden="true" />Data as of {{ answer().businessDate }} · refreshed {{ refreshed() }} · {{ answer().sources.join(', ') }} · Figures from Tableau, checked before writing · Internal use only</p>
       } @else if (!answer().fallback) {
