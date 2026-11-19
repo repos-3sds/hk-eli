@@ -110,7 +110,12 @@ import { AnswerText } from './answer-text';
             </section>
           }
           @case ('chart') {
-            <eli-answer-chart [spec]="b.spec" />
+            @if (isOpen()) {
+              <!-- One picture at a time: while the live view is beside the chat, the chart folds to a line. -->
+              <button type="button" class="folded" (click)="closeTableau()">Chart showing in Tableau beside the chat →<span>Show it here</span></button>
+            } @else {
+              <eli-answer-chart [spec]="b.spec" />
+            }
           }
           @case ('notices') {
             <eli-answer-notices [block]="b" />
@@ -158,6 +163,8 @@ import { AnswerText } from './answer-text';
       &.ok { background: rgb(43 159 135 / 18%); color: var(--eli-status-positive-text); } &.warn { background: rgb(255 147 46 / 16%); color: var(--eli-accent-orange); }
       &.info { background: rgb(99 171 255 / 14%); color: var(--eli-accent-link); } &.bad { background: rgb(255 51 51 / 14%); color: var(--eli-status-negative-text); } }
     .scope { padding: 2px var(--eli-space-5); border-radius: var(--eli-radius-pill); background: var(--eli-bg-row); color: var(--eli-text-muted-2); font-size: var(--eli-font-size-xs); }
+    .folded { display: flex; align-items: center; gap: var(--eli-space-5); padding: var(--eli-space-5) var(--eli-space-6); border: 1px dashed var(--eli-border); border-radius: var(--eli-radius-s); background: none; color: var(--eli-text-muted-2); font: inherit; font-size: var(--eli-font-size-s); text-align: left; cursor: pointer;
+      span { margin-left: auto; color: var(--eli-accent-link); } &:hover { border-color: var(--eli-accent-link); } }
     .tab-link { padding: 0; border: 0; background: none; font-family: inherit; cursor: pointer; &.on { color: var(--eli-text-strong); } display: inline-flex; align-items: center; gap: var(--eli-space-2); margin-left: auto; color: var(--eli-accent-link); font-size: var(--eli-font-size-s); text-decoration: none; &:hover { text-decoration: underline; } mat-icon { width: 13px; height: 13px; } }
     .asof { display: flex; align-items: center; gap: var(--eli-space-3); margin: 0; color: var(--eli-text-muted); font-size: var(--eli-font-size-s); mat-icon { flex: none; width: 14px; height: 14px; } }
     .parity { display: flex; align-items: flex-start; gap: var(--eli-space-3); margin: 0; color: var(--eli-text-muted-2); font-size: var(--eli-font-size-s);
@@ -206,6 +213,10 @@ export class AnswerCard {
   protected openTableau(): void {
     const e = this.answer().embed;
     if (e) this.pane.open({ ...e, scope: this.answer().scope });
+  }
+
+  protected closeTableau(): void {
+    this.pane.close();
   }
 
   protected isOpen(): boolean {
