@@ -122,7 +122,7 @@ def all_filter(field: str) -> str:
 
 
 def sheet(name: str, *, rows=(), cols=(), mark="Automatic", color=None, size=None, text=(), label=(),
-          tooltip=(), fixed=None, shown=(), title="", sort=None, zoom="entire-view") -> tuple[str, str]:
+          tooltip=(), fixed=None, shown=(), title="", sort=None, zoom="entire-view", tpl=None, big=False) -> tuple[str, str]:
     """fixed: list of (field, values, context, exclude). shown: fields with an all-values shown filter."""
     fixed = fixed or []
     uses: list[tuple[str, str]] = []
@@ -165,6 +165,15 @@ def sheet(name: str, *, rows=(), cols=(), mark="Automatic", color=None, size=Non
                 if sort else "")
     title_xml = (f"<layout-options><title><formatted-text><run fontsize='12'>{escape(title)}</run></formatted-text></title>"
                  f"</layout-options>" if title else "")
+    label_xml = ""
+    if tpl:
+        size = "26" if big else "10"
+        runs = "".join(f"<run fontsize='{size}'>{escape(chunk) if not isinstance(chunk, tuple) else '&lt;' + ref(*chunk) + '&gt;'}</run>"
+                       for chunk in tpl)
+        label_xml = f"<customized-label><formatted-text>{runs}</formatted-text></customized-label>"
+    if big:
+        fmts += ("<style-rule element='cell'><format attr='text-align' value='center' />"
+                 "<format attr='vertical-align' value='center' /></style-rule>")
     shelf = lambda items: " / ".join(ref(*i) for i in items)  # noqa: E731
     r = shelf(rows)
     c = shelf(cols)
@@ -174,15 +183,16 @@ def sheet(name: str, *, rows=(), cols=(), mark="Automatic", color=None, size=Non
           f"{filters}" + (f"<slices>{slices}</slices>" if slices else "") + sort_xml +
           f"<aggregation value='true' /></view><style>{fmts}</style>"
           f"<panes><pane selection-relaxation-option='selection-relaxation-allow'><view><breakdown value='auto' /></view>"
-          f"<mark class='{mark}' />" + (f"<encodings>{enc}</encodings>" if enc else "") + "</pane></panes>"
+          f"<mark class='{mark}' />" + (f"<encodings>{enc}</encodings>" if enc else "") + label_xml + "</pane></panes>"
           f"<rows>{('(' + r + ')') if len(rows) > 1 else r}</rows><cols>{('(' + c + ')') if len(cols) > 1 else c}</cols>"
           f"</table><simple-id uuid='{{{str(uuid.uuid5(uuid.NAMESPACE_URL, 'hkeli/' + name)).upper()}}}' /></worksheet>")
-    cards = "".join(f"<card param='{ref('none', f)}' type='filter' />" for f in filter_fields
-                    if f in shown or f in [x for x, _, _, _ in fixed if x == "deal_status"])
+    legend = f"<card param='{ref(*color)}' type='color' />" if color and color[0] == "none" else ""
     win = (f"<window class='worksheet' maximized='true' name={quoteattr(name)}><cards>"
            f"<edge name='left'><strip size='160'><card type='pages' /><card type='filters' /><card type='marks' /></strip></edge>"
-           + (f"<edge name='right'><strip size='160'>{cards}</strip></edge>" if cards else "") +
-           f"</cards><viewpoint><zoom type='{zoom}' /></viewpoint><simple-id uuid='{{{str(uuid.uuid5(uuid.NAMESPACE_URL, 'hkeli-win/' + name)).upper()}}}' /></window>")
+           f"<edge name='top'><strip size='31'><card type='title' /></strip></edge>"
+           + (f"<edge name='right'><strip size='130'>{legend}</strip></edge>" if legend else "") +
+           f"</cards><viewpoint><zoom type='{zoom}' /></viewpoint>"
+           f"<simple-id uuid='{{{str(uuid.uuid5(uuid.NAMESPACE_URL, 'hkeli-win/' + name)).upper()}}}' /></window>")
     return ws, win
 
 
@@ -200,14 +210,16 @@ def sheets():
     tre_shown = ["deal_status", "cust_district", "cust_branch", "predict_maturity", *W1]
     return [
         # Spec: "Outstanding notional KPI"
-        sheet("all_outatanding_total", mark="Text", text=[SUM], fixed=[LIVE], shown=["deal_status", "bp_div_type"],
+        sheet("all_outatanding_total", mark="Text", text=[SUM], big=True, tpl=["HKD ", SUM], fixed=[LIVE], shown=["deal_status", "bp_div_type"],
               title="Outstanding ELI (HKD, live)"),
         # Spec: Rows bp_div_type; Text SUM(volume_bu) and its percentage of total
         sheet("all_outatanding_segment", rows=[N("bp_div_type")], mark="Text", text=[SUM, ("usr", "calc_share")],
+              tpl=["HKD ", SUM, "  (", ("usr", "calc_share"), ")"],
               fixed=[LIVE], shown=["deal_status", "bp_div_type"], title="Outstanding ELI by segment, share of all segments"),
         # Spec: Rows bp_div_type > predict_result; colour predict_result; Text "<amount> (<share>)"
         sheet("all_outatanding_segment_result", rows=[N("bp_div_type"), N("predict_result")], mark="Text",
               color=N("predict_result"), text=[SUM, ("usr", "calc_share")], fixed=[LIVE],
+              tpl=["HKD ", SUM, "  (", ("usr", "calc_share"), ")"],
               shown=["deal_status", "bp_div_type"], title="Outstanding ELI by segment and predicted result, share of all"),
         # Spec: Columns bp_div_type; Rows SUM; colour predict_result; Labels SUM and COUNTD(cif_id)
         sheet("segment_outstanding", cols=[N("bp_div_type")], rows=[SUM], mark="Bar", color=N("predict_result"),
@@ -245,7 +257,8 @@ def sheets():
               shown=["deal_status", "bp_div_type", "cust_district", "cust_branch", "predict_maturity", *W1],
               title="MTM distribution: deals by MTM% bin, size = HKD"),
         # Spec: "Data-recency KPI"
-        sheet("max_trade_date", mark="Text", text=[("usr", "calc_max_trade_date")], shown=["bp_div_type"],
+        sheet("max_trade_date", mark="Text", text=[("usr", "calc_max_trade_date")], big=True,
+              tpl=[("usr", "calc_max_trade_date")], shown=["bp_div_type"],
               title="Latest trade date"),
         sheet("data_as_of", rows=[N("business_date"), N("last_refresh")], mark="Text",
               title="Data as of (business date, last refresh)"),
@@ -269,7 +282,9 @@ def twb() -> str:
             f"<relation connection='textscan.hkeli' name='{CSV_NAME}' table='[hk_eli_positions#csv]' type='table'>"
             f"<columns character-set='UTF-8' header='yes' locale='en_US' separator=','>{rel_cols}</columns>"
             "</relation></connection>"
-            f"<aliases enabled='yes' />{ds_cols}<layout dim-ordering='alphabetic' measure-ordering='alphabetic' "
+            f"<aliases enabled='yes' />{ds_cols}"
+            "<column-instance column='[predict_result]' derivation='None' name='[none:predict_result:nk]' pivot='key' type='nominal' />"
+            "<layout dim-ordering='alphabetic' measure-ordering='alphabetic' "
             "show-structure='true' />" + PALETTE + "</datasource></datasources>"
             f"<worksheets>{''.join(ws)}</worksheets>"
             f"<windows source-height='30'>{''.join(wins)}</windows></workbook>")
