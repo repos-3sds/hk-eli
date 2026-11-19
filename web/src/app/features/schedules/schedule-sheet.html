@@ -1,0 +1,88 @@
+<header class="head">
+  <div>
+    <h2 mat-dialog-title class="title">Schedule a report</h2>
+    <p class="preview"><mat-icon svgIcon="eye" aria-hidden="true" />Design preview. Saved for this session; schedules run in MVP2.</p>
+  </div>
+  <button type="button" class="x" aria-label="Close" (click)="close()"><mat-icon svgIcon="x" /></button>
+</header>
+
+<mat-dialog-content class="body">
+  <fieldset class="field">
+    <legend class="lbl">Report</legend>
+    <div class="tpl-grid">
+      @for (t of templates; track t.id) {
+        <button type="button" class="tpl" [class.on]="template() === t.id" [attr.aria-pressed]="template() === t.id" (click)="template.set(t.id)">
+          <span class="tpl-name">{{ t.label }}</span><span class="tpl-detail">{{ t.detail }}</span>
+        </button>
+      }
+    </div>
+  </fieldset>
+
+  <div class="field">
+    <span class="lbl" id="scope-l">For</span>
+    <eli-scope-switch [value]="scope()" (changed)="scope.set($event)" aria-labelledby="scope-l" />
+  </div>
+
+  <fieldset class="field">
+    <legend class="lbl">When</legend>
+    <mat-button-toggle-group class="toggles" [value]="frequency()" (change)="frequency.set($event.value)" aria-label="How often" hideSingleSelectionIndicator>
+      <mat-button-toggle value="daily">Every business day</mat-button-toggle>
+      <mat-button-toggle value="weekly">Weekly</mat-button-toggle>
+      <mat-button-toggle value="monthly">Monthly</mat-button-toggle>
+    </mat-button-toggle-group>
+    @if (frequency() === 'weekly') {
+      <div class="chips" role="group" aria-label="Day">
+        @for (d of weekdays; track d.n) {
+          <button type="button" class="chip" [class.on]="weekday() === d.n" [attr.aria-pressed]="weekday() === d.n" (click)="weekday.set(d.n)">{{ d.l }}</button>
+        }
+      </div>
+    }
+    <div class="chips" role="group" aria-label="Time, HKT">
+      @for (t of snapTimes; track t) {
+        <button type="button" class="chip" [class.on]="time() === t" [attr.aria-pressed]="time() === t" (click)="time.set(t)">{{ t }}</button>
+      }
+      <span class="hint">HKT. Prices are in by 09:30.</span>
+    </div>
+  </fieldset>
+
+  <fieldset class="field">
+    <legend class="lbl">To <span class="hint">Authorised internal recipients only</span></legend>
+    <div class="chips" role="group" aria-label="Recipients">
+      @for (r of directory; track r.id) {
+        <button type="button" class="chip person" [class.on]="recipients().includes(r.id)" [attr.aria-pressed]="recipients().includes(r.id)" (click)="toggleRecipient(r.id)">
+          @if (recipients().includes(r.id)) { <mat-icon svgIcon="check" aria-hidden="true" /> }
+          {{ r.name }} <span class="muted">{{ r.role }}</span>
+        </button>
+      }
+    </div>
+  </fieldset>
+
+  <fieldset class="field">
+    <legend class="lbl">By</legend>
+    <div class="chips" role="group" aria-label="Delivery">
+      @for (c of channels; track c) {
+        <button type="button" class="chip" [class.on]="picked().includes(c)" [attr.aria-pressed]="picked().includes(c)" (click)="toggleChannel(c)">
+          @if (picked().includes(c)) { <mat-icon svgIcon="check" aria-hidden="true" /> }
+          {{ channelLabels[c] === 'in-app' ? 'In-app' : channelLabels[c] === 'email' ? 'Email' : channelLabels[c] }}
+        </button>
+      }
+    </div>
+  </fieldset>
+
+  <section class="summary" aria-live="polite" aria-label="Summary">
+    <p class="sum-text">{{ summary() }}</p>
+    <p class="sum-next"><mat-icon svgIcon="clock" aria-hidden="true" />First run {{ next() }}</p>
+    @if (caution(); as c) { <p class="sum-warn"><mat-icon svgIcon="circle-alert" aria-hidden="true" />{{ c }}</p> }
+    @if (tried() && problems().length) {
+      @for (p of problems(); track p) { <p class="sum-err" role="alert">{{ p }}</p> }
+    }
+    <p class="sum-label">Every report carries "Internal use only. Not for clients."</p>
+  </section>
+</mat-dialog-content>
+
+<mat-dialog-actions class="actions">
+  <button matButton type="button" (click)="testSend()"><mat-icon svgIcon="send" />Test send to me</button>
+  <span class="grow"></span>
+  <button matButton="outlined" type="button" (click)="close()">Cancel</button>
+  <button matButton="filled" type="button" (click)="save()">Save schedule</button>
+</mat-dialog-actions>

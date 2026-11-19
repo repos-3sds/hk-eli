@@ -1,0 +1,103 @@
+# HK ELI gateway. Local default: in-memory H2 (MariaDB mode) and the demo seed. Profiles:
+#   mariadb  real MariaDB (set DB_URL, DB_USER, DB_PASSWORD, or read them from Vault)
+#   vault    read secrets (DB password, Stork AI key) from HashiCorp Vault
+#   demo     pin "today" to 3 Nov 2026, the date the demo data was written for
+server:
+  port: 8080
+  servlet:
+    context-path: /api/hk-eli
+  error:
+    include-message: always
+
+spring:
+  application:
+    name: hk-eli-gateway
+  datasource:
+    url: jdbc:h2:mem:hkeli;MODE=MariaDB;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+  flyway:
+    locations: classpath:db/migration
+  cloud:
+    vault:
+      enabled: false
+  jackson:
+    default-property-inclusion: always
+  mvc:
+    problemdetails:
+      enabled: true
+
+eli:
+  as-of-date: ${ELI_AS_OF_DATE:}
+  time-zone: Asia/Hong_Kong
+  business-days-ahead: 10
+  maturing-window-business-days: 10
+  market-holidays: 2026-12-25,2026-12-26,2027-01-01
+  scenario: normal
+  freshness-state: ready
+  allowed-origins: http://localhost:4200
+  stork:
+    enabled: ${STORK_AI_ENABLED:false}
+    endpoint: ${STORK_AI_ENDPOINT:}
+    api-key: ${STORK_AI_API_KEY:}
+    adapter: gemini
+    model: ${STORK_AI_MODEL:gemini-default}
+    timeout: 4s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318/v1/traces}
+    metrics:
+      export:
+        enabled: false
+
+logging:
+  structured:
+    format:
+      console: ${LOG_FORMAT:}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: demo
+eli:
+  as-of-date: 2026-11-03
+
+---
+spring:
+  config:
+    activate:
+      on-profile: mariadb
+  datasource:
+    url: ${DB_URL:jdbc:mariadb://localhost:3306/hk_eli}
+    username: ${DB_USER:hk_eli}
+    password: ${DB_PASSWORD:}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: vault
+    import: vault://
+  cloud:
+    vault:
+      enabled: true
+      uri: ${VAULT_ADDR:https://vault.example.internal:8200}
+      authentication: KUBERNETES
+      kv:
+        enabled: true
+        backend: secret
+        default-context: hk-eli
+logging:
+  structured:
+    format:
+      console: ecs

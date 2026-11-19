@@ -44,7 +44,7 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "6kB",
+                  "maximumWarning": "8kB",
                   "maximumError": "10kB"
                 }
               ],
@@ -54,6 +54,38 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
+            },
+            "gateway": {
+              "assets": [
+                {
+                  "glob": "**/*",
+                  "input": "public",
+                  "ignore": [
+                    "config/app-config.json"
+                  ]
+                },
+                {
+                  "glob": "app-config.json",
+                  "input": "config/gateway",
+                  "output": "config"
+                }
+              ]
+            },
+            "empty": {
+              "assets": [
+                {
+                  "glob": "**/*",
+                  "input": "public",
+                  "ignore": [
+                    "config/app-config.json"
+                  ]
+                },
+                {
+                  "glob": "app-config.json",
+                  "input": "config/empty",
+                  "output": "config"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"
@@ -66,6 +98,13 @@
             },
             "development": {
               "buildTarget": "web:build:development"
+            },
+            "gateway": {
+              "buildTarget": "web:build:development,gateway",
+              "proxyConfig": "proxy.conf.json"
+            },
+            "empty": {
+              "buildTarget": "web:build:development,empty"
             }
           },
           "defaultConfiguration": "development"

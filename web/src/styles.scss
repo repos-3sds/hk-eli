@@ -154,8 +154,26 @@ button {
   }
 }
 
+/* A small "working on it" ring, for a step that is in progress. */
+.eli-spinner {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid var(--eli-accent-link);
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: eli-spin 0.8s linear infinite;
+}
+
+@keyframes eli-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .eli-skeleton {
+  .eli-skeleton,
+  .eli-spinner {
     animation: none;
   }
 }
@@ -163,4 +181,26 @@ button {
 .eli-scroll {
   scrollbar-color: var(--eli-border) transparent;
   scrollbar-width: thin;
+}
+
+/* Side sheet (hand-off list): flush to the right edge, full height */
+.eli-side-sheet .mat-mdc-dialog-surface {
+  border-radius: 0 !important;
+  border-left: 1px solid var(--eli-border);
+}
+
+/* A term with a hover definition (eliTerm). The dotted line says "there is more here". */
+.eli-term {
+  text-decoration: underline dotted;
+  text-decoration-color: var(--eli-text-muted);
+  text-underline-offset: 3px;
+  cursor: help;
+  &:focus-visible { outline: 2px solid var(--eli-accent-orange); outline-offset: 2px; border-radius: 2px; }
+}
+
+/* Multi-line tooltip, for lists such as "Yes: headroom under the limit". */
+.eli-tip-lines .mdc-tooltip__surface {
+  max-width: 340px !important;
+  white-space: pre-line;
+  text-align: left !important;
 }

@@ -21,26 +21,6 @@
   font-weight: var(--eli-weight-semibold);
 }
 
-.scope {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--eli-space-2);
-  height: 22px;
-  padding: var(--eli-space-1) var(--eli-space-3) var(--eli-space-1) var(--eli-space-4);
-  border: 1px solid var(--eli-border);
-  border-radius: var(--eli-radius-s);
-  background: none;
-  color: var(--eli-text-primary);
-  font-size: var(--eli-font-size-s);
-  font-weight: var(--eli-weight-semibold);
-  cursor: pointer;
-
-  mat-icon {
-    width: 14px;
-    height: 14px;
-  }
-}
-
 .rule {
   flex: 1;
   min-width: 16px;
