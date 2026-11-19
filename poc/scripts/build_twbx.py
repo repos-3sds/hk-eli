@@ -55,6 +55,11 @@ CALCS = {
     "calc_max_trade_date": ("Max Trade Date", "string", "measure", "nominal", "MAX([trade_date])"),
     "calc_in_scope": ("Segment In Scope", "string", "dimension", "nominal",
                       "IF [bp_div_type] = 'Treasures(TPC)' THEN 'Excluded' ELSE 'In scope' END"),
+    # Display-only labels (strings), so mark labels read "HKD 12.3M" without changing the exported numbers.
+    "calc_amount_label": ("Amount (HKD)", "string", "measure", "nominal",
+                          "'HKD ' + STR(ROUND(SUM([volume_bu]) / 1000000, 1)) + 'M'"),
+    "calc_share_label": ("Share", "string", "measure", "nominal",
+                         "STR(ROUND(100 * SUM([volume_bu]) / MIN({FIXED : SUM([volume_bu])}), 1)) + '%'"),
     "calc_mtm_bin": ("MTM% (bin)", "integer", "dimension", "ordinal", "FLOOR([wps_mtm] / 5) * 5"),
 }
 RESULT_COLOURS = {"KO": "#2f7ed8", "EXP": "#8c9aa8", "EXP(Below Strike)": "#e4572e", "EX": "#3fa796"}
@@ -138,7 +143,7 @@ def sheet(name: str, *, rows=(), cols=(), mark="Automatic", color=None, size=Non
         if f not in fields:
             fields.append(f)
         if f in CALCS:
-            for dep in ("volume_bu", "predict_result", "cif_id", "trade_date", "wps_mtm", "bp_div_type"):
+            for dep in ("volume_bu", "predict_result", "cif_id", "trade_date", "wps_mtm", "bp_div_type"):  # fields a calc reads
                 if f"[{dep}]" in CALCS[f][4] and dep not in fields:
                     fields.append(dep)
     deps = "".join(col_xml(f) for f in fields) + "".join(inst_xml(d, f) for d, f in uses)
@@ -152,15 +157,7 @@ def sheet(name: str, *, rows=(), cols=(), mark="Automatic", color=None, size=Non
         enc += f"<size column='{ref(*size)}' />"
     enc += "".join(f"<text column='{ref(*t)}' />" for t in [*text, *label])
     enc += "".join(f"<tooltip column='{ref(*t)}' />" for t in tooltip)
-    # Readable labels in the pane only (the 'label'/'tooltip' formats don't change the data export).
     fmts = ""
-    for u in [*text, *label, *tooltip]:
-        f = {"sum": "n#,##0.0,,\"M\"", "usr": None}.get(u[0])
-        if u == ("usr", "calc_share"):
-            f = "p0.0%"
-        if f:
-            for el in ("label", "tooltip"):
-                fmts += f"<style-rule element='{el}'><format attr='text-format' field='{ref(*u)}' value={quoteattr(f)} /></style-rule>"
     sort_xml = (f"<sort class='computed' column='{ref('none', sort)}' direction='DESC' using='{ref(*SUM)}' />"
                 if sort else "")
     title_xml = (f"<layout-options><title><formatted-text><run fontsize='12'>{escape(title)}</run></formatted-text></title>"
@@ -172,7 +169,7 @@ def sheet(name: str, *, rows=(), cols=(), mark="Automatic", color=None, size=Non
                        for chunk in tpl)
         label_xml = f"<customized-label><formatted-text>{runs}</formatted-text></customized-label>"
     if big:
-        fmts += ("<style-rule element='cell'><format attr='text-align' value='center' />"
+        fmts += ("<style-rule element='cell'><format attr='font-size' value='28' /><format attr='text-align' value='center' />"
                  "<format attr='vertical-align' value='center' /></style-rule>")
     shelf = lambda items: " / ".join(ref(*i) for i in items)  # noqa: E731
     r = shelf(rows)
@@ -183,7 +180,9 @@ def sheet(name: str, *, rows=(), cols=(), mark="Automatic", color=None, size=Non
           f"{filters}" + (f"<slices>{slices}</slices>" if slices else "") + sort_xml +
           f"<aggregation value='true' /></view><style>{fmts}</style>"
           f"<panes><pane selection-relaxation-option='selection-relaxation-allow'><view><breakdown value='auto' /></view>"
-          f"<mark class='{mark}' />" + (f"<encodings>{enc}</encodings>" if enc else "") + label_xml + "</pane></panes>"
+          f"<mark class='{mark}' />" + (f"<encodings>{enc}</encodings>" if enc else "") + label_xml
+          + ("<style><style-rule element='mark'><format attr='mark-labels-show' value='true' /></style-rule></style>"
+             if label else "") + "</pane></panes>"
           f"<rows>{('(' + r + ')') if len(rows) > 1 else r}</rows><cols>{('(' + c + ')') if len(cols) > 1 else c}</cols>"
           f"</table><simple-id uuid='{{{str(uuid.uuid5(uuid.NAMESPACE_URL, 'hkeli/' + name)).upper()}}}' /></worksheet>")
     legend = f"<card param='{ref(*color)}' type='color' />" if color and color[0] == "none" else ""
@@ -196,6 +195,8 @@ def sheet(name: str, *, rows=(), cols=(), mark="Automatic", color=None, size=Non
     return ws, win
 
 
+AMT = ("usr", "calc_amount_label")
+SHARE = ("usr", "calc_share_label")
 LIVE = ("deal_status", ["LIVE"], True, False)
 TRE = ("bp_div_type", ["Treasures(HK)"], True, False)
 N = lambda f: ("none", f)  # noqa: E731
@@ -210,29 +211,29 @@ def sheets():
     tre_shown = ["deal_status", "cust_district", "cust_branch", "predict_maturity", *W1]
     return [
         # Spec: "Outstanding notional KPI"
-        sheet("all_outatanding_total", mark="Text", text=[SUM], big=True, tpl=["HKD ", SUM], fixed=[LIVE], shown=["deal_status", "bp_div_type"],
-              title="Outstanding ELI (HKD, live)"),
+        sheet("all_outatanding_total", mark="Text", text=[SUM], big=True, fixed=[LIVE], shown=["deal_status", "bp_div_type"],
+              title="Outstanding ELI, HKD (live positions)"),
         # Spec: Rows bp_div_type; Text SUM(volume_bu) and its percentage of total
-        sheet("all_outatanding_segment", rows=[N("bp_div_type")], mark="Text", text=[SUM, ("usr", "calc_share")],
-              tpl=["HKD ", SUM, "  (", ("usr", "calc_share"), ")"],
+        sheet("all_outatanding_segment", rows=[N("bp_div_type")], mark="Text", text=[AMT, SHARE],
+              tooltip=[SUM, ("usr", "calc_share")], zoom="fit-width",
               fixed=[LIVE], shown=["deal_status", "bp_div_type"], title="Outstanding ELI by segment, share of all segments"),
         # Spec: Rows bp_div_type > predict_result; colour predict_result; Text "<amount> (<share>)"
         sheet("all_outatanding_segment_result", rows=[N("bp_div_type"), N("predict_result")], mark="Text",
-              color=N("predict_result"), text=[SUM, ("usr", "calc_share")], fixed=[LIVE],
-              tpl=["HKD ", SUM, "  (", ("usr", "calc_share"), ")"],
+              color=N("predict_result"), text=[AMT, SHARE], tooltip=[SUM, ("usr", "calc_share")], fixed=[LIVE],
+              zoom="fit-width",
               shown=["deal_status", "bp_div_type"], title="Outstanding ELI by segment and predicted result, share of all"),
         # Spec: Columns bp_div_type; Rows SUM; colour predict_result; Labels SUM and COUNTD(cif_id)
         sheet("segment_outstanding", cols=[N("bp_div_type")], rows=[SUM], mark="Bar", color=N("predict_result"),
-              label=[SUM, ("ctd", "cif_id")], fixed=[LIVE],
+              label=[AMT, ("ctd", "cif_id")], fixed=[LIVE],
               shown=["deal_status", "bp_div_type", "predict_maturity", *W1],
               title="Outstanding ELI and customers by segment and predicted result"),
         # Spec: Columns DAY(predict_maturity); Rows SUM; colour predict_result; label SUM
         sheet("TRE_maturity_calendar_n30d", cols=[N("predict_maturity")], rows=[SUM], mark="Bar",
-              color=N("predict_result"), label=[SUM], tooltip=[CUST], fixed=[TRE, LIVE], shown=tre_shown,
+              color=N("predict_result"), label=[AMT], tooltip=[CUST], fixed=[TRE, LIVE], shown=tre_shown,
               title="TRE predicted maturity by date (HKD)"),
         # Spec: Columns cust_district > cust_branch, predict_result; Rows SUM
         sheet("TRE_maturity_branch_n30d", cols=[N("cust_district"), N("cust_branch")], rows=[SUM], mark="Bar",
-              color=N("predict_result"), tooltip=[CUST], fixed=[TRE, LIVE], shown=tre_shown,
+              color=N("predict_result"), tooltip=[CUST, AMT], fixed=[TRE, LIVE], shown=tre_shown,
               title="TRE predicted maturity by district and branch (HKD)"),
         # Spec: position-level drill-down list
         sheet("TRE_maturity_detail_n30d", rows=[N(d) for d in detail_dims], mark="Text",
@@ -240,16 +241,16 @@ def sheets():
               title="TRE predicted maturity: clients and positions"),
         # Spec: Columns bp_div_type (> cust_district); Rows SUM; colour predict_result; label SUM
         sheet("ALL_outstanding_District_n30d", cols=[N("bp_div_type"), N("cust_district")], rows=[SUM], mark="Bar",
-              color=N("predict_result"), label=[SUM], tooltip=[CUST],
+              color=N("predict_result"), label=[AMT], tooltip=[CUST],
               fixed=[("calc_in_scope", ["In scope"], True, False), LIVE],
               shown=["deal_status", "bp_div_type", "predict_maturity", *W1],
               title="Outstanding ELI by segment and district (excludes TPC)"),
         # Spec: Rows wps; Columns SUM; segmented by predict_result
         sheet("ALL_outstanding_simulation_n30d", rows=[N("wps")], cols=[SUM], mark="Bar", color=N("predict_result"),
-              label=[SUM], fixed=[LIVE], shown=["deal_status", "bp_div_type", "predict_maturity", *W1], sort="wps",
+              label=[AMT], fixed=[LIVE], shown=["deal_status", "bp_div_type", "predict_maturity", *W1], sort="wps",
               zoom="fit-width", title="Outstanding ELI by worst-performing stock (all segments)"),
         sheet("TRE_outstanding_simulation_n30d", rows=[N("wps")], cols=[SUM], mark="Bar", color=N("predict_result"),
-              label=[SUM], fixed=[TRE, LIVE], shown=["cust_district", "cust_branch", "predict_maturity", *W1],
+              label=[AMT], fixed=[TRE, LIVE], shown=["cust_district", "cust_branch", "predict_maturity", *W1],
               sort="wps", zoom="fit-width", title="TRE outstanding ELI by worst-performing stock"),
         # Spec: Columns MTM% (bin); Rows deal count; colour predict_result; size SUM; label wps
         sheet("ALL_outstanding_distribution_n30d", cols=[N("calc_mtm_bin")], rows=[("ctd", "asset_id")], mark="Circle",
@@ -257,10 +258,9 @@ def sheets():
               shown=["deal_status", "bp_div_type", "cust_district", "cust_branch", "predict_maturity", *W1],
               title="MTM distribution: deals by MTM% bin, size = HKD"),
         # Spec: "Data-recency KPI"
-        sheet("max_trade_date", mark="Text", text=[("usr", "calc_max_trade_date")], big=True,
-              tpl=[("usr", "calc_max_trade_date")], shown=["bp_div_type"],
+        sheet("max_trade_date", mark="Text", text=[("usr", "calc_max_trade_date")], big=True, shown=["bp_div_type"],
               title="Latest trade date"),
-        sheet("data_as_of", rows=[N("business_date"), N("last_refresh")], mark="Text",
+        sheet("data_as_of", rows=[N("business_date"), N("last_refresh")], mark="Text", big=True,
               title="Data as of (business date, last refresh)"),
     ]
 
