@@ -55,7 +55,7 @@ function renderAnswer(a, opts = {}) {
     const hidden = (a.table.rows.length - (opts.maxRows || 8)) + (a.table.more || 0);
     if (hidden > 0) host.append(el("div", { class: "more" }, `+ ${hidden} more rows in the view`));
   }
-  const cvs = (a.caveats || []).filter(c => (opts.showInfo !== false || c.level !== "info") && c.text !== a.headline);
+  const cvs = (a.caveats || []).filter(c => (opts.showInfo !== false || c.level !== "info") && !(a.headline || "").includes(c.text));
   if (cvs.length) card.append(el("div", { class: "caveats" }, cvs.map(c =>
     el("div", { class: `cv ${c.level}` }, el("b", {}, CAVEAT_LABEL[c.code] || c.code), c.text))));
   if (a.as_of) {

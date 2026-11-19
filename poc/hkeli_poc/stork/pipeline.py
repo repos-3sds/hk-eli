@@ -87,6 +87,7 @@ def answer(question: str, http, site: str, scenario: str | None = None, user: st
         out.update(status="UNSUPPORTED", reasons=["CONCEPT_NOT_SUPPORTED"],
                    headline=f"I can't answer that yet. {u['user_text']}".strip())
         out["caveats"].append({"code": "CONCEPT_NOT_SUPPORTED", "level": "block", "text": u["user_text"]})
+        out["scope"] = ""   # the parsed scope would mislead here (e.g. a basket stock shown as WPS)
         out["followups"] = ["What is total outstanding ELI?", "How much TRE ELI is predicted to mature in the next 30 days?"]
         tr.add("Route", {"view": None, "reason": f"unsupported concept {u['id']}"})
         return out
