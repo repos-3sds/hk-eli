@@ -204,3 +204,23 @@ button {
   white-space: pre-line;
   text-align: left !important;
 }
+
+/* Prompt library dialog */
+.eli-library-panel .mat-mdc-dialog-surface {
+  border: 1px solid var(--eli-border);
+  border-radius: var(--eli-radius-m) !important;
+  background: var(--eli-bg-dock) !important;
+  overflow: hidden;
+}
+
+/* Chat history: wide, wrapped titles, its own scroll bar */
+.mat-mdc-menu-panel.eli-history-menu {
+  width: 480px;
+  max-width: min(480px, 92vw);
+  max-height: 62vh;
+  overflow-y: auto;
+  scrollbar-color: var(--eli-border) transparent;
+  scrollbar-width: thin;
+  .mat-mdc-menu-item { height: auto; min-height: 48px; padding-top: var(--eli-space-4); padding-bottom: var(--eli-space-4); align-items: flex-start; }
+  .mat-mdc-menu-item .mat-mdc-menu-item-text { white-space: normal; }
+}

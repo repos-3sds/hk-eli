@@ -8,18 +8,20 @@
     }
   </div>
   <div class="bar-actions">
-    <button matButton type="button" [matMenuTriggerFor]="historyMenu" [disabled]="store.history().length === 0"
-      [matTooltip]="store.history().length ? '' : 'Earlier conversations from this session show here'">
-      <mat-icon svgIcon="history" />History @if (store.history().length) {<span class="badge">{{ store.history().length }}</span>}
+    <button matButton type="button" (click)="openLibrary()"><mat-icon svgIcon="list-checks" />Prompt library</button>
+    @let past = store.stored() ? store.storedConversations() : store.history();
+    <button matButton type="button" [matMenuTriggerFor]="historyMenu" [disabled]="past.length === 0"
+      [matTooltip]="past.length ? '' : 'Earlier conversations show here'">
+      <mat-icon svgIcon="history" />History @if (past.length) {<span class="badge">{{ past.length }}</span>}
     </button>
     <button matButton="outlined" type="button" (click)="store.newChat()" [disabled]="store.turns().length === 0">
       <mat-icon svgIcon="square-pen" />New chat
     </button>
   </div>
-  <mat-menu #historyMenu="matMenu" xPosition="before">
-    <div class="menu-head" mat-menu-item disabled>This session only. Nothing is stored.</div>
-    @for (c of store.history(); track c.id) {
-      <button mat-menu-item type="button" (click)="store.reopen(c.id)">
+  <mat-menu #historyMenu="matMenu" xPosition="before" class="eli-history-menu">
+    <div class="menu-head" mat-menu-item disabled>{{ store.stored() ? 'Saved for you on the server (SQLite). Only you see them.' : 'This session only. Nothing is stored.' }}</div>
+    @for (c of past; track c.id) {
+      <button mat-menu-item type="button" (click)="store.stored() ? store.reopenStored(c.id) : store.reopen(c.id)">
         <span class="menu-title">{{ c.title }}</span>
         <span class="menu-time">{{ time(c.startedAt) }} · {{ c.turns.length }} {{ c.turns.length === 1 ? 'question' : 'questions' }}</span>
       </button>
@@ -58,6 +60,12 @@
                 <span>{{ time(t.askedAt) }}</span>
               </div>
               <p class="question">{{ t.question }}</p>
+              <div class="q-actions">
+                <button type="button" class="act" [matTooltip]="copiedId() === 'q' + t.id ? 'Copied' : 'Copy question'" aria-label="Copy question" (click)="copyQuestion(t.id, t.question)">
+                  <mat-icon [svgIcon]="copiedId() === 'q' + t.id ? 'check' : 'copy'" />
+                </button>
+                <button type="button" class="act" matTooltip="Edit and ask again" aria-label="Edit question" [disabled]="store.busy()" (click)="editQuestion(t.id)"><mat-icon svgIcon="square-pen" /></button>
+              </div>
             </div>
 
             <div class="a-row">
@@ -68,6 +76,9 @@
                 </div>
                 @switch (t.status) {
                   @case ('pending') {
+                    <div class="working-head"><span>Thinking</span>
+                      <button matButton type="button" class="stop-btn" (click)="store.stop()"><span class="stop-mark" aria-hidden="true"></span>Stop</button>
+                    </div>
                     <ol class="steps" role="status" aria-label="Working on the answer">
                       @for (s of stages; track s; let i = $index) {
                         <li class="step" [class.done]="i < t.stage" [class.now]="i === t.stage">

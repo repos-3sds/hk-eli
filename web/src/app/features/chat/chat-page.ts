@@ -4,6 +4,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
+import { MatDialog } from '@angular/material/dialog';
+import { LibraryChoice, PromptLibraryDialog } from './prompt-library-dialog';
 import { APP_CONFIG } from '../../core/config/app-config';
 import { FIXTURE_CLIENTS } from '../../core/data/today.fixture';
 import { LaunchRole, SessionService } from '../../core/session/session.service';
@@ -11,7 +13,8 @@ import { BusinessClock } from '../../core/time/business-clock';
 import { ChatAnswer } from '../../core/chat/chat.models';
 import { answerAsText } from '../../core/chat/answer-text';
 import { CAN_ANSWER } from '../../core/chat/chat-scope';
-import { DISCOVERY_QUESTIONS, PIPELINE_CAN_ANSWER } from '../../core/chat/discovery-questions';
+import { PIPELINE_CAN_ANSWER } from '../../core/chat/discovery-questions';
+import { libraryFor } from '../../core/chat/prompt-library';
 import { AnswerCard } from './answer-card';
 import { ChatComposer } from './chat-composer';
 import { ANSWER_STAGES, ChatStore } from './chat.store';
@@ -44,9 +47,6 @@ const STARTERS: Record<LaunchRole, readonly Starter[]> = {
   ],
 };
 
-/** With the Stork pipeline, the starters are questions the discovery docs cover. */
-const D = DISCOVERY_QUESTIONS;
-const PIPELINE_STARTERS: readonly Starter[] = [D.branches, D.koShare, D.wps, D.clients];
 
 /**
  * The Chat tab: ask about the book in plain words, get typed answers built from data.
@@ -66,10 +66,17 @@ export class ChatPage {
   private readonly session = inject(SessionService);
   private readonly clock = inject(BusinessClock);
   private readonly config = inject(APP_CONFIG);
+  private readonly dialog = inject(MatDialog);
   private readonly scroller = viewChild.required<ElementRef<HTMLElement>>('scroller');
   private readonly composer = viewChild.required(ChatComposer);
 
-  protected readonly starters = computed(() => (this.config.dataSource === 'stork' ? PIPELINE_STARTERS : STARTERS[this.session.role()]));
+  protected readonly starters = computed<readonly Starter[]>(() =>
+    this.config.dataSource === 'stork'
+      ? libraryFor(this.session.role())
+          .flatMap((c) => c.prompts.filter((p) => !p.unavailable).slice(0, 1).map((p) => ({ icon: c.icon, title: c.title, question: p.question })))
+          .slice(0, 4)
+      : STARTERS[this.session.role()],
+  );
   protected readonly stages = ANSWER_STAGES;
   protected readonly pipeline = this.config.dataSource === 'stork';
   protected readonly canAnswer = this.pipeline ? PIPELINE_CAN_ANSWER : CAN_ANSWER;
@@ -133,6 +140,36 @@ export class ChatPage {
 
   protected clientName(id: string): string {
     return this.clients.find((c) => c.id === id)?.shortName ?? id;
+  }
+
+  protected async copyQuestion(turnId: string, question: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(question);
+    } catch {
+      return;
+    }
+    this.copiedId.set('q' + turnId);
+    setTimeout(() => this.copiedId.set(null), 1500);
+  }
+
+  /** The Prompt Library: ask a question now, or put it in the ask box to edit first. */
+  protected openLibrary(): void {
+    this.dialog
+      .open<PromptLibraryDialog, unknown, LibraryChoice>(PromptLibraryDialog, { panelClass: 'eli-library-panel', autoFocus: 'input' })
+      .afterClosed()
+      .subscribe((c) => {
+        if (!c) return;
+        if (c.action === 'ask') this.ask(c.question);
+        else {
+          this.store.draft.set(c.question);
+          this.composer().focus();
+        }
+      });
+  }
+
+  protected editQuestion(turnId: string): void {
+    this.store.edit(turnId);
+    this.composer().focus();
   }
 
   protected async copy(turnId: string, answer: ChatAnswer): Promise<void> {

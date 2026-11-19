@@ -11,16 +11,19 @@ import { TrustLine } from '../today/shared/trust-line';
 import { UsdPipe } from '../today/shared/format';
 import { AnswerChart } from './answer-chart';
 import { AnswerEvidence, AnswerNotices } from './answer-evidence';
+import { AnswerText } from './answer-text';
 
 /** One answer: typed blocks (text, facts, client rows, bars, ideas, bullets), the trust line and follow-up questions. */
 @Component({
   selector: 'eli-answer-card',
-  imports: [MatButtonModule, MatIconModule, RouterLink, MomentChip, ConcentrationBar, TrustLine, UsdPipe, AnswerChart, AnswerNotices, AnswerEvidence],
+  imports: [MatButtonModule, MatIconModule, RouterLink, MomentChip, ConcentrationBar, TrustLine, UsdPipe, AnswerChart, AnswerNotices, AnswerEvidence, AnswerText],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <article class="card" [class.fallback]="answer().fallback">
-      @if (answer().scope || answer().tableauUrl) {
+      @if (answer().status || answer().scope || answer().tableauUrl) {
         <div class="top">
+          @if (answer().status; as st) {<span class="outcome" [class]="'outcome ' + outcomeClass(st)">{{ outcomeLabel(st) }}</span>}
+          @if (answer().intent; as i) {<span class="scope">{{ i.replaceAll('_', ' ') }}</span>}
           @if (answer().scope) {<span class="scope">{{ answer().scope }}</span>}
           @if (answer().tableauUrl) {
             <a class="tab-link" [href]="answer().tableauUrl" target="_blank" rel="noopener" title="The same Tableau view with the same filters">Open in Tableau<mat-icon svgIcon="external-link" aria-hidden="true" /></a>
@@ -30,7 +33,11 @@ import { AnswerEvidence, AnswerNotices } from './answer-evidence';
       @for (b of answer().blocks; track $index) {
         @switch (b.kind) {
           @case ('text') {
-            <p class="text">{{ b.text }}</p>
+            @if (answer().figures?.length) {
+              <eli-answer-text [text]="b.text" [figures]="answer().figures!" />
+            } @else {
+              <p class="text">{{ b.text }}</p>
+            }
           }
           @case ('facts') {
             <dl class="facts">
@@ -106,7 +113,7 @@ import { AnswerEvidence, AnswerNotices } from './answer-evidence';
             <eli-answer-notices [block]="b" />
           }
           @case ('evidence') {
-            <eli-answer-evidence [block]="b" />
+            <eli-answer-evidence [block]="b" [figures]="answer().figures ?? []" [model]="answer().model" [latencyMs]="answer().latencyMs" [tableauUrl]="answer().tableauUrl" />
           }
           @case ('bullets') {
             <section class="block">
@@ -143,7 +150,10 @@ import { AnswerEvidence, AnswerNotices } from './answer-evidence';
     </article>
   `,
   styles: `
-    .top { display: flex; align-items: center; gap: var(--eli-space-6); }
+    .top { display: flex; flex-wrap: wrap; align-items: center; gap: var(--eli-space-4); }
+    .outcome { padding: 2px var(--eli-space-5); border-radius: var(--eli-radius-pill); font-size: var(--eli-font-size-xs); font-weight: var(--eli-weight-semibold);
+      &.ok { background: rgb(43 159 135 / 18%); color: var(--eli-status-positive-text); } &.warn { background: rgb(255 147 46 / 16%); color: var(--eli-accent-orange); }
+      &.info { background: rgb(99 171 255 / 14%); color: var(--eli-accent-link); } &.bad { background: rgb(255 51 51 / 14%); color: var(--eli-status-negative-text); } }
     .scope { padding: 2px var(--eli-space-5); border-radius: var(--eli-radius-pill); background: var(--eli-bg-row); color: var(--eli-text-muted-2); font-size: var(--eli-font-size-xs); }
     .tab-link { display: inline-flex; align-items: center; gap: var(--eli-space-2); margin-left: auto; color: var(--eli-accent-link); font-size: var(--eli-font-size-s); text-decoration: none; &:hover { text-decoration: underline; } mat-icon { width: 13px; height: 13px; } }
     .asof { display: flex; align-items: center; gap: var(--eli-space-3); margin: 0; color: var(--eli-text-muted); font-size: var(--eli-font-size-s); mat-icon { flex: none; width: 14px; height: 14px; } }
@@ -189,6 +199,18 @@ import { AnswerEvidence, AnswerNotices } from './answer-evidence';
 export class AnswerCard {
   protected parityText(p: TableauParity): string {
     return parityLine(p, shortDate(this.answer().businessDate));
+  }
+
+  private static readonly OUTCOMES: Record<string, [string, string]> = {
+    OK: ['Answered', 'ok'], OK_WITH_WARNING: ['Answered with caveats', 'warn'], OK_FALLBACK: ['Short answer', 'warn'], PARTIAL: ['Partial', 'warn'],
+    NO_DATA: ['Nothing qualified', 'info'], NEEDS_CLARIFICATION: ['Needs clarification', 'info'], UNSUPPORTED: ["Can't answer from the views", 'bad'],
+    VALIDATION_FAILED: ['Failed checks', 'bad'], SYSTEM_ERROR: ['Service unavailable', 'bad'],
+  };
+  protected outcomeLabel(s: string): string {
+    return AnswerCard.OUTCOMES[s]?.[0] ?? s;
+  }
+  protected outcomeClass(s: string): string {
+    return AnswerCard.OUTCOMES[s]?.[1] ?? 'info';
   }
 
   protected refreshed(): string {

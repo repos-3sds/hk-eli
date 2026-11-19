@@ -1,8 +1,8 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, map, timeout } from 'rxjs';
+import { Observable, catchError, map, of, timeout } from 'rxjs';
 import { APP_CONFIG } from '../config/app-config';
-import { ChatDataSource } from './chat-data-source';
+import { ChatDataSource, StoredTurn } from './chat-data-source';
 import { AnswerBlock, ChartSpec, ChatAnswer, ChatQuestion } from './chat.models';
 
 /** What the Python Stork pipeline returns from POST /api/ask (poc/hkeli_poc/stork/pipeline.py). */
@@ -26,6 +26,10 @@ export interface StorkAnswer {
   readonly scope?: string | null;
   readonly trace?: readonly { readonly n: number; readonly name: string; readonly detail: unknown; readonly ms: number }[];
   readonly assumptions?: readonly string[];
+  readonly numbers?: readonly { readonly display: string; readonly measure: string; readonly source: string }[];
+  readonly turn_id?: string;
+  readonly conversation_id?: string;
+  readonly latency_ms?: number;
   readonly meta?: { readonly understanding?: string; readonly insight?: string; readonly model?: string | null; readonly provider?: string };
 }
 
@@ -93,6 +97,13 @@ export function toChatAnswer(a: StorkAnswer, id: string): ChatAnswer {
     scope: a.scope ?? undefined,
     tableauUrl: a.embed ? (a.embed.src ?? a.embed.url) : undefined,
     writtenBy: writtenBy(a.meta),
+    turnId: a.turn_id,
+    conversationId: a.conversation_id,
+    latencyMs: a.latency_ms ?? Math.round((a.trace ?? []).reduce((s, x) => s + x.ms, 0)),
+    status: a.status,
+    intent: intentOf(a),
+    figures: (a.numbers ?? []).map((n) => ({ display: n.display, measure: n.measure, source: n.source })),
+    model: a.meta?.model && a.meta.model !== 'off' ? a.meta.model : undefined,
   };
 }
 
@@ -106,6 +117,12 @@ function writtenBy(meta: StorkAnswer['meta']): string | undefined {
     return /^(gateway|gemini|model)\b/i.test(v) ? (meta.provider ?? 'Gemini') : v === 'template' ? 'template (no model)' : v;
   };
   return `Question read by ${who(meta.understanding, 'rules')} · words by ${who(meta.insight, 'template')}${model ? ` · ${model}` : ''}`;
+}
+
+function intentOf(a: StorkAnswer): string | undefined {
+  const step = (a.trace ?? []).find((s) => s.name === 'Understand');
+  const d = step?.detail as { intent?: string } | undefined;
+  return d?.intent && d.intent !== 'unknown' ? d.intent : undefined;
 }
 
 function safeDecode(s: string): string {
@@ -123,13 +140,32 @@ export class StorkClient {
   private readonly config = inject(APP_CONFIG);
   private counter = 0;
 
-  ask(question: string): Observable<ChatAnswer> {
+  ask(question: string, conversationId?: string | null): Observable<ChatAnswer> {
+    const body: Record<string, unknown> = { question, site: 'proposed' };
+    if (conversationId) body['conversation_id'] = conversationId;
     return this.http
-      .post<StorkAnswer>(`${this.config.gatewayBaseUrl}/ask`, { question, site: 'proposed' })
+      .post<StorkAnswer>(`${this.config.gatewayBaseUrl}/ask`, body)
       .pipe(
         timeout(this.config.requestTimeoutMs),
         map((a) => toChatAnswer(a, `s-${++this.counter}`)),
       );
+  }
+
+  /** GET /api/v1/history: this user's stored questions (SQLite). Null when the server has no store. */
+  history(): Observable<readonly StoredTurn[] | null> {
+    return this.http
+      .get<{ turns: { id: string; conversation_id: string; created_at: string; question: string; status: string; headline: string }[] }>(
+        `${this.config.gatewayBaseUrl}/v1/history`,
+        { params: { limit: 200 } },
+      )
+      .pipe(
+        map((r) => r.turns.map((t) => ({ turnId: t.id, conversationId: t.conversation_id, askedAt: t.created_at, question: t.question, status: t.status, headline: t.headline }))),
+        catchError(() => of(null)),
+      );
+  }
+
+  feedback(turnId: string, rating: 1 | -1): Observable<unknown> {
+    return this.http.post(`${this.config.gatewayBaseUrl}/v1/feedback`, { turn_id: turnId, rating }).pipe(catchError(() => of(null)));
   }
 }
 
@@ -138,6 +174,14 @@ export class StorkChatDataSource extends ChatDataSource {
   private readonly client = inject(StorkClient);
 
   ask(question: ChatQuestion): Observable<ChatAnswer> {
-    return this.client.ask(question.text);
+    return this.client.ask(question.text, question.conversationId);
+  }
+
+  override storedHistory(): Observable<readonly StoredTurn[] | null> {
+    return this.client.history();
+  }
+
+  override sendFeedback(turnId: string, rating: 1 | -1): Observable<unknown> {
+    return this.client.feedback(turnId, rating);
   }
 }

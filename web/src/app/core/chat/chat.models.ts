@@ -9,6 +9,8 @@ export interface ChatQuestion {
   readonly text: string;
   /** The client the question is about, if the RM picked one (picked on Today). */
   readonly clientId: string | null;
+  /** The server-side conversation this question continues, when the source stores conversations. */
+  readonly conversationId?: string | null;
 }
 
 export interface TextBlock {
@@ -147,4 +149,15 @@ export interface ChatAnswer {
   readonly tableauUrl?: string;
   /** Pipeline answers: whether Gemini or the rules read the question and wrote the words. */
   readonly writtenBy?: string;
+  /** Stored answers: ids in the server's SQLite store, for feedback and history. */
+  readonly turnId?: string;
+  readonly conversationId?: string;
+  /** Pipeline answers: the server's own time to answer. */
+  readonly latencyMs?: number;
+  /** Pipeline answers: the outcome (OK, NEEDS_CLARIFICATION, UNSUPPORTED…) and the intent it was read as. */
+  readonly status?: string;
+  readonly intent?: string;
+  /** Pipeline answers: every figure the code computed, with the view it was read from. Shown as verified chips. */
+  readonly figures?: readonly { readonly display: string; readonly measure: string; readonly source: string }[];
+  readonly model?: string;
 }
