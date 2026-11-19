@@ -46,7 +46,7 @@ function renderAnswer(a, opts = {}) {
   if (chart) card.append(chart);
   if (a.bullets && a.bullets.length) card.append(el("ul", { class: "bullets" }, a.bullets.map(b => el("li", {}, b))));
   if (a.table && a.table.rows && a.table.rows.length) {
-    const host = chart ? el("details", { class: "ev tbl" }, el("summary", {}, "Show the numbers as a table")) : card;
+    const host = chart ? el("details", { class: "ev tbl", open: "" }, el("summary", {}, "Show the numbers as a table")) : card;
     if (chart) card.append(host);
     const t = el("table", { class: "t" });
     t.append(el("thead", {}, el("tr", {}, a.table.columns.map((c, i) => el("th", { class: a.table.rows[0] && isNum(a.table.rows[0][i]) ? "n" : null }, c)))));
@@ -69,7 +69,7 @@ function renderAnswer(a, opts = {}) {
     a.followups.map(f => el("button", { class: "chip", type: "button", onclick: () => opts.onAsk(f) }, f))));
   // Evidence: what was asked of Tableau, and the pipeline steps.
   if (a.evidence && a.evidence.length) {
-    const d = el("details", { class: "ev" }, el("summary", {}, "Evidence: view, filters and request"));
+    const d = el("details", { class: "ev", open: "" }, el("summary", {}, "Evidence: view, filters and request"));
     for (const e of a.evidence) {
       d.append(el("dl", { class: "kv" },
         el("dt", {}, e.purpose ? "Check" : "View"), el("dd", {}, `${e.view} (${e.record_id})`),
@@ -83,7 +83,7 @@ function renderAnswer(a, opts = {}) {
     card.append(d);
   }
   if (a.trace && a.trace.length) {
-    const d = el("details", { class: "ev" }, el("summary", {}, `Pipeline: ${a.trace.length} steps`));
+    const d = el("details", { class: "ev", open: "" }, el("summary", {}, `Pipeline: ${a.trace.length} steps`));
     d.append(el("ol", { class: "steps" }, a.trace.map(s => el("li", {}, el("span", { class: "no" }, s.n), el("span", { class: "nm" }, s.name),
       el("span", { class: "dt" }, JSON.stringify(s.detail)), el("span", { class: "ms" }, `${s.ms} ms`)))));
     card.append(d);
