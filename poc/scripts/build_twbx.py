@@ -14,7 +14,7 @@ import sys
 import uuid
 import zipfile
 from pathlib import Path
-from xml.sax.saxutils import escape, quoteattr
+from xml.sax.saxutils import escape, quoteattr  # noqa: F401
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -57,6 +57,10 @@ CALCS = {
                       "IF [bp_div_type] = 'Treasures(TPC)' THEN 'Excluded' ELSE 'In scope' END"),
     "calc_mtm_bin": ("MTM% (bin)", "integer", "dimension", "ordinal", "FLOOR([wps_mtm] / 5) * 5"),
 }
+RESULT_COLOURS = {"KO": "#2f7ed8", "EXP": "#8c9aa8", "EXP(Below Strike)": "#e4572e", "EX": "#3fa796"}
+PALETTE = ("<style><style-rule element='mark'><encoding attr='color' field='[none:predict_result:nk]' type='palette'>"
+           + "".join(f"<map to='{c}'><bucket>&quot;{k}&quot;</bucket></map>" for k, c in RESULT_COLOURS.items())
+           + "</encoding></style-rule></style>")
 W1 = ["days_to_pred_maturity", "in_n7", "in_n14", "in_n30", "in_n60", "in_n90"]
 
 
@@ -118,7 +122,7 @@ def all_filter(field: str) -> str:
 
 
 def sheet(name: str, *, rows=(), cols=(), mark="Automatic", color=None, size=None, text=(), label=(),
-          tooltip=(), fixed=None, shown=()) -> tuple[str, str]:
+          tooltip=(), fixed=None, shown=(), title="", sort=None, zoom="entire-view") -> tuple[str, str]:
     """fixed: list of (field, values, context, exclude). shown: fields with an all-values shown filter."""
     fixed = fixed or []
     uses: list[tuple[str, str]] = []
@@ -148,24 +152,37 @@ def sheet(name: str, *, rows=(), cols=(), mark="Automatic", color=None, size=Non
         enc += f"<size column='{ref(*size)}' />"
     enc += "".join(f"<text column='{ref(*t)}' />" for t in [*text, *label])
     enc += "".join(f"<tooltip column='{ref(*t)}' />" for t in tooltip)
+    # Readable labels in the pane only (the 'label'/'tooltip' formats don't change the data export).
+    fmts = ""
+    for u in [*text, *label, *tooltip]:
+        f = {"sum": "n#,##0.0,,\"M\"", "usr": None}.get(u[0])
+        if u == ("usr", "calc_share"):
+            f = "p0.0%"
+        if f:
+            for el in ("label", "tooltip"):
+                fmts += f"<style-rule element='{el}'><format attr='text-format' field='{ref(*u)}' value={quoteattr(f)} /></style-rule>"
+    sort_xml = (f"<sort class='computed' column='{ref('none', sort)}' direction='DESC' using='{ref(*SUM)}' />"
+                if sort else "")
+    title_xml = (f"<layout-options><title><formatted-text><run fontsize='12'>{escape(title)}</run></formatted-text></title>"
+                 f"</layout-options>" if title else "")
     shelf = lambda items: " / ".join(ref(*i) for i in items)  # noqa: E731
     r = shelf(rows)
     c = shelf(cols)
-    ws = (f"<worksheet name={quoteattr(name)}><table><view>"
+    ws = (f"<worksheet name={quoteattr(name)}>{title_xml}<table><view>"
           f"<datasources><datasource caption='HK ELI positions' name='{DS}' /></datasources>"
           f"<datasource-dependencies datasource='{DS}'>{deps}</datasource-dependencies>"
-          f"{filters}" + (f"<slices>{slices}</slices>" if slices else "") +
-          f"<aggregation value='true' /></view><style />"
+          f"{filters}" + (f"<slices>{slices}</slices>" if slices else "") + sort_xml +
+          f"<aggregation value='true' /></view><style>{fmts}</style>"
           f"<panes><pane selection-relaxation-option='selection-relaxation-allow'><view><breakdown value='auto' /></view>"
           f"<mark class='{mark}' />" + (f"<encodings>{enc}</encodings>" if enc else "") + "</pane></panes>"
           f"<rows>{('(' + r + ')') if len(rows) > 1 else r}</rows><cols>{('(' + c + ')') if len(cols) > 1 else c}</cols>"
           f"</table><simple-id uuid='{{{str(uuid.uuid5(uuid.NAMESPACE_URL, 'hkeli/' + name)).upper()}}}' /></worksheet>")
     cards = "".join(f"<card param='{ref('none', f)}' type='filter' />" for f in filter_fields
                     if f in shown or f in [x for x, _, _, _ in fixed if x == "deal_status"])
-    win = (f"<window class='worksheet' name={quoteattr(name)}><cards>"
+    win = (f"<window class='worksheet' maximized='true' name={quoteattr(name)}><cards>"
            f"<edge name='left'><strip size='160'><card type='pages' /><card type='filters' /><card type='marks' /></strip></edge>"
            + (f"<edge name='right'><strip size='160'>{cards}</strip></edge>" if cards else "") +
-           f"</cards><simple-id uuid='{{{str(uuid.uuid5(uuid.NAMESPACE_URL, 'hkeli-win/' + name)).upper()}}}' /></window>")
+           f"</cards><viewpoint><zoom type='{zoom}' /></viewpoint><simple-id uuid='{{{str(uuid.uuid5(uuid.NAMESPACE_URL, 'hkeli-win/' + name)).upper()}}}' /></window>")
     return ws, win
 
 
@@ -182,32 +199,56 @@ def sheets():
                    "ki_percentage", "pos_id", "wps"]
     tre_shown = ["deal_status", "cust_district", "cust_branch", "predict_maturity", *W1]
     return [
-        sheet("all_outatanding_total", mark="Text", text=[SUM], fixed=[LIVE], shown=["deal_status", "bp_div_type"]),
-        sheet("all_outatanding_segment", rows=[N("bp_div_type")], cols=[SUM], mark="Bar",
-              label=[("usr", "calc_share")], fixed=[LIVE], shown=["deal_status", "bp_div_type"]),
-        sheet("all_outatanding_segment_result", rows=[N("bp_div_type"), N("predict_result")], cols=[SUM], mark="Bar",
-              label=[("usr", "calc_share")], fixed=[LIVE], shown=["deal_status", "bp_div_type"]),
-        sheet("segment_outstanding", rows=[N("bp_div_type"), N("predict_result")], cols=[SUM], mark="Bar",
-              label=[("ctd", "cif_id")], fixed=[LIVE], shown=["deal_status", "bp_div_type", "predict_maturity", *W1]),
+        # Spec: "Outstanding notional KPI"
+        sheet("all_outatanding_total", mark="Text", text=[SUM], fixed=[LIVE], shown=["deal_status", "bp_div_type"],
+              title="Outstanding ELI (HKD, live)"),
+        # Spec: Rows bp_div_type; Text SUM(volume_bu) and its percentage of total
+        sheet("all_outatanding_segment", rows=[N("bp_div_type")], mark="Text", text=[SUM, ("usr", "calc_share")],
+              fixed=[LIVE], shown=["deal_status", "bp_div_type"], title="Outstanding ELI by segment, share of all segments"),
+        # Spec: Rows bp_div_type > predict_result; colour predict_result; Text "<amount> (<share>)"
+        sheet("all_outatanding_segment_result", rows=[N("bp_div_type"), N("predict_result")], mark="Text",
+              color=N("predict_result"), text=[SUM, ("usr", "calc_share")], fixed=[LIVE],
+              shown=["deal_status", "bp_div_type"], title="Outstanding ELI by segment and predicted result, share of all"),
+        # Spec: Columns bp_div_type; Rows SUM; colour predict_result; Labels SUM and COUNTD(cif_id)
+        sheet("segment_outstanding", cols=[N("bp_div_type")], rows=[SUM], mark="Bar", color=N("predict_result"),
+              label=[SUM, ("ctd", "cif_id")], fixed=[LIVE],
+              shown=["deal_status", "bp_div_type", "predict_maturity", *W1],
+              title="Outstanding ELI and customers by segment and predicted result"),
+        # Spec: Columns DAY(predict_maturity); Rows SUM; colour predict_result; label SUM
         sheet("TRE_maturity_calendar_n30d", cols=[N("predict_maturity")], rows=[SUM], mark="Bar",
-              color=N("predict_result"), tooltip=[CUST], fixed=[TRE, LIVE], shown=tre_shown),
-        sheet("TRE_maturity_branch_n30d", rows=[N("cust_district"), N("cust_branch")], cols=[SUM], mark="Bar",
-              color=N("predict_result"), tooltip=[CUST], fixed=[TRE, LIVE], shown=tre_shown),
+              color=N("predict_result"), label=[SUM], tooltip=[CUST], fixed=[TRE, LIVE], shown=tre_shown,
+              title="TRE predicted maturity by date (HKD)"),
+        # Spec: Columns cust_district > cust_branch, predict_result; Rows SUM
+        sheet("TRE_maturity_branch_n30d", cols=[N("cust_district"), N("cust_branch")], rows=[SUM], mark="Bar",
+              color=N("predict_result"), tooltip=[CUST], fixed=[TRE, LIVE], shown=tre_shown,
+              title="TRE predicted maturity by district and branch (HKD)"),
+        # Spec: position-level drill-down list
         sheet("TRE_maturity_detail_n30d", rows=[N(d) for d in detail_dims], mark="Text",
-              text=[SUM, ("avg", "wps_mtm")], fixed=[TRE, LIVE], shown=[*tre_shown, "wps"]),
-        sheet("ALL_outstanding_District_n30d", rows=[N("bp_div_type"), N("cust_district")], cols=[SUM], mark="Bar",
-              color=N("predict_result"), tooltip=[CUST],
+              text=[SUM, ("avg", "wps_mtm")], fixed=[TRE, LIVE], shown=[*tre_shown, "wps"], zoom="fit-width",
+              title="TRE predicted maturity: clients and positions"),
+        # Spec: Columns bp_div_type (> cust_district); Rows SUM; colour predict_result; label SUM
+        sheet("ALL_outstanding_District_n30d", cols=[N("bp_div_type"), N("cust_district")], rows=[SUM], mark="Bar",
+              color=N("predict_result"), label=[SUM], tooltip=[CUST],
               fixed=[("calc_in_scope", ["In scope"], True, False), LIVE],
-              shown=["deal_status", "bp_div_type", "predict_maturity", *W1]),
+              shown=["deal_status", "bp_div_type", "predict_maturity", *W1],
+              title="Outstanding ELI by segment and district (excludes TPC)"),
+        # Spec: Rows wps; Columns SUM; segmented by predict_result
         sheet("ALL_outstanding_simulation_n30d", rows=[N("wps")], cols=[SUM], mark="Bar", color=N("predict_result"),
-              fixed=[LIVE], shown=["deal_status", "bp_div_type", "predict_maturity", *W1]),
+              label=[SUM], fixed=[LIVE], shown=["deal_status", "bp_div_type", "predict_maturity", *W1], sort="wps",
+              zoom="fit-width", title="Outstanding ELI by worst-performing stock (all segments)"),
         sheet("TRE_outstanding_simulation_n30d", rows=[N("wps")], cols=[SUM], mark="Bar", color=N("predict_result"),
-              fixed=[TRE, LIVE], shown=["cust_district", "cust_branch", "predict_maturity", *W1]),
+              label=[SUM], fixed=[TRE, LIVE], shown=["cust_district", "cust_branch", "predict_maturity", *W1],
+              sort="wps", zoom="fit-width", title="TRE outstanding ELI by worst-performing stock"),
+        # Spec: Columns MTM% (bin); Rows deal count; colour predict_result; size SUM; label wps
         sheet("ALL_outstanding_distribution_n30d", cols=[N("calc_mtm_bin")], rows=[("ctd", "asset_id")], mark="Circle",
-              size=SUM, color=N("predict_result"), label=[N("wps")], fixed=[LIVE],
-              shown=["deal_status", "bp_div_type", "cust_district", "cust_branch", "predict_maturity", *W1]),
-        sheet("max_trade_date", mark="Text", text=[("usr", "calc_max_trade_date")], shown=["bp_div_type"]),
-        sheet("data_as_of", rows=[N("business_date"), N("last_refresh")], mark="Text"),
+              size=SUM, color=N("predict_result"), label=[N("wps")], tooltip=[SUM], fixed=[LIVE],
+              shown=["deal_status", "bp_div_type", "cust_district", "cust_branch", "predict_maturity", *W1],
+              title="MTM distribution: deals by MTM% bin, size = HKD"),
+        # Spec: "Data-recency KPI"
+        sheet("max_trade_date", mark="Text", text=[("usr", "calc_max_trade_date")], shown=["bp_div_type"],
+              title="Latest trade date"),
+        sheet("data_as_of", rows=[N("business_date"), N("last_refresh")], mark="Text",
+              title="Data as of (business date, last refresh)"),
     ]
 
 
@@ -229,7 +270,7 @@ def twb() -> str:
             f"<columns character-set='UTF-8' header='yes' locale='en_US' separator=','>{rel_cols}</columns>"
             "</relation></connection>"
             f"<aliases enabled='yes' />{ds_cols}<layout dim-ordering='alphabetic' measure-ordering='alphabetic' "
-            "show-structure='true' /></datasource></datasources>"
+            "show-structure='true' />" + PALETTE + "</datasource></datasources>"
             f"<worksheets>{''.join(ws)}</worksheets>"
             f"<windows source-height='30'>{''.join(wins)}</windows></workbook>")
 
