@@ -54,7 +54,7 @@ export type LibraryChoice = { readonly action: 'ask' | 'edit'; readonly question
     </div>
   `,
   styles: `
-    :host { display: flex; flex-direction: column; max-height: 80vh; width: min(860px, 92vw); background: var(--eli-bg-dock); color: var(--eli-text-primary); }
+    :host { display: flex; flex-direction: column; max-height: 80vh; width: 100%; min-width: 0; background: var(--eli-bg-dock); color: var(--eli-text-primary); }
     .head { display: flex; align-items: center; gap: var(--eli-space-6); padding: var(--eli-space-7) var(--eli-space-8) var(--eli-space-4); }
     .title { display: flex; align-items: center; gap: var(--eli-space-4); margin: 0; color: var(--eli-text-strong); font-size: var(--eli-font-size-xl); font-weight: var(--eli-weight-semibold); mat-icon { color: var(--eli-accent-orange); } }
     .count { color: var(--eli-text-muted); font-size: var(--eli-font-size-s); }

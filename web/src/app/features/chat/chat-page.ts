@@ -155,7 +155,7 @@ export class ChatPage {
   /** The Prompt Library: ask a question now, or put it in the ask box to edit first. */
   protected openLibrary(): void {
     this.dialog
-      .open<PromptLibraryDialog, unknown, LibraryChoice>(PromptLibraryDialog, { panelClass: 'eli-library-panel', autoFocus: 'input' })
+      .open<PromptLibraryDialog, unknown, LibraryChoice>(PromptLibraryDialog, { panelClass: 'eli-library-panel', autoFocus: 'input', width: '860px', maxWidth: '92vw' })
       .afterClosed()
       .subscribe((c) => {
         if (!c) return;

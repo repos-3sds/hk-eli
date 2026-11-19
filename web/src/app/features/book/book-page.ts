@@ -189,7 +189,7 @@ export class BookPage {
 
   protected openLibrary(): void {
     this.dialog
-      .open<PromptLibraryDialog, unknown, LibraryChoice>(PromptLibraryDialog, { panelClass: 'eli-library-panel', autoFocus: 'input' })
+      .open<PromptLibraryDialog, unknown, LibraryChoice>(PromptLibraryDialog, { panelClass: 'eli-library-panel', autoFocus: 'input', width: '860px', maxWidth: '92vw' })
       .afterClosed()
       .subscribe((c) => {
         if (!c) return;
