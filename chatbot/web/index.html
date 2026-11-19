@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HK ELI Chatbot</title>
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <img class="app-header__mark" src="/assets/brand-mark.svg" alt="" width="20" height="20">
+    <span class="app-header__product">digimarkets</span>
+    <span class="app-header__sep" aria-hidden="true"></span>
+    <span class="app-header__context">HK ELI</span>
+  </header>
+
+  <main class="workspace">
+    <section class="widget" aria-labelledby="widget-title">
+      <div class="widget__titlebar">
+        <div class="widget__title">
+          <h1 id="widget-title">HK ELI Chatbot</h1>
+          <span class="widget__note">*Will be part of Ask-MIRA in future</span>
+        </div>
+        <div class="widget__controls">
+          <label class="select">
+            <span class="select__label">I am a</span>
+            <select id="persona" aria-label="Your role"></select>
+          </label>
+          <label class="select">
+            <span class="select__label">Model</span>
+            <select id="provider" aria-label="Model"></select>
+          </label>
+          <button id="new-chat" class="btn btn--ghost" type="button" title="Start a new conversation">New chat</button>
+        </div>
+      </div>
+
+      <div id="status-bar" class="status-bar" role="status">
+        <span class="status-dot status-dot--loading" aria-hidden="true"></span>
+        <span id="status-text">Connecting to the book…</span>
+      </div>
+
+      <div id="log" class="log" role="log" aria-live="polite" aria-relevant="additions" tabindex="-1">
+        <div id="empty" class="empty">
+          <h2 class="empty__title">Ask about the HK ELI book</h2>
+          <p class="empty__lede">Answers come from the overnight book through the HK ELI skills. Every figure is checked against the data before you see it.</p>
+          <div id="suggestions" class="chips" aria-label="Suggested questions"></div>
+          <ul class="empty__scope">
+            <li><strong>Clients</strong> maturities, rollovers, knock-out watch, client briefs</li>
+            <li><strong>Book</strong> concentration against limits, coupons, idea warehouse</li>
+            <li><strong>Sales</strong> by branch and region, monthly trend, RFQ demand and conversion</li>
+          </ul>
+        </div>
+      </div>
+
+      <form id="composer" class="composer" autocomplete="off">
+        <label for="question" class="sr-only">Your question</label>
+        <textarea id="question" rows="1" maxlength="2000" placeholder="Ask about clients, maturities, concentration, RFQs or sales…"></textarea>
+        <button id="send" class="btn btn--primary" type="submit" aria-label="Send">Send</button>
+        <button id="stop" class="btn btn--ghost" type="button" hidden>Stop</button>
+      </form>
+      <p class="composer__hint">Enter to send, Shift+Enter for a new line. Internal use only. Synthetic demo data. Indicative coupons are not quotes.</p>
+    </section>
+  </main>
+
+  <script src="/assets/markdown.js"></script>
+  <script src="/assets/app.js"></script>
+</body>
+</html>

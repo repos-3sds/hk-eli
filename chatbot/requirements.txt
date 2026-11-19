@@ -1,0 +1,5 @@
+# Pinned. Python 3.12. The agent itself is standard library; these are for Niharika's skills
+# (pydantic, her lock's version) and the public Gemini client.
+pydantic==2.14.1
+pydantic_core==2.50.1
+google-genai==3.5.0
