@@ -46,7 +46,10 @@ button{font:inherit;color:inherit}
 .pane{display:flex;flex-direction:column;min-height:0;background:#0e131b}
 .pane-head{display:flex;align-items:center;gap:var(--s2);padding:var(--s3) var(--s4);border-bottom:1px solid var(--line)}
 .pane-head b{color:var(--ink);font-weight:600}
-.pane iframe{flex:1;border:0;width:100%;background:#11161f}
+.pane-host{flex:1;display:flex;flex-direction:column;min-height:0;position:relative}
+.pane-host iframe,.pane-host tableau-viz{flex:1;border:0;width:100%;min-height:0;background:#11161f;display:block}
+.pane-host .mark-ask{position:absolute;left:12px;bottom:12px;background:var(--panel);box-shadow:0 4px 16px rgba(0,0,0,.4)}
+.frozen{font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:10px;padding:2px 9px;white-space:nowrap}
 .pane-empty{flex:1;display:grid;place-items:center;color:var(--muted);padding:var(--s6);text-align:center}
 
 /* messages */

@@ -32,16 +32,16 @@
     </div>
   </section>
   <section class="pane" aria-label="Tableau view">
-    <div class="pane-head"><span class="label">Tableau view</span><b id="paneTitle">None yet</b></div>
-    <div class="pane-empty" id="paneEmpty">The view behind each answer opens here, with the same filters the answer used.</div>
-    <iframe id="pane" title="Embedded Tableau view" hidden></iframe>
+    <div class="pane-head"><span class="label">Tableau view</span><b id="paneTitle">None yet</b><span class="spacer"></span><span class="frozen" id="paneMode">Mock Tableau</span></div>
+    <div class="pane-host" id="pane"><div class="pane-empty">The view behind each answer opens here, with the same filters the answer used.</div></div>
   </section>
 </div>
 <script src="/static/app.js"></script>
+<script src="/static/pane.js"></script>
 <script>
 const { el, renderAnswer } = window.POC;
 const thread = document.getElementById("thread"), q = document.getElementById("q"), send = document.getElementById("send");
-const pane = document.getElementById("pane"), paneEmpty = document.getElementById("paneEmpty"), paneTitle = document.getElementById("paneTitle");
+const pane = document.getElementById("pane"), paneTitle = document.getElementById("paneTitle");
 let site = "proposed", busy = false;
 const SUGGEST = [
   ["Which branches in D1 have the largest TRE maturity in the next 30 days?", "Branch ranking, then drill to clients"],
@@ -60,9 +60,17 @@ function welcome() {
 
 function showInPane(a) {
   if (!a.embed) return;
-  pane.hidden = false; paneEmpty.hidden = true;
-  pane.src = a.embed.url; paneTitle.textContent = a.embed.view;
+  paneTitle.textContent = a.embed.view;
+  window.Pane.show(pane, a, ask);
 }
+window.Pane.config().then(c => {
+  if (c.mode !== "real") return;
+  document.getElementById("paneMode").textContent = "Live Tableau · " + (c.site || "Default site");
+  document.querySelector(".brand small").textContent = "POC on live Tableau";
+  document.querySelector(".seg").hidden = true;
+  document.querySelector(".check").hidden = true;
+  document.querySelector(".label").hidden = true;
+});
 
 async function ask(text) {
   text = (text || "").trim();

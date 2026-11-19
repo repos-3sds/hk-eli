@@ -24,6 +24,25 @@ All data is invented. Nothing here is production code.
 | Tests | `cd poc && pip install -r requirements.txt && python -m pytest -q` |
 | Frozen single page | `cd poc && python scripts/export_static.py out/hk-eli-poc.html` |
 
+## Real Tableau embedding
+
+Set `TABLEAU_MODE=real` plus the Connected App settings and the Ask page switches from the mock to a
+real Tableau site:
+
+- **Embed:** Embedding API v3 `<tableau-viz>`, loaded from your Tableau server, with a short-lived
+  Connected App JWT (`tableau:views:embed`, sub = the user) from `/api/embed/token`. The answer's
+  filters become `<viz-filter>` elements (by caption), the answer's top marks are selected with
+  `selectMarksByValueAsync`, and a mark the user clicks (`markselectionchanged`) is offered as a
+  follow-up question. Load and auth failures show a plain message in the pane.
+- **Numbers:** the pipeline signs in to REST with a JWT (`tableau:content:read`, `tableau:views:download`),
+  matches the workbook's sheets by name to the view contract, and calls Query View Data with `vf_`.
+- **Check:** `python scripts/check_tableau.py` compares a site's sheets and CSV columns with the contract.
+- **Without a site:** `scripts/fake_tableau_server.py` imitates the REST endpoints and `<tableau-viz>`,
+  which is how real mode is tested here (`tests/test_real_tableau.py`).
+
+Setup, step by step: [docs/tableau-cloud-setup.md](docs/tableau-cloud-setup.md). Code: `hkeli_poc/tableau_real.py`,
+`hkeli_poc/static/pane.js`.
+
 ## The pipeline (one request)
 
 | # | Step | Code | Spec it follows |
@@ -68,8 +87,9 @@ Status names follow the canonical model in rediscovery 05 VI 11.1 (`OK`, `OK_WIT
   so the demo is repeatable without a key. Gemini #1 (understanding) and #2 (wording with a number
   check) come in step 3 of the plan.
 - **No Java 21 / Spring Boot edge.** SSO, rate limits and audit are not in the POC.
-- **No real Tableau.** Connected App JWT, LUIDs, RLS and the Embedding API v3 are stood in for by the mock.
-  The embed page takes URL filters; it is not `<tableau-viz>`.
+- **Real Tableau is built but not yet run against a live site.** This build environment can't reach
+  tableau.com, so real mode is tested against a stand-in server that checks the JWT, captions and calls.
+  Row-level security per user is not set up on the trial.
 - **Scenario (`market_spot`) is not simulated.** Views 9 and 10 list the parameter only.
 - **Conversation memory is not kept.** Follow-ups are full questions with the scope written in.
 - **Public repo.** This repository is public. The POC uses view and field names from the spec's

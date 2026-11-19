@@ -62,6 +62,7 @@ class Plan:
     embed_filters: dict = field(default_factory=dict)
     embed_ignored: list = field(default_factory=list)
     embed_highlight: list = field(default_factory=list)
+    embed_highlight_field: str | None = None
     asserted: list = field(default_factory=list)   # population facts proven by the catalog
     anchor: str | None = None
     anchor_known: bool = False
@@ -184,7 +185,7 @@ def build(intent: Intent, reg: Registry, anchor: date, anchor_known: bool) -> Pl
     if intent.district and intent.intent != "district":
         plan.vf["cust_district"] = [intent.district]
     if intent.district and intent.intent == "district":
-        plan.embed_highlight = [intent.district]
+        plan.embed_highlight, plan.embed_highlight_field = [intent.district], "cust_district"
     if intent.branch:
         plan.vf["cust_branch"] = [intent.branch]
     if intent.wps and intent.intent in ("maturity_detail", "mtm_distribution"):
@@ -206,6 +207,7 @@ def build(intent: Intent, reg: Registry, anchor: date, anchor_known: bool) -> Pl
         elif f in v["dimensions"] and v["kind"] != "table":
             # Not a filter, but a dimension on the chart: highlight the marks instead (05 VI A2).
             plan.embed_highlight = list(dict.fromkeys(plan.embed_highlight + vals))
+            plan.embed_highlight_field = f
         else:
             plan.embed_ignored.append(f)
     return plan

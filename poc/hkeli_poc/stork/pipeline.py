@@ -136,7 +136,8 @@ def answer(question: str, http, site: str, scenario: str | None = None, user: st
         return _finish(out)
     cols, rows = d["columns"], d["rows"]
     out["evidence"].append({"step": 1, "view": pl.view["view_name"], "record_id": pl.view["record_id"],
-                            "luid": pl.view["luid"], "request": d["url"], "row_count": len(rows),
+                            "luid": pl.view["luid"], "content_url": pl.view.get("content_url"),
+                            "request": d["url"], "row_count": len(rows),
                             "columns": cols, "asserted": pl.asserted, "window": pl.window_note})
     tr.add("Fetch", {"rows": len(rows), "bytes": d["bytes"], "ms": d["ms"]})
 
@@ -279,7 +280,7 @@ def _write(it, pl, cols, rows, out):
         ordered = sel + [r for r in rows if r not in sel]
         out["table"] = {"columns": ["Segment"] + (["Predicted result"] if ri is not None else []) + ["HKD", "Share of all"],
                         "rows": [[short(r[si])] + ([r[ri]] if ri is not None else []) + [money(float(r[vi])), pct(float(r[shi]))] for r in ordered]}
-        pl.embed_highlight = list(want)
+        pl.embed_highlight, pl.embed_highlight_field = list(want), "bp_div_type"
 
     elif it.intent == "customer_count":
         ci, ri, si = cols.index("Distinct count of Cif Id"), cols.index("Predict Result"), cols.index("Bp Div Type")
@@ -318,7 +319,7 @@ def _write(it, pl, cols, rows, out):
         out["table"] = {"columns": ["District", "Branch", "HKD"] + (["Customers"] if cust else []),
                         "rows": [[k[0].replace("TRE-", ""), k[1], money(x)] + ([cust.get(k, "")] if cust else []) for k, x in by]}
         out["followups"] = [f"Show the clients behind {lead[0][1]} maturing in the {win}"]
-        pl.embed_highlight = [lead[0][1]]
+        pl.embed_highlight, pl.embed_highlight_field = [lead[0][1]], "cust_branch"
 
     elif it.intent == "maturity_detail":
         idx = {c: i for i, c in enumerate(cols)}
@@ -415,4 +416,5 @@ def _embed(site, pl, scenario):
     return {"view": pl.view["view_name"], "record_id": pl.view["record_id"],
             "url": f"/tableau/{site}/views/{quote(pl.view['view_name'])}" + (f"?{q}" if q else ""),
             "filters": pl.embed_filters, "highlight": pl.embed_highlight,
+            "highlight_field": pl.embed_highlight_field,
             "cannot_apply": pl.embed_ignored, "scope_equivalent": not pl.embed_ignored}
