@@ -52,7 +52,7 @@ CALCS = {
                    "SUM([volume_bu]) / MIN({FIXED : SUM([volume_bu])})"),
     "calc_customers": ("Customers (all results)", "integer", "measure", "quantitative",
                        "MIN({EXCLUDE [predict_result] : COUNTD([cif_id])})"),
-    "calc_max_trade_date": ("Max Trade Date", "string", "measure", "quantitative", "MAX([trade_date])"),
+    "calc_max_trade_date": ("Max Trade Date", "string", "measure", "nominal", "MAX([trade_date])"),
     "calc_mtm_bin": ("MTM% (bin)", "integer", "dimension", "ordinal", "FLOOR([wps_mtm] / 5) * 5"),
 }
 W1 = ["days_to_pred_maturity", "in_n7", "in_n14", "in_n30", "in_n60", "in_n90"]
@@ -72,9 +72,9 @@ DER = {"none": "None", "sum": "Sum", "avg": "Avg", "ctd": "CountD", "usr": "User
 
 
 def inst(der: str, field: str) -> str:
-    if der == "none":
+    if der in ("none", "usr"):
         typ = FIELDS[field][3] if field in FIELDS else CALCS[field][3]
-        suffix = "nk" if typ == "nominal" else "ok"
+        suffix = {"nominal": "nk", "ordinal": "ok", "quantitative": "qk"}[typ]
     else:
         suffix = "qk"
     return f"[{der}:{field}:{suffix}]"
