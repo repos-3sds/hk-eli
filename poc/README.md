@@ -34,7 +34,7 @@ python3.12 -m venv .venv
 .venv/bin/python -m pip install --no-cache-dir --require-hashes -r requirements.txt
 .venv/bin/python -m pip install --no-cache-dir --require-hashes -r requirements-dev.txt   # tests only
 .venv/bin/python -m pip check
-.venv/bin/python -m pytest -q -p no:cacheprovider               # 83 passed
+.venv/bin/python -m pytest -q -p no:cacheprovider               # 86 passed
 cp .env.example .env                                              # fill in office values
 .venv/bin/python office/smoke_test.py                             # SMOKE PASS
 ./run.sh                                                          # http://127.0.0.1:8050, Ctrl+C to stop
@@ -70,9 +70,10 @@ failed a check; `meta.insight`: template, gateway, or gateway->template).
 
 | Call | Body or query | Returns |
 |---|---|---|
-| `POST /api/v1/ask` | `{question, site?, scenario?, conversation_id?}` | answer: status, headline, bullets, table, chart, caveats, evidence, embed, followups, as_of, meta, turn_id, conversation_id, request_id |
+| `POST /api/v1/ask` | `{question, site?, scenario?, conversation_id?, channel?}` (`channel`: `chat` default, or `insights` for questions a screen asks on its own; both are stored, only `chat` shows in history) | answer: status, headline, bullets, table, chart, caveats, evidence, embed, followups, as_of, meta, turn_id, conversation_id, request_id |
 | `POST /api/v1/feedback` | `{turn_id, rating: 1 or -1, comment?}` | `{feedback_id}` (only on the caller's own answers) |
-| `GET /api/v1/history` | `conversation_id?`, `limit?` | the caller's recent turns |
+| `POST /api/v1/ask/stream` | same body as `/api/v1/ask` | Server-Sent Events: one `stage` event per pipeline step (`n`, `name`, `label`, `ms`) as it finishes, then one `answer` event with the same object as `/api/v1/ask` (or `error`) |
+| `GET /api/v1/history` | `conversation_id?`, `limit?`, `channel?` (default `chat`) | the caller's recent turns in that channel |
 | `GET /api/v1/config` | | non-secret settings and content versions |
 | `GET /healthz`, `GET /readyz` | | alive; ready with store, knowledge, prompts, Tableau and model checks |
 | `GET /api/embed/config`, `GET /api/embed/token` | | real Tableau only: embed settings and a 5-minute embed token for the caller |

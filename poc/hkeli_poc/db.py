@@ -80,7 +80,13 @@ MIGRATIONS: list[tuple[int, str]] = [
         comment     TEXT
     );
     """),
+    (2, """
+    ALTER TABLE turn ADD COLUMN channel TEXT NOT NULL DEFAULT 'chat';
+    CREATE INDEX ix_turn_user_channel ON turn(user_id, channel, created_at);
+    """),
 ]
+
+CHANNELS = ("chat", "insights")
 
 
 def _now() -> str:
@@ -145,19 +151,22 @@ class Store:
             self._con.execute("INSERT INTO conversation VALUES (?, ?, ?, ?)", (cid, user_id, now, now))
             return cid
 
-    def record_turn(self, *, conversation_id: str, request_id: str, user_id: str, answer: dict, latency_ms: int) -> str:
+    def record_turn(self, *, conversation_id: str, request_id: str, user_id: str, answer: dict, latency_ms: int,
+                    channel: str = "chat") -> str:
         tid = new_id()
         ev = (answer.get("evidence") or [{}])[0]
         meta = answer.get("meta") or {}
         with self._lock:
             self._con.execute(
-                "INSERT INTO turn VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO turn (id, conversation_id, request_id, user_id, created_at, question, site, intent, understanding,"
+                " insight, view_record_id, filters_json, status, reasons_json, headline, numbers_json, latency_ms, channel)"
+                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (tid, conversation_id, request_id, user_id, _now(), answer.get("question", ""), answer.get("site"),
                  answer.get("intent"), meta.get("understanding"), meta.get("insight"), ev.get("record_id"),
                  json.dumps((answer.get("embed") or {}).get("filters") or {}), answer.get("status", "SYSTEM_ERROR"),
                  json.dumps(answer.get("reasons") or []), answer.get("headline", ""),
                  json.dumps([{k: n[k] for k in ("id", "value", "measure")} for n in answer.get("numbers") or []]),
-                 latency_ms))
+                 latency_ms, channel))
         return tid
 
     def record_llm_calls(self, turn_id: str | None, request_id: str, calls: list[dict]) -> None:
@@ -178,9 +187,11 @@ class Store:
             return fid
 
     # --- reads
-    def turns(self, user_id: str, conversation_id: str | None = None, limit: int = 50) -> list[dict]:
-        q = "SELECT id, conversation_id, created_at, question, status, headline, intent, view_record_id FROM turn WHERE user_id = ?"
-        args: list = [user_id]
+    def turns(self, user_id: str, conversation_id: str | None = None, limit: int = 50, channel: str = "chat") -> list[dict]:
+        """A user's turns in one channel. Background widget questions ('insights') are kept for audit, not shown as history."""
+        q = ("SELECT id, conversation_id, created_at, question, status, headline, intent, view_record_id, channel"
+             " FROM turn WHERE user_id = ? AND channel = ?")
+        args: list = [user_id, channel]
         if conversation_id:
             q += " AND conversation_id = ?"
             args.append(conversation_id)

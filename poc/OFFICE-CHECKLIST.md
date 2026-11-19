@@ -10,7 +10,7 @@ only (pass/fail, counts, names of views or columns): never values, rows, host na
 - [ ] A2 `python3.12 -V` is 3.12.x and `uname -m` noted
 - [ ] A3 both preflights say every pinned package downloads (or FAIL lines sent back)
 - [ ] A4 `pip install --require-hashes` for both lock files, `pip check` clean, nothing built from source
-- [ ] A5 `pytest`: 83 passed
+- [ ] A5 `pytest`: 86 passed
 - [ ] A6 `office/smoke_test.py`: SMOKE PASS
 - [ ] A7 `office/run_eval.py` (mock, model off): eval 20 of 20 pass
 

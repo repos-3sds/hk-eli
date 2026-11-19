@@ -61,7 +61,7 @@ def test_bad_settings_fail_loudly(monkeypatch, env, msg):
 # ---------------------------------------------------------------- store
 def test_store_migrates_once_and_keeps_ownership(tmp_path):
     s = Store(tmp_path / "x.sqlite")
-    assert s.version() == 1 and s.migrate() == 1
+    assert s.version() == 2 and s.migrate() == 2
     cid = s.conversation("u1", None)
     assert s.conversation("u1", cid) == cid and s.conversation("u2", cid) != cid   # can't join another user's chat
     tid = s.record_turn(conversation_id=cid, request_id="r" * 8, user_id="u1",
@@ -70,7 +70,7 @@ def test_store_migrates_once_and_keeps_ownership(tmp_path):
     assert s.add_feedback(tid, "u2", 1, None) is None and s.add_feedback(tid, "u1", -1, "wrong branch")
     assert s.counts() == {"conversation": 2, "turn": 1, "llm_call": 0, "feedback": 1}
     s.close()
-    assert Store(tmp_path / "x.sqlite").version() == 1   # reopen: no re-migration
+    assert Store(tmp_path / "x.sqlite").version() == 2   # reopen: no re-migration
 
 
 # ---------------------------------------------------------------- API v1
@@ -287,3 +287,42 @@ def test_named_stock_exposure_leads_with_that_stock():
     a = run("What is our exposure to Tencent?", OffClient())
     assert a["intent"] == "wps_exposure" and a["headline"].startswith("700 HK carries")
     assert a["meta"]["provider"] == "none"
+
+
+def test_insights_channel_is_audited_but_not_history():
+    hdr = {"X-Request-Id": "insight-0001"}
+    a = client.post("/api/v1/ask", json={"question": "What is total outstanding ELI?", "channel": "insights"}, headers=hdr).json()
+    assert a["channel"] == "insights" and a["turn_id"]
+    chat = client.get("/api/v1/history", params={"limit": 200}).json()["turns"]
+    assert all(t["id"] != a["turn_id"] for t in chat)
+    ins = client.get("/api/v1/history", params={"channel": "insights", "limit": 200}).json()["turns"]
+    assert any(t["id"] == a["turn_id"] for t in ins)
+    assert client.post("/api/v1/ask", json={"question": "What is total outstanding ELI?", "channel": "other"}).status_code == 422
+
+
+def test_stream_sends_stages_then_the_answer():
+    with client.stream("POST", "/api/v1/ask/stream", json={"question": Q_BRANCH}) as r:
+        assert r.status_code == 200 and r.headers["content-type"].startswith("text/event-stream")
+        text = "".join(r.iter_text())
+    events = [(b.split("\n")[0][7:], json.loads(b.split("\n")[1][6:])) for b in text.strip().split("\n\n")]
+    kinds = [k for k, _ in events]
+    assert kinds[-1] == "answer" and kinds.count("stage") == 10 and set(kinds) == {"stage", "answer"}
+    assert events[0][1]["label"] == "Reading the question" and "detail" not in events[0][1]
+    assert events[-1][1]["status"] == "OK" and events[-1][1]["turn_id"]
+
+
+def test_v1_database_upgrades_in_place(tmp_path):
+    import sqlite3
+    from hkeli_poc import db
+    p = tmp_path / "old.sqlite"
+    con = sqlite3.connect(p)
+    con.executescript(db.MIGRATIONS[0][1])
+    con.execute("CREATE TABLE schema_version (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)")
+    con.execute("INSERT INTO schema_version VALUES (1, 'x')")
+    con.execute("INSERT INTO conversation VALUES ('c1','u','t','t')")
+    con.execute("INSERT INTO turn (id, conversation_id, request_id, user_id, created_at, question, status)"
+                " VALUES ('t1','c1','r','u','t','q','OK')")
+    con.commit(); con.close()
+    s = db.Store(p)
+    assert s.version() == 2
+    assert [t["id"] for t in s.turns("u")] == ["t1"] and s.turns("u", channel="insights") == []

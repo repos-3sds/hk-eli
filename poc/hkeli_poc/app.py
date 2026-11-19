@@ -9,7 +9,8 @@ X-Eli-User (the signed-in user). With TRUST_EDGE_HEADERS=false (laptop demo) eve
 DEFAULT_USER, or as TABLEAU_USER in real-Tableau mode.
 
 API (v1, JSON):
-  POST /api/v1/ask        {question, site?, scenario?, conversation_id?} -> answer + turn_id
+  POST /api/v1/ask        {question, site?, scenario?, conversation_id?, channel?} -> answer + turn_id
+  POST /api/v1/ask/stream same body; Server-Sent Events: `stage` per pipeline step, then `answer` (or `error`)
   POST /api/v1/feedback   {turn_id, rating: 1|-1, comment?}
   GET  /api/v1/history    ?conversation_id=&limit=
   GET  /api/v1/config     non-secret settings the UI needs
@@ -25,11 +26,14 @@ import logging
 import re
 import time
 import uuid
+import queue
+import threading
 from contextlib import asynccontextmanager
+from typing import Literal
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -188,6 +192,8 @@ class Ask(BaseModel):
     site: str = "proposed"
     scenario: str | None = Field(default=None, max_length=20)
     conversation_id: str | None = Field(default=None, max_length=64)
+    # "insights" = background questions a screen asks on its own (e.g. Today). Stored for audit, left out of history.
+    channel: Literal["chat", "insights"] = "chat"
 
 
 def _real_embed(a: dict) -> dict:
@@ -204,10 +210,10 @@ def _real_embed(a: dict) -> dict:
     return a
 
 
-def run(question: str, site: str, scenario: str | None, user: str = "demo.user"):
+def run(question: str, site: str, scenario: str | None, user: str = "demo.user", on_step=None):
     ensure_started()
     s = TR.settings()
-    kw = dict(user=user, llm=S.llm, lib=S.lib, kb=S.kb)
+    kw = dict(user=user, llm=S.llm, lib=S.lib, kb=S.kb, on_step=on_step)
     if s:  # real Tableau: one workbook, whose contract is set by TABLEAU_CATALOG; no scenarios
         a = _real_embed(answer(question, tableau_http(), s.catalog, **kw))
     else:
@@ -220,25 +226,74 @@ def run(question: str, site: str, scenario: str | None, user: str = "demo.user")
     return a
 
 
+def _ask(body: Ask, user: str, rid: str, on_step=None) -> dict:
+    t0 = time.perf_counter()
+    a = run(body.question.strip(), body.site, body.scenario, user=user, on_step=on_step)
+    calls = [c.as_row() for c in a.pop("_llm_calls", [])]
+    ms = round((time.perf_counter() - t0) * 1000)
+    conv = S.store.conversation(user, body.conversation_id)
+    tid = S.store.record_turn(conversation_id=conv, request_id=rid, user_id=user, answer=a, latency_ms=ms,
+                              channel=body.channel)
+    S.store.record_llm_calls(tid, rid, calls)
+    a.update(turn_id=tid, conversation_id=conv, request_id=rid, latency_ms=ms, channel=body.channel)
+    log.info("turn", extra={"extra": {"request_id": rid, "turn_id": tid, "status": a["status"], "intent": a.get("intent"),
+                                      "channel": body.channel, "understanding": a["meta"]["understanding"],
+                                      "insight": a["meta"]["insight"], "ms": ms}})
+    return a
+
+
 @app.post("/api/v1/ask")
 @app.post("/api/ask", include_in_schema=False)
 def ask(body: Ask, request: Request):
     ensure_started()
     if body.site not in SITES:
         raise HTTPException(400, "Unknown site")
-    user = current_user(request)
-    rid = request.state.request_id
-    t0 = time.perf_counter()
-    a = run(body.question.strip(), body.site, body.scenario, user=user)
-    calls = [c.as_row() for c in a.pop("_llm_calls", [])]
-    ms = round((time.perf_counter() - t0) * 1000)
-    conv = S.store.conversation(user, body.conversation_id)
-    tid = S.store.record_turn(conversation_id=conv, request_id=rid, user_id=user, answer=a, latency_ms=ms)
-    S.store.record_llm_calls(tid, rid, calls)
-    a.update(turn_id=tid, conversation_id=conv, request_id=rid, latency_ms=ms)
-    log.info("turn", extra={"extra": {"request_id": rid, "turn_id": tid, "status": a["status"], "intent": a.get("intent"),
-                                      "understanding": a["meta"]["understanding"], "insight": a["meta"]["insight"], "ms": ms}})
-    return a
+    return _ask(body, current_user(request), request.state.request_id)
+
+
+STAGE_LABEL = {"Pre-parse": "Reading the question", "Understand": "Understanding the question",
+               "Data as-of": "Checking the data date", "Route": "Choosing the Tableau view",
+               "Plan check": "Checking the plan", "Compile": "Building the filters",
+               "Fetch": "Querying the view as you", "Validate": "Checking the result",
+               "Write answer": "Writing the answer", "Compose": "Composing"}
+
+
+@app.post("/api/v1/ask/stream")
+def ask_stream(body: Ask, request: Request):
+    """Same answer as /api/v1/ask, streamed as Server-Sent Events.
+
+    event: stage   data: {"n", "name", "label", "ms"}   one per pipeline step, as it finishes
+    event: answer  data: <the full answer object>       last event on success
+    event: error   data: {"status": "SYSTEM_ERROR", "request_id"}
+    """
+    ensure_started()
+    if body.site not in SITES:
+        raise HTTPException(400, "Unknown site")
+    user, rid = current_user(request), request.state.request_id   # checked before the stream starts
+    q: queue.Queue = queue.Queue()
+    done = object()
+
+    def work():
+        try:
+            a = _ask(body, user, rid, on_step=lambda st: q.put(("stage", {**st, "label": STAGE_LABEL.get(st["name"], st["name"])})))
+            q.put(("answer", a))
+        except Exception:  # same envelope as the JSON endpoint, no internals
+            log.exception("stream failed", extra={"extra": {"request_id": rid}})
+            q.put(("error", {"status": "SYSTEM_ERROR", "error": "Something went wrong on our side.", "request_id": rid}))
+        q.put(done)
+
+    threading.Thread(target=work, name=f"ask-{rid[:8]}", daemon=True).start()
+
+    def events():
+        while True:
+            item = q.get()
+            if item is done:
+                return
+            kind, data = item
+            yield f"event: {kind}\ndata: {json.dumps(data)}\n\n"
+
+    return StreamingResponse(events(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"})
 
 
 class Feedback(BaseModel):
@@ -259,9 +314,10 @@ def feedback(body: Feedback, request: Request):
 
 
 @app.get("/api/v1/history")
-def history(request: Request, conversation_id: str | None = None, limit: int = 50):
+def history(request: Request, conversation_id: str | None = None, limit: int = 50,
+            channel: Literal["chat", "insights"] = "chat"):
     ensure_started()
-    return {"turns": S.store.turns(current_user(request), conversation_id, max(1, min(limit, 200)))}
+    return {"turns": S.store.turns(current_user(request), conversation_id, max(1, min(limit, 200)), channel)}
 
 
 @app.get("/api/v1/config")

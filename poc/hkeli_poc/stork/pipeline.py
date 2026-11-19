@@ -42,14 +42,19 @@ def short(seg: str) -> str:
 
 
 class Trace:
-    def __init__(self):
-        self.steps, self._t = [], time.perf_counter()
+    def __init__(self, on_step=None):
+        self.steps, self._t, self.on_step = [], time.perf_counter(), on_step
 
     def add(self, name, detail):
         now = time.perf_counter()
-        self.steps.append({"n": len(self.steps) + 1, "name": name, "detail": detail,
-                           "ms": round((now - self._t) * 1000, 1)})
+        step = {"n": len(self.steps) + 1, "name": name, "detail": detail, "ms": round((now - self._t) * 1000, 1)}
+        self.steps.append(step)
         self._t = now
+        if self.on_step:
+            try:
+                self.on_step({"n": step["n"], "name": name, "ms": step["ms"]})   # stage only, no detail
+            except Exception:  # a slow or closed listener never breaks the answer
+                pass
 
 
 def _idx(cols, name):
@@ -57,14 +62,14 @@ def _idx(cols, name):
 
 
 def answer(question: str, http, site: str, scenario: str | None = None, user: str = "demo.user",
-           llm=None, lib: dict | None = None, kb: KB.Knowledge | None = None) -> dict:
+           llm=None, lib: dict | None = None, kb: KB.Knowledge | None = None, on_step=None) -> dict:
     cfg = config.get()
     today = demo_today()
     llm = llm or OffClient()
     kb = kb or KB.load(str(cfg.knowledge_dir))
     lib = lib or PR.library(str(cfg.prompts_dir))
     calls: list = []
-    tr = Trace()
+    tr = Trace(on_step)
     client = TableauClient(http, site, user=user, scenario=scenario)
     out = {"question": question, "site": site, "scenario": scenario, "status": "OK", "reasons": [],
            "caveats": [], "headline": "", "bullets": [], "table": None, "chart": None, "numbers": [],
