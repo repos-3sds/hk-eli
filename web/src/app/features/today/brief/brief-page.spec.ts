@@ -81,7 +81,8 @@ describe('BriefPage', () => {
   it('starts with the client panel closed, so the selected row carries the actions', async () => {
     const { el, fixture } = await render();
     const actions = () => el.querySelector('eli-brief-row .item.panel-closed .inline-actions');
-    expect(actions()?.textContent).toContain('Show rollover ideas');
+    expect(actions()?.textContent).toContain('Ask about');
+    expect(actions()?.textContent).not.toContain('hand-off');
     TestBed.inject(TodayStore).dockOpen.set(true);
     fixture.detectChanges();
     expect(actions()).toBeNull();
@@ -108,22 +109,11 @@ describe('BriefPage', () => {
     expect(el.querySelectorAll('.pocket')).toHaveLength(3);
   });
 
-  it('adds the selected client to the hand-off list for their owner RM, once', async () => {
-    const { el, fixture } = await render();
-    const btn = () => [...el.querySelectorAll('eli-brief-row .inline-actions button')].find((b) => /hand-off/.test(b.textContent ?? '')) as HTMLButtonElement;
-    btn().click();
-    fixture.detectChanges();
-    const handoff = TestBed.inject(HandoffStore);
-    expect(handoff.draft()).toMatchObject([{ clientName: 'Chan Tai Man', ownerRm: 'Srivalli T.', branch: 'Kwun Tong', reason: 'Maturity', from: 'Today' }]);
-    expect(btn().textContent).toContain('On hand-off list');
-    expect(btn().disabled).toBe(true);
-  });
-
-  it('opens Ideas for a pocket', async () => {
+  it('offers no Ideas or hand-off actions, since those screens are hidden (beyond the discovery docs)', async () => {
     const { el } = await render();
-    const spy = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
-    (el.querySelectorAll('.pocket .eli-link')[1] as HTMLButtonElement).click();
-    expect(spy).toHaveBeenCalledWith(['/ideas'], { queryParams: { pocket: 'p-kt-tr' } });
+    expect(el.textContent).not.toContain('Add to hand-off');
+    expect(el.textContent).not.toContain('Ideas for this pocket');
+    expect(el.querySelector('a[href^="/ideas"]')).toBeNull();
   });
 
   it('says so when nothing needs the RM', async () => {

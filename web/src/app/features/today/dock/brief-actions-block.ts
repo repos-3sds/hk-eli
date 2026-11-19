@@ -2,7 +2,6 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { RouterLink } from '@angular/router';
 import { LeadActions } from '../brief/lead-actions';
 import { AgreementDots } from '../shared/agreement-dots';
 import { MomentChip } from '../shared/moment-chip';
@@ -16,7 +15,7 @@ import { TodayStore } from '../today.store';
  */
 @Component({
   selector: 'eli-brief-actions-block',
-  imports: [MatButtonModule, MatIconModule, MatTooltipModule, RouterLink, AgreementDots, MomentChip],
+  imports: [MatButtonModule, MatIconModule, MatTooltipModule, AgreementDots, MomentChip],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (store.focusedLead(); as lead) {
@@ -40,12 +39,9 @@ import { TodayStore } from '../today.store';
           }
         </div>
         <div class="actions">
-          <a matButton="filled" class="primary" routerLink="/ideas" [queryParams]="{ client: lead.clientId }">{{ lead.action.label }}</a>
+          <!-- Ideas and the hand-off list are hidden: beyond the discovery docs (Hawk, 2026-11-20). -->
+          <button matButton="filled" class="primary" type="button" (click)="actions.ask(lead)">Ask about {{ name() }}</button>
           <div class="secondary">
-            <button matButton="outlined" type="button" (click)="actions.ask(lead)">Ask about {{ name() }}</button>
-            <button matButton="outlined" type="button" (click)="actions.addToHandoff(lead)" [disabled]="actions.isHandedOff(lead)">
-              <mat-icon [svgIcon]="actions.isHandedOff(lead) ? 'check' : 'list-plus'" />{{ actions.isHandedOff(lead) ? 'On hand-off list' : 'Add to hand-off' }}
-            </button>
             <button matButton type="button" (click)="actions.park(lead)">Mark reviewed</button>
           </div>
         </div>

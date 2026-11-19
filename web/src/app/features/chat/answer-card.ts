@@ -3,7 +3,6 @@ import { shortDate } from '../../core/time/business-calendar';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { RouterLink } from '@angular/router';
 import { ChatAnswer, EvidenceRecord } from '../../core/chat/chat.models';
 import { MomentChip } from '../today/shared/moment-chip';
 import { ConcentrationBar } from '../today/shared/concentration-bar';
@@ -13,7 +12,7 @@ import { UsdPipe } from '../today/shared/format';
 /** One answer: typed blocks (text, facts, client rows, bars, ideas, bullets), the trust line and follow-up questions. */
 @Component({
   selector: 'eli-answer-card',
-  imports: [MatButtonModule, MatIconModule, RouterLink, MomentChip, ConcentrationBar, TrustLine, UsdPipe],
+  imports: [MatButtonModule, MatIconModule, MomentChip, ConcentrationBar, TrustLine, UsdPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <article class="card" [class.fallback]="answer().fallback">
@@ -77,7 +76,6 @@ import { UsdPipe } from '../today/shared/format';
                   </li>
                 }
               </ol>
-              <a matButton="outlined" class="open" routerLink="/ideas" [queryParams]="{ client: b.clientId }">See why in Ideas<mat-icon svgIcon="chevron-right" iconPositionEnd /></a>
             </section>
           }
           @case ('table') {

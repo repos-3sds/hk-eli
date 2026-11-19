@@ -50,23 +50,14 @@ export interface GuideStep {
   readonly cta: string;
 }
 
-export const ROLE_GUIDES: Record<LaunchRole, readonly GuideStep[]> = {
-  wms: [
-    { title: 'See what needs you today', text: 'Today lists what matures and what is near a knock-out across the business, with how fresh the figures are.', path: '/today', cta: 'Open Today' },
-    { title: 'Get the facts on one client', text: 'Ask Chat "Brief me on Chan" for holdings, limits and what matures, ready for the owning RM.', path: '/chat', cta: 'Open Chat' },
-    { title: 'Find ideas and hand them off', text: 'Ideas ranks indicative ELIs against the signals you pick. Add the good ones to the hand-off list.', path: '/ideas', cta: 'Open Ideas' },
-  ],
-  pm: [
-    { title: 'Read demand next to the book', text: 'Shelf shows what was quoted this week, beside how full each name is against its limit.', path: '/shelf', cta: 'Open Shelf' },
-    { title: 'Pick tomorrow\'s shelf', text: 'Tick ideas before the pricing cut-off and copy the request for the desk.', path: '/shelf', cta: 'Pick the shelf' },
-    { title: 'Publish a starter pack', text: 'A published pack shows in every launch user\'s Ideas tab, under "From the product team".', path: '/ideas', cta: 'Open Ideas' },
-  ],
-  tsm: [
-    { title: 'See your team\'s month', text: 'Update starts with rollover by branch and by RM, against the 80% line.', path: '/update', cta: 'Open Update' },
-    { title: 'Act on a pocket', text: 'Pick a branch below the line and make a hand-off list of who matures there.', path: '/update', cta: 'See pockets' },
-    { title: 'Let the next one come to you', text: 'Set an alert, for example "rollover below 80% in a branch", instant or in the morning digest.', path: '/alerts', cta: 'Open Alerts' },
-  ],
-};
+/** The same steps for every launch role: only the screens the discovery docs cover (Hawk, 2026-11-20). */
+const DISCOVERY_GUIDE: readonly GuideStep[] = [
+  { title: 'See what needs you today', text: 'Today lists what matures and what is near a knock-out across the business, with how fresh the figures are.', path: '/today', cta: 'Open Today' },
+  { title: 'Ask in plain words', text: 'Ask Chat about maturities, knock-outs or concentration. The HK ELI agents answer from the book and every figure is checked.', path: '/chat', cta: 'Open Chat' },
+  { title: 'Get the facts on one client', text: 'Ask Chat "Brief me on Chan" for holdings, limits and what matures.', path: '/chat', cta: 'Open Chat' },
+];
+
+export const ROLE_GUIDES: Record<LaunchRole, readonly GuideStep[]> = { wms: DISCOVERY_GUIDE, pm: DISCOVERY_GUIDE, tsm: DISCOVERY_GUIDE };
 
 /** Example questions Chat answers from data, grouped as a first-time user would look for them. */
 export const ASK_EXAMPLES: readonly { readonly topic: string; readonly question: string }[] = [
@@ -74,14 +65,16 @@ export const ASK_EXAMPLES: readonly { readonly topic: string; readonly question:
   { topic: 'Knock-outs', question: 'Which knock-outs are close to the barrier?' },
   { topic: 'Rollover', question: 'Which branch has the worst rollover?' },
   { topic: 'Concentration', question: 'Top concentrations against limit' },
-  { topic: 'Unmet demand', question: 'What was quoted and not traded this week?' },
   { topic: 'One client', question: 'Brief me on Chan' },
   { topic: 'Client history', question: 'What did Chan trade in the last 90 days?' },
 ];
 
 /** The tabs each role works in most, marked "For you" on the tab rail. */
 export const ROLE_HOME_TABS: Record<LaunchRole, readonly string[]> = {
-  wms: ['today', 'chat', 'ideas'],
-  pm: ['shelf', 'ideas'],
-  tsm: ['update', 'alerts'],
+  wms: ['today', 'chat'],
+  pm: ['today', 'chat'],
+  tsm: ['today', 'chat'],
 };
+
+/** The glossary terms shown while the screens beyond the discovery docs are hidden (shelf, rollover, hand-offs stay defined). */
+export const DISCOVERY_TERMS: readonly TermKey[] = (Object.keys(GLOSSARY) as TermKey[]).filter((k) => !['shelf', 'starter-pack', 'q2t', 'self-directed', 'handoff', 'linked-conversion', 'cutoff', 'signal', 'indicative'].includes(k));

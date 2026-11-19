@@ -2,7 +2,6 @@ import { ChangeDetectionStrategy, Component, computed, inject, input, output } f
 import { LeadActions } from './lead-actions';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { RouterLink } from '@angular/router';
 import { Lead } from '../../../core/models/today.models';
 import { MomentChip } from '../shared/moment-chip';
 import { callName, momentText } from '../shared/moment-text';
@@ -14,7 +13,7 @@ import { callName, momentText } from '../shared/moment-text';
  */
 @Component({
   selector: 'eli-brief-row',
-  imports: [MatButtonModule, MatIconModule, RouterLink, MomentChip],
+  imports: [MatButtonModule, MatIconModule, MomentChip],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="item" [class.selected]="selected()" [class.panel-closed]="panelClosed()">
@@ -38,11 +37,8 @@ import { callName, momentText } from '../shared/moment-text';
       </button>
       @if (selected()) {
         <div class="inline-actions">
-          <a matButton="filled" routerLink="/ideas" [queryParams]="{ client: lead().clientId }">{{ lead().action.label }}</a>
-          <button matButton="outlined" type="button" (click)="ask.emit(lead())">Ask about {{ name() }}</button>
-          <button matButton="outlined" type="button" (click)="actions.addToHandoff(lead())" [disabled]="actions.isHandedOff(lead())">
-            <mat-icon [svgIcon]="actions.isHandedOff(lead()) ? 'check' : 'list-plus'" />{{ actions.isHandedOff(lead()) ? 'On hand-off list' : 'Add to hand-off' }}
-          </button>
+          <!-- Ideas and the hand-off list are hidden: beyond the discovery docs (Hawk, 2026-11-20). -->
+          <button matButton="filled" type="button" (click)="ask.emit(lead())">Ask about {{ name() }}</button>
           <button matButton type="button" (click)="park.emit(lead())">Mark reviewed</button>
         </div>
       }

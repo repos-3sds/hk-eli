@@ -23,19 +23,25 @@ describe('routes', () => {
     expect(await go('/')).toBe('/today');
   });
 
-  it('opens the Product Manager on the shelf console', async () => {
-    expect(await go('/', 'pm')).toBe('/shelf');
+  it('opens every launch role on Today', async () => {
+    expect(await go('/', 'pm')).toBe('/today');
   });
 
   it('opens the Treasury Sales Manager on Today', async () => {
-    expect(await go('/', 'tsm')).toBe('/update');
+    expect(await go('/', 'tsm')).toBe('/today');
   });
+
+  for (const tab of ['/ideas', '/shelf', '/update', '/alerts', '/feedback']) {
+    it(`sends ${tab}, beyond the discovery docs, to Today`, async () => {
+      expect(await go(tab)).toBe('/today');
+    });
+  }
 
   it('redirects old RM links to the same tab, keeping the query', async () => {
     expect(await go('/rm/chat?q=Who%20matures%20this%20week%3F')).toBe('/chat?q=Who%20matures%20this%20week%3F');
   });
 
-  it('redirects an old link to a client\'s ideas to the Ideas tab', async () => {
-    expect(await go('/rm/today/ideas/c-4821')).toBe('/ideas?client=c-4821');
+  it('sends an old link to a client\'s ideas to Today, since Ideas is hidden', async () => {
+    expect(await go('/rm/today/ideas/c-4821')).toBe('/today');
   });
 });

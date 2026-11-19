@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, signa
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { Router } from '@angular/router';
-import { MOMENT_LABELS, Moment, Pocket } from '../../../core/models/today.models';
+import { MOMENT_LABELS, Moment } from '../../../core/models/today.models';
 import { ScopeSwitch } from '../shared/scope-switch';
 import { Composer } from '../composer/composer';
 import { MomentStrip } from '../moment-strip/moment-strip';
@@ -53,11 +53,6 @@ export class BriefPage {
   protected askNow(question: string): void {
     const client = this.store.pickedClientId() ?? this.store.openLeads()[0]?.clientId;
     void this.router.navigate(['/chat'], { queryParams: { q: question, client } });
-  }
-
-  /** Ideas for a pocket: the Ideas tab opens with that branch and segment in the brief line. */
-  protected ideasForPocket(pocket: Pocket): void {
-    void this.router.navigate(['/ideas'], { queryParams: { pocket: pocket.id } });
   }
 
   /** Arrow keys move between the two tabs. */
