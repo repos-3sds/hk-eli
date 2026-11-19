@@ -1,0 +1,418 @@
+"""The thin Stork pipeline: question in, validated answer object out.
+
+Steps (rediscovery 06 PL 11.3, trimmed for the POC):
+  1 pre-parse  2 understand  3 data as-of  4 route  5 plan + validate plan
+  6 compile filter spec (vf_ and embed)  7 fetch (Query View Data)
+  8 validate result  9 write answer (template insight)  10 compose (embed, follow-ups)
+
+Code decides the view, filters and numbers. The text only uses numbers that
+came back from Tableau. Status names follow 05 VI 11.1.
+"""
+from __future__ import annotations
+
+import os
+import time
+from collections import defaultdict
+from datetime import date
+from urllib.parse import quote
+
+from ..svg import money
+from ..workbook import CAPTION
+from . import plan as P
+from .tableau_client import TableauClient, TableauError
+from .understand import understand
+
+SEVERITY = ["SYSTEM_ERROR", "VALIDATION_FAILED", "UNSUPPORTED", "NEEDS_CLARIFICATION", "NO_DATA",
+            "PARTIAL", "OK_FALLBACK", "OK_WITH_WARNING", "OK"]
+
+
+def demo_today() -> date:
+    return date.fromisoformat(os.environ.get("DEMO_TODAY", "2026-11-19"))
+
+
+def pct(x: float) -> str:
+    return f"{x * 100:.1f}%"
+
+
+def short(seg: str) -> str:
+    return {"Treasures(HK)": "TRE", "Treasures(TPC)": "TPC"}.get(seg, seg)
+
+
+class Trace:
+    def __init__(self):
+        self.steps, self._t = [], time.perf_counter()
+
+    def add(self, name, detail):
+        now = time.perf_counter()
+        self.steps.append({"n": len(self.steps) + 1, "name": name, "detail": detail,
+                           "ms": round((now - self._t) * 1000, 1)})
+        self._t = now
+
+
+def _idx(cols, name):
+    return cols.index(name) if name in cols else None
+
+
+def answer(question: str, http, site: str, scenario: str | None = None, user: str = "demo.user") -> dict:
+    today = demo_today()
+    tr = Trace()
+    client = TableauClient(http, site, user=user, scenario=scenario)
+    out = {"question": question, "site": site, "scenario": scenario, "status": "OK", "reasons": [],
+           "caveats": [], "headline": "", "bullets": [], "table": None, "numbers": [],
+           "evidence": [], "embed": None, "followups": [], "as_of": None, "scope": "", "trace": tr.steps,
+           "meta": {"understanding": "deterministic rules (Gemini adapter off in POC)",
+                    "insight": "template over validated numbers"}}
+
+    # 1-2 understand
+    it = understand(question, today)
+    tr.add("Pre-parse", {k: v for k, v in it.hints.items() if v})
+    tr.add("Understand", {"intent": it.intent, "grain": it.grain, "assumptions": it.assumptions})
+    out["scope"] = it.scope_line()
+    out["assumptions"] = it.assumptions
+    if it.intent == "unknown":
+        out.update(status="NEEDS_CLARIFICATION", reasons=["AMBIGUOUS_INTENT"],
+                   headline="I can answer questions about outstanding ELI, shares by segment, predicted maturity "
+                            "(TRE), clients to follow up, WPS exposure, MTM distribution and data freshness. "
+                            "Could you rephrase with one of those?")
+        out["followups"] = ["What is total outstanding ELI?", "Which branches in D1 have the largest TRE maturity in the next 30 days?"]
+        return out
+
+    try:
+        reg = P.Registry.load(client.views())
+    except TableauError as e:
+        out.update(status="SYSTEM_ERROR", reasons=[e.code], headline="Tableau is not reachable right now, so I can't answer from data. Please try again shortly.")
+        return out
+    if reg.collisions:
+        out["registry_collisions"] = reg.collisions
+
+    # 3 data as-of (W2)
+    anchor, anchor_known = today, False
+    if reg.has("data-as-of"):
+        asof_view = reg.views["data-as-of"]
+        d = client.view_data(asof_view["luid"], "")
+        bd = date.fromisoformat(d["rows"][0][0])
+        anchor, anchor_known = bd, True
+        out["as_of"] = {"business_date": d["rows"][0][0], "last_refresh": d["rows"][0][1], "known": True}
+        age = (today - bd).days
+        if age > 1:
+            out["caveats"].append({"code": "STALE_DATA", "level": "warning",
+                                   "text": f"Data is as of {bd:%d %b} and the last refresh was {d['rows'][0][1].replace('T', ' ')}. "
+                                           f"It is {age} days old, so the overnight refresh may have failed."})
+        tr.add("Data as-of", {"business_date": d["rows"][0][0], "last_refresh": d["rows"][0][1], "age_days": age})
+    else:
+        out["as_of"] = {"business_date": None, "known": False}
+        out["caveats"].append({"code": "AS_OF_UNKNOWN", "level": "info",
+                               "text": "Data date unknown: the workbook does not publish its business date or refresh time."})
+        tr.add("Data as-of", {"available": False, "anchor": f"today's date {today.isoformat()} (guess)"})
+
+    if it.intent == "data_as_of" and not reg.has("data-as-of"):
+        mt = reg.views.get("max-trade-date")
+        d = client.view_data(mt["luid"], "") if mt else None
+        out.update(status="UNSUPPORTED", reasons=["NO_ELIGIBLE_VIEW"])
+        out["headline"] = ("I can't tell how fresh the data is. The workbook does not publish its business date or refresh time."
+                           + (f" The latest trade date is {d['rows'][0][0]}, but that is not the data date." if d else ""))
+        tr.add("Route", {"view": None, "reason": "no data-as-of view"})
+        return out
+
+    # 4-6 route, plan, compile
+    pl = P.build(it, reg, anchor, anchor_known)
+    tr.add("Route", {"view": pl.view["view_name"] if pl.view else None, "record_id": pl.view["record_id"] if pl.view else None})
+    out["caveats"] += pl.caveats
+    if pl.status != "OK":
+        out["status"], out["reasons"] = pl.status, pl.reasons
+        out["headline"] = _blocked_text(it, pl)
+        tr.add("Plan check", {"status": pl.status, "reasons": pl.reasons})
+        return _finish(out)
+    vfq = P.vf_query(pl)
+    tr.add("Plan check", {"asserted": pl.asserted, "window": pl.window_note, "status": "pass"})
+    tr.add("Compile", {"vf": {k: (v if len(v) <= 4 else f"{len(v)} values") for k, v in pl.vf.items()},
+                       "embed_filters": list(pl.embed_filters), "embed_cannot_apply": pl.embed_ignored})
+
+    # 7 fetch
+    try:
+        d = client.view_data(pl.view["luid"], vfq)
+    except TableauError as e:
+        out.update(status="SYSTEM_ERROR", reasons=[e.code], headline="The Tableau query failed, so I have no figures to show.")
+        return _finish(out)
+    cols, rows = d["columns"], d["rows"]
+    out["evidence"].append({"step": 1, "view": pl.view["view_name"], "record_id": pl.view["record_id"],
+                            "luid": pl.view["luid"], "request": d["url"], "row_count": len(rows),
+                            "columns": cols, "asserted": pl.asserted, "window": pl.window_note})
+    tr.add("Fetch", {"rows": len(rows), "bytes": d["bytes"], "ms": d["ms"]})
+
+    # 8 validate
+    checks = _validate(it, pl, cols, rows, out)
+    if it.intent == "district" and out["status"] == "OK":
+        checks.append(_control_total(it, pl, rows, cols, client, reg, out))
+    tr.add("Validate", {"checks": checks})
+
+    # 9-10 write and compose
+    if out["status"] in ("OK",):
+        _write(it, pl, cols, rows, out)
+    tr.add("Write answer", {"mode": "template", "numbers": len(out["numbers"])})
+    if pl.view and out["status"] not in ("UNSUPPORTED", "VALIDATION_FAILED", "SYSTEM_ERROR"):
+        out["embed"] = _embed(site, pl, scenario)
+    tr.add("Compose", {"embed": bool(out["embed"]), "followups": len(out["followups"])})
+    return _finish(out)
+
+
+def _finish(out):
+    levels = {c["level"] for c in out["caveats"]}
+    if out["status"] == "OK" and "warning" in levels:
+        out["status"] = "OK_WITH_WARNING"
+    return out
+
+
+def _blocked_text(it, pl) -> str:
+    blocks = [c["text"] for c in pl.caveats if c["level"] == "block"]
+    return blocks[0] if blocks else "I can't answer that from the published views."
+
+
+def _validate(it, pl, cols, rows, out) -> list:
+    checks = []
+    if not rows or (len(rows) == 1 and all(v == "" for v in rows[0])):
+        out.update(status="NO_DATA", reasons=["EMPTY_RESULT"],
+                   headline=f"No positions match: {it.scope_line()}. The filters were checked against the value lists, so this is a true zero.")
+        checks.append("non-empty: fail -> NO_DATA")
+        return checks
+    checks.append("non-empty: pass")
+    # Filter echo where the field is a column (04 RQ 11.3 layer 3)
+    for f, vals in pl.vf.items():
+        cap = CAPTION.get(f)
+        i = _idx(cols, cap) if cap else None
+        if i is not None:
+            bad = [r for r in rows if r[i] not in vals]
+            if bad:
+                out.update(status="VALIDATION_FAILED", reasons=["RESULT_VALIDATION_FAILED"],
+                           headline=f"The result contains rows outside the requested {cap}, so I won't use it.")
+                checks.append(f"filter echo {f}: fail")
+                return checks
+            checks.append(f"filter echo {f}: pass")
+    if it.intent in ("segment_share", "segment_result_share"):
+        if "Share Of All Segments" not in cols:
+            out.update(status="UNSUPPORTED", reasons=["TABLE_CALC_NOT_EXPORTED"])
+            out["caveats"].append({"code": "TABLE_CALC_NOT_EXPORTED", "level": "block",
+                                   "text": "The view's PERCENT_OF_TOTAL is a table calculation and the data export did not include it."})
+            out["headline"] = ("I can't give the share. The view's percentage is a table calculation and it did not come "
+                               "through the data export. Working it out in the bot is not allowed, because the published "
+                               "calculation must be the source (SV-6).")
+            checks.append("share column present: fail")
+            return checks
+        checks.append("share column present: pass")
+    if pl.embed_ignored:
+        out["caveats"].append({"code": "SCOPE_MISMATCH", "level": "warning",
+                               "text": "The chart shows a wider scope than this answer: "
+                                       + ", ".join(CAPTION.get(f, f) for f in pl.embed_ignored)
+                                       + " is not a filter on this view, so the embedded view cannot apply it."})
+        checks.append("chart scope = answer scope: fail (warning)")
+    else:
+        checks.append("chart scope = answer scope: pass")
+    if pl.view["record_id"] not in ("max-trade-date", "data-as-of", "outstanding-total-all", "outstanding-segment"):
+        out["caveats"].append({"code": "PREDICTIVE", "level": "info",
+                               "text": "Predicted results and maturities are model estimates from the latest market data, not confirmed outcomes."})
+    return checks
+
+
+def _control_total(it, pl, rows, cols, client, reg, out) -> str:
+    """District totals must reconcile with total outstanding for the same scope (04 RQ 11.3 layer 5)."""
+    tv = reg.views.get("outstanding-total-all")
+    if not tv or pl.window_note:
+        return "control total: skipped"
+    segs = [s for s in (it.segments or []) if s != "Treasures(TPC)"]
+    q = "vf_deal_status=LIVE" + (f"&vf_bp_div_type={quote(','.join(segs), safe=',()')}" if segs else
+                                 "&vf_bp_div_type=Treasures(HK),PB")
+    d = client.view_data(tv["luid"], q)
+    total = float(d["rows"][0][0] or 0)
+    vi = cols.index("Volume Bu")
+    got = sum(float(r[vi]) for r in rows)
+    out["evidence"].append({"step": 2, "view": tv["view_name"], "record_id": tv["record_id"], "request": d["url"],
+                            "row_count": 1, "purpose": "control total"})
+    if abs(got - total) > max(1.0, total * 0.001):
+        out["caveats"].append({"code": "CONTROL_TOTAL_MISMATCH", "level": "warning",
+                               "text": f"District figures add up to {money(got)}, but outstanding (LIVE) for the same segments is "
+                                       f"{money(total)}. The district view probably includes matured deals."})
+        return f"control total vs view 1: fail ({money(got)} vs {money(total)})"
+    out["caveats"].append({"code": "CONTROL_TOTAL_OK", "level": "info",
+                           "text": f"District figures reconcile with total outstanding ({money(total)})."})
+    return "control total vs view 1: pass"
+
+
+def _num(out, value, display, measure, source):
+    nid = f"n{len(out['numbers']) + 1}"
+    out["numbers"].append({"id": nid, "value": value, "display": display, "measure": measure, "source": source})
+    return display
+
+
+def _sum_by(cols, rows, keys):
+    vi = cols.index("Volume Bu")
+    idx = [cols.index(k) for k in keys]
+    agg = defaultdict(float)
+    for r in rows:
+        agg[tuple(r[i] for i in idx)] += float(r[vi] or 0)
+    return sorted(agg.items(), key=lambda kv: -kv[1])
+
+
+def _write(it, pl, cols, rows, out):
+    v = pl.view
+    src = v["view_name"]
+    vi = _idx(cols, "Volume Bu")
+    total = sum(float(r[vi] or 0) for r in rows) if vi is not None else 0
+    scope = it.scope_line()
+    win = f"next {it.window_days} days" if it.window_days and not it.on_date else (f"on {it.on_date}" if it.on_date else "")
+
+    if it.intent == "outstanding_total":
+        out["headline"] = f"Outstanding ELI ({scope}) is {_num(out, total, money(total), 'hkd', src)}."
+        out["followups"] = ["What share of outstanding ELI is TRE?", "Compare outstanding ELI across districts"]
+
+    elif it.intent in ("segment_share", "segment_result_share"):
+        si, shi = cols.index("Bp Div Type"), cols.index("Share Of All Segments")
+        ri = _idx(cols, "Predict Result")
+        want = it.segments or ["Treasures(HK)"]
+        sel = [r for r in rows if r[si] in want and (ri is None or not it.result or r[ri] == it.result)]
+        parts = []
+        for r in sel:
+            label = short(r[si]) + (f" predicted {r[ri]}" if ri is not None and it.result else "")
+            parts.append(f"{label} is {_num(out, float(r[shi]), pct(float(r[shi])), 'share', src)} of all outstanding ELI "
+                         f"({_num(out, float(r[vi]), money(float(r[vi])), 'hkd', src)})")
+        out["headline"] = ("; ".join(parts) + ".") if parts else "No matching segment row."
+        out["bullets"].append("The share uses the all-segment total as the denominator, taken from the view's own share field.")
+        ordered = sel + [r for r in rows if r not in sel]
+        out["table"] = {"columns": ["Segment"] + (["Predicted result"] if ri is not None else []) + ["HKD", "Share of all"],
+                        "rows": [[short(r[si])] + ([r[ri]] if ri is not None else []) + [money(float(r[vi])), pct(float(r[shi]))] for r in ordered]}
+        pl.embed_highlight = list(want)
+
+    elif it.intent == "customer_count":
+        ci, ri, si = cols.index("Distinct count of Cif Id"), cols.index("Predict Result"), cols.index("Bp Div Type")
+        if it.result:
+            r0 = rows[0]
+            segtxt = " + ".join(short(x) for x in it.segments) or "All-segment"
+            out["headline"] = (f"{_num(out, int(r0[ci]), r0[ci], 'customers', src)} distinct {segtxt} customers are predicted to "
+                               f"{it.result}, holding {_num(out, float(r0[vi]), money(float(r0[vi])), 'hkd', src)} of outstanding ELI.")
+        else:
+            out["headline"] = f"Distinct customers by predicted result ({scope}). These counts can't be added up, because one customer can hold positions in more than one result."
+        out["table"] = {"columns": ["Segment", "Predicted result", "Customers", "HKD"],
+                        "rows": [[short(r[si]), r[ri], r[ci], money(float(r[vi]))] for r in rows]}
+
+    elif it.intent == "maturity_calendar":
+        by = _sum_by(cols, rows, ["Predict Maturity"])
+        top = by[:3]
+        where = f" in {it.district.replace('TRE-', '')}" if it.district else ""
+        where += f", {it.branch} branch" if it.branch else ""
+        out["headline"] = (f"{_num(out, total, money(total), 'hkd', src)} of TRE ELI{where} is predicted to mature in the {win or 'window'}"
+                           f", counted from {pl.anchor} ({'business date' if pl.anchor_known else 'today, because the data date is unknown'}). The largest date is "
+                           f"{_d(top[0][0][0])} with {_num(out, top[0][1], money(top[0][1]), 'hkd', src)}.")
+        out["table"] = {"columns": ["Predicted maturity", "HKD"], "rows": [[_d(k[0]), money(x)] for k, x in by[:8]]}
+        out["followups"] = [f"Give me the client and RM list for the {_d(top[0][0][0])} maturity"]
+
+    elif it.intent == "maturity_branch":
+        by = _sum_by(cols, rows, ["Cust District", "Cust Branch"])
+        ci = _idx(cols, "Customers (all results)")
+        cust = {}
+        if ci is not None:
+            for r in rows:
+                cust[(r[0], r[1])] = r[ci]
+        lead = by[0]
+        out["headline"] = (f"{lead[0][1]} leads with {_num(out, lead[1], money(lead[1]), 'hkd', src)} of TRE predicted maturity in the {win}"
+                           + (f", followed by {by[1][0][1]} at {_num(out, by[1][1], money(by[1][1]), 'hkd', src)}" if len(by) > 1 else "")
+                           + f". Total {_num(out, total, money(total), 'hkd', src)} across {len(by)} branches.")
+        out["table"] = {"columns": ["District", "Branch", "HKD"] + (["Customers"] if cust else []),
+                        "rows": [[k[0].replace("TRE-", ""), k[1], money(x)] + ([cust.get(k, "")] if cust else []) for k, x in by]}
+        out["followups"] = [f"Show the clients behind {lead[0][1]} maturing in the {win}"]
+        pl.embed_highlight = [lead[0][1]]
+
+    elif it.intent == "maturity_detail":
+        idx = {c: i for i, c in enumerate(cols)}
+        custs = len({r[idx["Cif Id"]] for r in rows})
+        out["headline"] = (f"{_num(out, len(rows), str(len(rows)), 'positions', src)} positions for "
+                           f"{_num(out, custs, str(custs), 'customers', src)} customers, "
+                           f"{_num(out, total, money(total), 'hkd', src)} in total ({scope}).")
+        out["bullets"].append("This is a position list for follow-up. Contact details are not in the view, and none are added.")
+        rows_sorted = sorted(rows, key=lambda r: -float(r[idx["Volume Bu"]]))
+        out["table"] = {"columns": ["Pred. maturity", "Branch", "RM", "Cif Id", "Pos Id", "Result", "WPS", "HKD"],
+                        "rows": [[_d(r[idx["Predict Maturity"]]), r[idx["Cust Branch"]], r[idx["Rm Name"]], r[idx["Cif Id"]],
+                                  r[idx["Pos Id"]], r[idx["Predict Result"]], r[idx["Wps"]], money(float(r[idx["Volume Bu"]]))]
+                                 for r in rows_sorted[:10]], "more": max(0, len(rows) - 10)}
+
+    elif it.intent == "district":
+        by = _sum_by(cols, rows, ["Bp Div Type", "Cust District"])
+        ci = _idx(cols, "Customers (all results)")
+        cust = {}
+        if ci is not None:
+            for r in rows:
+                cust[(r[0], r[1])] = r[ci]
+        named = [(k, x) for k, x in by if k[1] != "Null"]
+        out["headline"] = (f"Outstanding ELI by district ({scope}): " + ", ".join(
+            f"{k[1].replace('TRE-', '')} {_num(out, x, money(x), 'hkd', src)}" for k, x in named[:3])
+            + f". Total in view {_num(out, total, money(total), 'hkd', src)}.")
+        for a in pl.asserted:
+            if a.startswith("published rule"):
+                out["bullets"].append("By the view's published rule, Treasures (TPC) is excluded (mock rule for this demo).")
+        if any(k[1] == "Null" for k, _ in by):
+            out["bullets"].append("PB and TPC have no district, so they show as Null and are not reported as a named district.")
+        out["table"] = {"columns": ["Segment", "District", "HKD"] + (["Customers"] if cust else []),
+                        "rows": [[short(k[0]), k[1].replace("TRE-", ""), money(x)] + ([cust.get(k, "")] if cust else []) for k, x in by]}
+        if named:
+            out["followups"] = [f"Which branches in {named[0][0][1].replace('TRE-', '')} have the largest TRE maturity in the next 30 days?"]
+
+    elif it.intent == "wps_exposure":
+        by = _sum_by(cols, rows, ["Wps"])
+        out["headline"] = (f"{by[0][0][0]} is the largest WPS exposure at {_num(out, by[0][1], money(by[0][1]), 'hkd', src)}"
+                           f" ({_num(out, by[0][1] / total, pct(by[0][1] / total), 'share', src + ' (sum ratio)')} of {money(total)}), "
+                           f"followed by {by[1][0][0]} and {by[2][0][0]}.")
+        out["table"] = {"columns": ["WPS", "HKD"], "rows": [[k[0], money(x)] for k, x in by[:8]]}
+        out["followups"] = [f"Show me the distribution on {by[0][0][0]}"]
+
+    elif it.intent == "mtm_distribution":
+        bi, ci = cols.index("MTM% (bin)"), cols.index("Count of Asset Id")
+        ri = cols.index("Predict Result")
+        rows_s = sorted(rows, key=lambda r: int(r[bi].rstrip("%")))
+        out["headline"] = (f"{it.wps or 'All WPS'}: {_num(out, total, money(total), 'hkd', src)} across "
+                           f"{len(rows_s)} MTM bins and results. Lowest bin {rows_s[0][bi]} ({rows_s[0][ri]}).")
+        out["table"] = {"columns": ["MTM% (bin)", "Predicted result", "Deal count", "HKD"],
+                        "rows": [[r[bi], r[ri], r[ci], money(float(r[vi]))] for r in rows_s]}
+
+    elif it.intent == "customer_count_maturity":
+        ci = cols.index("Customers (all results)")
+        key_cols = ["Cust Branch"] if it.branch else ["Bp Div Type", "Cust District"]
+        seen = {}
+        for r in rows:
+            seen[tuple(r[cols.index(k)] for k in key_cols)] = (r[ci])
+        by = dict(_sum_by(cols, rows, key_cols))
+        items = [(k, n, by[k]) for k, n in seen.items() if k[-1] != "Null"]
+        if len(items) == 1:
+            k, n, x = items[0]
+            out["headline"] = (f"{_num(out, int(n), n, 'customers', src)} distinct TRE customers in {k[-1].replace('TRE-', '')} "
+                               f"have predicted maturity in the {win}, holding {_num(out, x, money(x), 'hkd', src)}.")
+        else:
+            out["headline"] = f"Distinct customers with predicted maturity in the {win}, by district."
+        out["table"] = {"columns": [c.replace("Cust ", "") for c in key_cols] + ["Customers", "HKD"],
+                        "rows": [[*(p.replace("TRE-", "") for p in k), n, money(x)] for k, n, x in items]}
+
+    elif it.intent == "data_recency":
+        out["headline"] = f"The latest trade date in the data is {_num(out, rows[0][0], rows[0][0], 'date', src)}."
+        out["bullets"].append("This is the newest trade, not the data date or the refresh time (SV-18).")
+
+    elif it.intent == "data_as_of":
+        out["headline"] = (f"Data is as of {_num(out, rows[0][0], rows[0][0], 'date', src)} (business date), "
+                           f"last refreshed {rows[0][1].replace('T', ' ')}.")
+
+
+def _d(iso: str) -> str:
+    try:
+        return date.fromisoformat(iso).strftime("%d %b")
+    except ValueError:
+        return iso
+
+
+def _embed(site, pl, scenario):
+    from urllib.parse import urlencode
+    params = {k: ",".join(v) for k, v in pl.embed_filters.items()}
+    if pl.embed_highlight:
+        params[":highlight"] = ",".join(pl.embed_highlight)
+    if scenario:
+        params["scenario"] = scenario
+    q = urlencode(params, safe=",():")
+    return {"view": pl.view["view_name"], "record_id": pl.view["record_id"],
+            "url": f"/tableau/{site}/views/{quote(pl.view['view_name'])}" + (f"?{q}" if q else ""),
+            "filters": pl.embed_filters, "highlight": pl.embed_highlight,
+            "cannot_apply": pl.embed_ignored, "scope_equivalent": not pl.embed_ignored}

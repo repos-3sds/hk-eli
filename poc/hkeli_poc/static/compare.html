@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>W1–W7 side by side</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">HK ELI Chatbot <small>POC on mock Tableau</small></div>
+  <nav class="nav" aria-label="Pages">
+    <a href="/">Ask</a><a href="/compare" aria-current="page">W1–W7 side by side</a><a href="/workbook">Mock workbook</a>
+  </nav>
+</header>
+<div class="cmp">
+  <aside class="side" aria-label="Worksheet changes">
+    <h2>Worksheet changes</h2>
+    <div id="list"></div>
+  </aside>
+  <main class="main" id="main" aria-live="polite"></main>
+</div>
+<script src="/static/app.js"></script>
+<script>
+const { el, renderAnswer } = window.POC;
+const STATIC = window.STATIC_DATA || null;
+const list = document.getElementById("list"), main = document.getElementById("main");
+let demos = [];
+
+async function load() {
+  demos = STATIC ? STATIC.demos : await (await fetch("/api/demos")).json();
+  list.replaceChildren(...demos.map(d => el("button", { class: "wlink", type: "button", "data-id": d.id, onclick: () => go(d.id) },
+    el("span", { class: "wtag" }, d.w), el("span", {}, d.title, el("small", {}, d.priority)))));
+  go((location.hash || "#w1").slice(1));
+}
+
+function frame(a, side, id) {
+  const box = el("div", { class: "frame" });
+  if (!a.embed) { box.append(el("div", { class: "nochart" }, "No chart: an answer that failed its checks is not propped up by a chart.")); return box; }
+  const f = el("iframe", { title: `${side} view: ${a.embed.view}`, loading: "lazy" });
+  if (STATIC) f.srcdoc = STATIC.results[id].embeds[side]; else f.src = a.embed.url;
+  box.append(f);
+  return box;
+}
+
+async function go(id) {
+  const d = demos.find(x => x.id === id) || demos[0];
+  history.replaceState(null, "", "#" + d.id);
+  list.querySelectorAll(".wlink").forEach(b => b.setAttribute("aria-current", b.dataset.id === d.id));
+  main.replaceChildren(el("div", { class: "working", role: "status" }, el("span", { class: "dots" }, el("i"), el("i"), el("i")), "Running the question on both workbooks…"));
+  let r;
+  try { r = STATIC ? STATIC.results[d.id] : await (await fetch(`/api/demos/${d.id}`)).json(); }
+  catch (e) { main.replaceChildren(el("p", { class: "err" }, "Couldn't run this demo. Is the POC server running?")); return; }
+  main.replaceChildren(
+    el("h1", { class: "title" }, `${d.w} · ${d.title}`, el("span", { class: "pri" }, d.priority)),
+    el("div", { class: "ask" }, el("div", { class: "label" }, "What we ask the workbook owners"), el("div", {}, d.ask)),
+    el("div", { class: "ask" }, el("div", { class: "label" }, d.scenario === "stale" ? "Question (scenario: refresh failed 3 nights ago)" : "Question asked on both workbooks"),
+      el("p", { class: "q" }, d.question)),
+    el("div", { class: "cols" },
+      el("section", { class: "col" }, el("h3", {}, el("span", { class: "dot", style: "background:var(--warn)" }), "Workbook as today"),
+        el("p", { class: "why" }, d.today), renderAnswer(r.current, { maxRows: 6 }), frame(r.current, "current", d.id)),
+      el("section", { class: "col" }, el("h3", {}, el("span", { class: "dot", style: "background:var(--ok)" }), `With ${d.w}`),
+        el("p", { class: "why" }, d.fixed), renderAnswer(r.proposed, { maxRows: 6 }), frame(r.proposed, "proposed", d.id))),
+    el("p", { class: "specline" }, "Follows: " + d.spec));
+  main.focus?.();
+}
+document.addEventListener("keydown", e => {
+  if (!["ArrowDown", "ArrowUp"].includes(e.key) || e.target.closest("textarea,input")) return;
+  const i = demos.findIndex(x => "#" + x.id === location.hash);
+  const n = demos[(i + (e.key === "ArrowDown" ? 1 : demos.length - 1)) % demos.length];
+  if (n) { e.preventDefault(); go(n.id); list.querySelector(`[data-id="${n.id}"]`).focus(); }
+});
+load();
+</script>
+</body>
+</html>

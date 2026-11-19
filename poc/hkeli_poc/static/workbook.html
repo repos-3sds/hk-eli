@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mock HK_ELI workbook</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">HK ELI Chatbot <small>POC on mock Tableau</small></div>
+  <nav class="nav" aria-label="Pages">
+    <a href="/">Ask</a><a href="/compare">W1–W7 side by side</a><a href="/workbook" aria-current="page">Mock workbook</a>
+  </nav>
+</header>
+<main class="wb">
+  <h1 class="title">Mock HK_ELI workbook: views as today and with W1–W7</h1>
+  <p class="scope">Field names, filters and view names follow the discovery transcripts. Data is synthetic. Green marks what W1–W7 change; amber marks a gap today. Open a view to see the embeddable page.</p>
+  <div id="t"></div>
+</main>
+<script src="/static/app.js"></script>
+<script>
+const { el } = window.POC;
+(async () => {
+  const wb = await (await fetch("/api/workbook")).json();
+  const cur = Object.fromEntries(wb.current.map(v => [v.view_name, v]));
+  const rows = wb.proposed.map(p => {
+    const c = cur[p.view_name];
+    const addF = c ? p.filters.filter(f => !c.filters.includes(f)) : p.filters;
+    const addM = c ? p.measures.filter(m => !c.measures.includes(m)) : p.measures;
+    const changes = [];
+    if (!c) changes.push("New view (W2)");
+    if (c && c.record_id !== p.record_id) changes.push(`ID ${c.record_id} → ${p.record_id} (W3)`);
+    if (addF.some(f => f.startsWith("in_n") || f === "days_to_pred_maturity")) changes.push("Days / 7-14-30-60-90 flags (W1)");
+    if (c && c.population !== p.population) changes.push(`Population: ${c.population} → ${p.population} (W4)`);
+    if (c && c.hidden_rule !== p.hidden_rule && p.hidden_rule) changes.push(`Rule published: ${p.hidden_rule} (W4)`);
+    if (p.measures.includes("pct")) changes.push("Share as FIXED field, exportable (W5)");
+    if (addF.includes("wps")) changes.push("wps filter (W6)");
+    if (addM.includes("countd_excl")) changes.push("Distinct customers (W7)");
+    return el("tr", {},
+      el("td", {}, String(p.view_name), el("div", { class: "scope" }, p.title)),
+      el("td", { class: "mono" }, c ? c.record_id : "–"),
+      el("td", {}, c ? `${c.filters.join(", ")}${c.builtin_window_days ? ` · next ${c.builtin_window_days} days fixed` : ""}` : "–",
+        c && c.population === "undeclared" ? el("div", { class: "gap" }, "No deal_status filter") : null),
+      el("td", { class: "diff" }, changes.length ? changes.join(" · ") : "–"),
+      el("td", {}, el("a", { href: `/tableau/current/views/${encodeURIComponent(p.view_name)}`, target: "_blank" }, c ? "Today" : ""), " ",
+        el("a", { href: `/tableau/proposed/views/${encodeURIComponent(p.view_name)}`, target: "_blank" }, "With W1–W7")));
+  });
+  document.getElementById("t").append(el("table", {}, el("thead", {}, el("tr", {}, ["View", "Record id today", "Filters today", "What W1–W7 change", "Open"].map(h => el("th", {}, h)))), el("tbody", {}, rows)));
+})();
+</script>
+</body>
+</html>
