@@ -20,14 +20,17 @@ from ..svg import money
 from ..workbook import CAPTION
 from . import plan as P
 from .tableau_client import TableauClient, TableauError
-from .understand import understand
+from . import agent
+from .. import config, knowledge as KB, prompts as PR
+from ..llm import OffClient
 
 SEVERITY = ["SYSTEM_ERROR", "VALIDATION_FAILED", "UNSUPPORTED", "NEEDS_CLARIFICATION", "NO_DATA",
             "PARTIAL", "OK_FALLBACK", "OK_WITH_WARNING", "OK"]
 
 
 def demo_today() -> date:
-    return date.fromisoformat(os.environ.get("DEMO_TODAY", "2026-11-19"))
+    """Business 'today': DEMO_TODAY when set (mock default 2026-11-19), else the clock in APP_TIMEZONE."""
+    return config.get().today()
 
 
 def pct(x: float) -> str:
@@ -39,41 +42,69 @@ def short(seg: str) -> str:
 
 
 class Trace:
-    def __init__(self):
-        self.steps, self._t = [], time.perf_counter()
+    def __init__(self, on_step=None):
+        self.steps, self._t, self.on_step = [], time.perf_counter(), on_step
 
     def add(self, name, detail):
         now = time.perf_counter()
-        self.steps.append({"n": len(self.steps) + 1, "name": name, "detail": detail,
-                           "ms": round((now - self._t) * 1000, 1)})
+        step = {"n": len(self.steps) + 1, "name": name, "detail": detail, "ms": round((now - self._t) * 1000, 1)}
+        self.steps.append(step)
         self._t = now
+        if self.on_step:
+            try:
+                self.on_step({"n": step["n"], "name": name, "ms": step["ms"]})   # stage only, no detail
+            except Exception:  # a slow or closed listener never breaks the answer
+                pass
 
 
 def _idx(cols, name):
     return cols.index(name) if name in cols else None
 
 
-def answer(question: str, http, site: str, scenario: str | None = None, user: str = "demo.user") -> dict:
+def answer(question: str, http, site: str, scenario: str | None = None, user: str = "demo.user",
+           llm=None, lib: dict | None = None, kb: KB.Knowledge | None = None, on_step=None) -> dict:
+    cfg = config.get()
     today = demo_today()
-    tr = Trace()
+    llm = llm or OffClient()
+    kb = kb or KB.load(str(cfg.knowledge_dir))
+    lib = lib or PR.library(str(cfg.prompts_dir))
+    calls: list = []
+    tr = Trace(on_step)
     client = TableauClient(http, site, user=user, scenario=scenario)
     out = {"question": question, "site": site, "scenario": scenario, "status": "OK", "reasons": [],
            "caveats": [], "headline": "", "bullets": [], "table": None, "chart": None, "numbers": [],
            "evidence": [], "embed": None, "followups": [], "as_of": None, "scope": "", "trace": tr.steps,
-           "meta": {"understanding": "deterministic rules (Gemini adapter off in POC)",
-                    "insight": "template over validated numbers"}}
+           "meta": {"understanding": "rules", "insight": "template", "model": getattr(llm, "model", "off"),
+                    "provider": getattr(llm, "provider", "none"),
+                    "knowledge_sha256": kb.sha256[:12],
+                    "prompts": {k: f"{p.version}+{p.sha256[:12]}" for k, p in lib.items()}},
+           "_llm_calls": calls}
 
-    # 1-2 understand
-    it = understand(question, today)
+    # 1-2 understand (rules pre-parse, then the model when it is on; code validates and merges)
+    it = agent.interpret(question, today, llm, lib, kb, calls)
+    out["meta"]["understanding"] = it.source
+    out["intent"] = it.intent
     tr.add("Pre-parse", {k: v for k, v in it.hints.items() if v})
-    tr.add("Understand", {"intent": it.intent, "grain": it.grain, "assumptions": it.assumptions})
+    tr.add("Understand", {"intent": it.intent, "grain": it.grain, "assumptions": it.assumptions, "by": it.source})
     out["scope"] = it.scope_line()
-    out["assumptions"] = it.assumptions
+    out["assumptions"] = [a for a in it.assumptions if not a.startswith("clarify: ")]
+    if it.unsupported:
+        u = it.unsupported[0]
+        out.update(status="UNSUPPORTED", reasons=["CONCEPT_NOT_SUPPORTED"],
+                   headline=f"I can't answer that yet. {u['user_text']}".strip())
+        out["caveats"].append({"code": "CONCEPT_NOT_SUPPORTED", "level": "block", "text": u["user_text"]})
+        out["scope"] = ""   # the parsed scope would mislead here (e.g. a basket stock shown as WPS)
+        out["followups"] = ["What is total outstanding ELI?", "How much TRE ELI is predicted to mature in the next 30 days?"]
+        tr.add("Route", {"view": None, "reason": f"unsupported concept {u['id']}"})
+        return out
     if it.intent == "unknown":
+        clar = next((a[len("clarify: "):] for a in it.assumptions if a.startswith("clarify: ") and len(a) > 10), None)
         out.update(status="NEEDS_CLARIFICATION", reasons=["AMBIGUOUS_INTENT"],
                    headline="I can answer questions about outstanding ELI, shares by segment, predicted maturity "
                             "(TRE), clients to follow up, WPS exposure, MTM distribution and data freshness. "
                             "Could you rephrase with one of those?")
+        if clar:
+            out["headline"] = clar
         out["followups"] = ["What is total outstanding ELI?", "Which branches in D1 have the largest TRE maturity in the next 30 days?"]
         return out
 
@@ -151,7 +182,10 @@ def answer(question: str, http, site: str, scenario: str | None = None, user: st
     if out["status"] in ("OK",):
         _write(it, pl, cols, rows, out)
         out["chart"] = _chart(it, pl, cols, rows)
-    tr.add("Write answer", {"mode": "template", "numbers": len(out["numbers"])})
+    if out["status"] in ("OK",):
+        _finish(out)
+        out["meta"]["insight"] = agent.word(out, llm, lib, kb, calls)
+    tr.add("Write answer", {"mode": out["meta"]["insight"], "numbers": len(out["numbers"])})
     if pl.view and out["status"] not in ("UNSUPPORTED", "VALIDATION_FAILED", "SYSTEM_ERROR"):
         out["embed"] = _embed(site, pl, scenario)
     tr.add("Compose", {"embed": bool(out["embed"]), "followups": len(out["followups"])})
@@ -447,11 +481,23 @@ def _write(it, pl, cols, rows, out):
 
     elif it.intent == "wps_exposure":
         by = _sum_by(cols, rows, ["Wps"])
-        out["headline"] = (f"{by[0][0][0]} is the largest WPS exposure at {_num(out, by[0][1], money(by[0][1]), 'hkd', src)}"
-                           f" ({_num(out, by[0][1] / total, pct(by[0][1] / total), 'share', src + ' (sum ratio)')} of {money(total)}), "
-                           f"followed by {by[1][0][0]} and {by[2][0][0]}.")
-        out["table"] = {"columns": ["WPS", "HKD"], "rows": [[k[0], money(x)] for k, x in by[:8]]}
-        out["followups"] = [f"Show me the distribution on {by[0][0][0]}"]
+        named = next(((k, x, n) for n, (k, x) in enumerate(by, 1) if k[0] == it.wps), None) if it.wps else None
+        if it.wps and not named:
+            out["bullets"].append(f"{it.wps} is not the worst-performing stock of any ELI in this scope.")
+        if named:
+            (k, x, rank) = named
+            out["headline"] = (f"{k[0]} carries {_num(out, x, money(x), 'hkd', src)} of outstanding ELI as the worst-performing stock "
+                               f"({_num(out, x / total, pct(x / total), 'share', src + ' (sum ratio)')} of {_num(out, total, money(total), 'hkd', src)}), "
+                               f"rank {rank} of {len(by)}. The largest is {by[0][0][0]} at {_num(out, by[0][1], money(by[0][1]), 'hkd', src)}.")
+            out["table"] = {"columns": ["WPS", "HKD"], "rows": [[kk[0], money(xx)] for kk, xx in by[:8]]}
+            out["followups"] = [f"Show me the distribution on {k[0]}"]
+            pl.embed_highlight, pl.embed_highlight_field = [k[0]], "wps"
+        else:
+            out["headline"] = (f"{by[0][0][0]} is the largest WPS exposure at {_num(out, by[0][1], money(by[0][1]), 'hkd', src)}"
+                               f" ({_num(out, by[0][1] / total, pct(by[0][1] / total), 'share', src + ' (sum ratio)')} of {money(total)}), "
+                               f"followed by {by[1][0][0]} and {by[2][0][0]}.")
+            out["table"] = {"columns": ["WPS", "HKD"], "rows": [[k[0], money(x)] for k, x in by[:8]]}
+            out["followups"] = [f"Show me the distribution on {by[0][0][0]}"]
 
     elif it.intent == "mtm_distribution":
         bi, ci = cols.index("MTM% (bin)"), cols.index("Count of Asset Id")

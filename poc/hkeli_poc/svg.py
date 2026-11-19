@@ -18,11 +18,11 @@ GRID = "#2a3342"
 def money(x: float) -> str:
     a = abs(x)
     if a >= 1e9:
-        return f"HKD {x / 1e9:.2f}bn"
+        return f"HKD {x / 1e9:.2f}B"     # Insight Generation 6: HKD 4.3B / HKD 125M style
     if a >= 1e6:
-        return f"HKD {x / 1e6:.1f}m"
+        return f"HKD {x / 1e6:.1f}M"
     if a >= 1e3:
-        return f"HKD {x / 1e3:.0f}k"
+        return f"HKD {x / 1e3:.0f}K"
     return f"HKD {x:.0f}"
 
 

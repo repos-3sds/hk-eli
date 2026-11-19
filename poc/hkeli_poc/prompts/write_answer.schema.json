@@ -1,0 +1,8 @@
+{
+  "type": "OBJECT",
+  "properties": {
+    "headline": {"type": "STRING", "description": "Two to four sentences, direct answer first"},
+    "bullets": {"type": "ARRAY", "items": {"type": "STRING"}, "maxItems": 3}
+  },
+  "required": ["headline", "bullets"]
+}

@@ -1,4 +1,4 @@
-/* HK ELI Chatbot POC - dark Digimarkets-style widget tokens */
+/* HK ELI Chatbot - dark widget tokens */
 :root{
   color-scheme:dark;
   --bg:#0b0f16;--panel:#121822;--panel-2:#161e2b;--line:#233044;--line-2:#1b2433;
@@ -91,6 +91,8 @@ code,.mono{font-family:var(--mono);font-size:11.5px}
 .steps .no{color:var(--muted)}.steps .nm{color:var(--ink-2)}.steps .dt{color:var(--muted);font-family:var(--mono);font-size:11px;word-break:break-word}
 .steps .ms{color:var(--muted);text-align:right;font-size:11px}
 .asof{font-size:11.5px;color:var(--muted);margin-top:var(--s3);display:flex;gap:var(--s3);flex-wrap:wrap}
+.asof.fb{align-items:center;justify-content:space-between}
+.asof.fb .chips{margin-top:0;align-items:center}
 .paneBtn{background:transparent;border:1px solid var(--line);border-radius:6px;color:var(--ink-2);font-size:12px;padding:3px 9px;cursor:pointer;margin-left:auto}
 .paneBtn:hover{border-color:var(--accent)}
 

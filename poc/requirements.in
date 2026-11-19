@@ -1,0 +1,10 @@
+# Direct runtime dependencies, each pinned with == to a version the office JFrog served (JFROG-VERSIONS.md, 18 Nov).
+# requirements.txt is compiled from this file; install from requirements.txt, never from here.
+# Compile (outside the office only):
+#   uv pip compile --universal --python-version 3.12 --generate-hashes \
+#       -c office/constraints-known-good.txt requirements.in -o requirements.txt
+fastapi==0.141.1
+starlette==1.6.0
+uvicorn==0.52.4
+pydantic==2.13.4
+httpx==0.28.1
