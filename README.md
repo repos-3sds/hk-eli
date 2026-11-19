@@ -5,8 +5,10 @@ The HK ELI Chatbot is a Digimarkets widget for Hong Kong Equity-Linked Investmen
 | Part | What it is |
 | --- | --- |
 | [`poc/`](poc/README.md) | The agent: a Python Stork pipeline (FastAPI) that reads the question, picks one of the 12 HK_ELI Tableau views and its filters, queries Tableau, checks every figure and writes the answer (Gemini optional). Ships with a mock Tableau on invented data; `TABLEAU_MODE=real` points it at a real server. |
+| [`docs/`](docs/README.md) | Business vision, decisions and discovery (public-safe copies). |
 | [`web/`](web/README.md) | Angular 21 widget in the Digimarkets shell: Today, Chat and Prompts. Every figure and client comes from the agent. |
-| [`gateway/`](gateway/README.md) | Java 21 / Spring Boot 3.5 service built for the earlier UI. Kept as the bank-standard edge (SSO, limits, audit) the agent will sit behind. |
+
+In the bank, a thin Java 21 / Spring Boot edge (SSO, limits, audit) will sit in front of the agent. It is not built yet; the earlier Java back end was removed with the old UI and stays in git history.
 
 ## Run
 
