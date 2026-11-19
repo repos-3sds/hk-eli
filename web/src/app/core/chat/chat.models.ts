@@ -11,6 +11,8 @@ export interface ChatQuestion {
   readonly clientId: string | null;
   /** The server-side conversation this question continues, when the source stores conversations. */
   readonly conversationId?: string | null;
+  /** Asked by the screen itself (Today's insights), not typed by the user: kept out of their chat history. */
+  readonly background?: boolean;
 }
 
 export interface TextBlock {
@@ -147,6 +149,16 @@ export interface ChatAnswer {
   readonly refreshedAt?: string;
   /** Pipeline answers: the same Tableau view with the same filters, one click away. */
   readonly tableauUrl?: string;
+  /** The Tableau view behind the answer, with the same filters, for the split view beside the chat. */
+  readonly embed?: {
+    readonly view: string;
+    readonly url: string;
+    readonly src?: string;
+    readonly mode?: string;
+    readonly filtersByCaption?: Readonly<Record<string, readonly string[]>>;
+    readonly highlight?: readonly string[];
+    readonly highlightCaption?: string;
+  };
   /** Pipeline answers: whether Gemini or the rules read the question and wrote the words. */
   readonly writtenBy?: string;
   /** Stored answers: ids in the server's SQLite store, for feedback and history. */

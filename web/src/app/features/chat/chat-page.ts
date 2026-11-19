@@ -4,8 +4,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
-import { MatDialog } from '@angular/material/dialog';
-import { LibraryChoice, PromptLibraryDialog } from './prompt-library-dialog';
 import { APP_CONFIG } from '../../core/config/app-config';
 import { FIXTURE_CLIENTS } from '../../core/data/today.fixture';
 import { LaunchRole, SessionService } from '../../core/session/session.service';
@@ -18,6 +16,8 @@ import { libraryFor } from '../../core/chat/prompt-library';
 import { AnswerCard } from './answer-card';
 import { ChatComposer } from './chat-composer';
 import { ANSWER_STAGES, ChatStore } from './chat.store';
+import { TableauPane } from '../tableau/tableau-pane';
+import { TableauPaneService } from '../tableau/tableau-pane.service';
 
 interface Starter {
   readonly icon: string;
@@ -55,18 +55,32 @@ const STARTERS: Record<LaunchRole, readonly Starter[]> = {
  */
 @Component({
   selector: 'eli-chat-page',
-  imports: [MatButtonModule, MatIconModule, MatMenuModule, MatTooltipModule, AnswerCard, ChatComposer],
+  imports: [TableauPane, MatButtonModule, MatIconModule, MatMenuModule, MatTooltipModule, AnswerCard, ChatComposer],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './chat-page.html',
   styleUrl: './chat-page.scss',
 })
 export class ChatPage {
   protected readonly store = inject(ChatStore);
+  protected readonly pane = inject(TableauPaneService);
+
+  /** Drag the divider to resize the Tableau split view. */
+  protected startResize(ev: PointerEvent): void {
+    ev.preventDefault();
+    const startX = ev.clientX;
+    const startW = this.pane.width();
+    const move = (e: PointerEvent) => this.pane.width.set(Math.max(320, Math.min(window.innerWidth * 0.7, startW + (startX - e.clientX))));
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  }
   private readonly router = inject(Router);
   private readonly session = inject(SessionService);
   private readonly clock = inject(BusinessClock);
   private readonly config = inject(APP_CONFIG);
-  private readonly dialog = inject(MatDialog);
   private readonly scroller = viewChild.required<ElementRef<HTMLElement>>('scroller');
   private readonly composer = viewChild.required(ChatComposer);
 
@@ -94,6 +108,8 @@ export class ChatPage {
   /** From the URL (?q=…&client=…), bound by the router. */
   readonly q = input<string | undefined>();
   readonly client = input<string | undefined>();
+  /** A question from the Prompt Library to edit before asking. */
+  readonly draft = input<string | undefined>();
 
   constructor() {
     // A question handed over from Today: ask it once, then drop it from the URL.
@@ -109,6 +125,16 @@ export class ChatPage {
         }
         this.store.clientId.set(client);
         this.store.send(q, client);
+        void this.router.navigate([], { queryParams: {}, replaceUrl: true });
+      });
+    });
+    // A question picked in the Prompt Library to edit first: put it in the ask box.
+    effect(() => {
+      const d = this.draft();
+      if (!d) return;
+      untracked(() => {
+        this.store.draft.set(d);
+        this.composer().focus();
         void this.router.navigate([], { queryParams: {}, replaceUrl: true });
       });
     });
@@ -152,19 +178,9 @@ export class ChatPage {
     setTimeout(() => this.copiedId.set(null), 1500);
   }
 
-  /** The Prompt Library: ask a question now, or put it in the ask box to edit first. */
+  /** The Prompt Library is its own tab now (Hawk, 2026-11-20). */
   protected openLibrary(): void {
-    this.dialog
-      .open<PromptLibraryDialog, unknown, LibraryChoice>(PromptLibraryDialog, { panelClass: 'eli-library-panel', autoFocus: 'input', width: '860px', maxWidth: '92vw' })
-      .afterClosed()
-      .subscribe((c) => {
-        if (!c) return;
-        if (c.action === 'ask') this.ask(c.question);
-        else {
-          this.store.draft.set(c.question);
-          this.composer().focus();
-        }
-      });
+    void this.router.navigate(['/library']);
   }
 
   protected editQuestion(turnId: string): void {

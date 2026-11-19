@@ -20,7 +20,15 @@ export interface StorkAnswer {
     readonly row_count: number;
     readonly asserted?: readonly string[];
   }[];
-  readonly embed?: { readonly url: string; readonly src?: string } | null;
+  readonly embed?: {
+    readonly view?: string;
+    readonly url: string;
+    readonly src?: string;
+    readonly mode?: string;
+    readonly filters_by_caption?: Record<string, string[]>;
+    readonly highlight?: string[];
+    readonly highlight_caption?: string;
+  } | null;
   readonly followups?: readonly string[];
   readonly as_of?: { readonly business_date: string | null; readonly last_refresh: string | null; readonly known: boolean } | null;
   readonly scope?: string | null;
@@ -96,6 +104,17 @@ export function toChatAnswer(a: StorkAnswer, id: string): ChatAnswer {
     fallback: NOT_ANSWERED.has(a.status),
     scope: a.scope ?? undefined,
     tableauUrl: a.embed ? (a.embed.src ?? a.embed.url) : undefined,
+    embed: a.embed
+      ? {
+          view: a.embed.view ?? a.evidence?.[0]?.view ?? 'Tableau view',
+          url: a.embed.url,
+          src: a.embed.src,
+          mode: a.embed.mode,
+          filtersByCaption: a.embed.filters_by_caption,
+          highlight: a.embed.highlight,
+          highlightCaption: a.embed.highlight_caption,
+        }
+      : undefined,
     writtenBy: writtenBy(a.meta),
     turnId: a.turn_id,
     conversationId: a.conversation_id,
@@ -125,6 +144,25 @@ function intentOf(a: StorkAnswer): string | undefined {
   return d?.intent && d.intent !== 'unknown' ? d.intent : undefined;
 }
 
+const BACKGROUND_KEY = 'eli.insightConversations';
+
+function readIds(): string[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(BACKGROUND_KEY) ?? '[]');
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeIds(ids: string[]): void {
+  try {
+    localStorage.setItem(BACKGROUND_KEY, JSON.stringify(ids.slice(0, 50)));
+  } catch {
+    /* private window: history may show insight questions; harmless */
+  }
+}
+
 function safeDecode(s: string): string {
   try {
     return decodeURIComponent(s);
@@ -140,14 +178,29 @@ export class StorkClient {
   private readonly config = inject(APP_CONFIG);
   private counter = 0;
 
-  ask(question: string, conversationId?: string | null): Observable<ChatAnswer> {
+  /**
+   * Today's insight questions go to the same /ask route and the server saves every turn.
+   * We keep them in their own conversations and leave those out of the user's history.
+   * (channel: 'insights' tells a server that understands it not to record them at all.)
+   */
+  private readonly backgroundIds = new Set<string>(readIds());
+
+  ask(question: string, conversationId?: string | null, background = false): Observable<ChatAnswer> {
     const body: Record<string, unknown> = { question, site: 'proposed' };
-    if (conversationId) body['conversation_id'] = conversationId;
+    const conv = background ? ([...this.backgroundIds][0] ?? null) : conversationId;
+    if (conv) body['conversation_id'] = conv;
+    if (background) body['channel'] = 'insights';
     return this.http
       .post<StorkAnswer>(`${this.config.gatewayBaseUrl}/ask`, body)
       .pipe(
         timeout(this.config.requestTimeoutMs),
-        map((a) => toChatAnswer(a, `s-${++this.counter}`)),
+        map((a) => {
+          if (background && a.conversation_id && !this.backgroundIds.has(a.conversation_id)) {
+            this.backgroundIds.add(a.conversation_id);
+            writeIds([...this.backgroundIds]);
+          }
+          return toChatAnswer(a, `s-${++this.counter}`);
+        }),
       );
   }
 
@@ -159,7 +212,7 @@ export class StorkClient {
         { params: { limit: 200 } },
       )
       .pipe(
-        map((r) => r.turns.map((t) => ({ turnId: t.id, conversationId: t.conversation_id, askedAt: t.created_at, question: t.question, status: t.status, headline: t.headline }))),
+        map((r) => r.turns.filter((t) => !this.backgroundIds.has(t.conversation_id)).map((t) => ({ turnId: t.id, conversationId: t.conversation_id, askedAt: t.created_at, question: t.question, status: t.status, headline: t.headline }))),
         catchError(() => of(null)),
       );
   }
@@ -174,7 +227,7 @@ export class StorkChatDataSource extends ChatDataSource {
   private readonly client = inject(StorkClient);
 
   ask(question: ChatQuestion): Observable<ChatAnswer> {
-    return this.client.ask(question.text, question.conversationId);
+    return this.client.ask(question.text, question.conversationId, question.background ?? false);
   }
 
   override storedHistory(): Observable<readonly StoredTurn[] | null> {

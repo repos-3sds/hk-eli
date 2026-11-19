@@ -1,3 +1,4 @@
+<div class="main">
 <header class="bar">
   <div class="bar-title">
     @if (store.title(); as title) {
@@ -91,7 +92,7 @@
                   }
                   @case ('stopped') {
                     <div class="note-line">
-                      <span class="stop-mark" aria-hidden="true"></span>Stopped. Nothing was sent.
+                      <span class="stop-mark" aria-hidden="true"></span>Stopped. The answer was discarded.
                       <button matButton type="button" (click)="store.retry(t.id)">Ask again</button>
                     </div>
                   }
@@ -131,3 +132,9 @@
 }
 
 <eli-chat-composer class="composer" />
+</div>
+
+@if (pane.view()) {
+  <div class="divider" role="separator" aria-orientation="vertical" aria-label="Drag to resize the Tableau view" title="Drag to resize" (pointerdown)="startResize($event)"></div>
+  <eli-tableau-pane class="pane" [style.width.px]="pane.width()" (ask)="store.send($event)" />
+}

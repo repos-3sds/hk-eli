@@ -1,6 +1,7 @@
 import { TableauParity, parityLine } from '../../core/parity/tableau-parity';
 import { shortDate } from '../../core/time/business-calendar';
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
+import { TableauPaneService } from '../tableau/tableau-pane.service';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
@@ -25,7 +26,9 @@ import { AnswerText } from './answer-text';
           @if (answer().status; as st) {<span class="outcome" [class]="'outcome ' + outcomeClass(st)">{{ outcomeLabel(st) }}</span>}
           @if (answer().intent; as i) {<span class="scope">{{ i.replaceAll('_', ' ') }}</span>}
           @if (answer().scope) {<span class="scope">{{ answer().scope }}</span>}
-          @if (answer().tableauUrl) {
+          @if (answer().embed) {
+            <button type="button" class="tab-link" [class.on]="isOpen()" (click)="openTableau()" title="Show the same Tableau view, with the same filters, beside the chat">{{ isOpen() ? 'Showing in Tableau' : 'Open in Tableau' }}<mat-icon svgIcon="panel-right-open" aria-hidden="true" /></button>
+          } @else if (answer().tableauUrl) {
             <a class="tab-link" [href]="answer().tableauUrl" target="_blank" rel="noopener" title="The same Tableau view with the same filters">Open in Tableau<mat-icon svgIcon="external-link" aria-hidden="true" /></a>
           }
         </div>
@@ -113,7 +116,7 @@ import { AnswerText } from './answer-text';
             <eli-answer-notices [block]="b" />
           }
           @case ('evidence') {
-            <eli-answer-evidence [block]="b" [figures]="answer().figures ?? []" [model]="answer().model" [latencyMs]="answer().latencyMs" [tableauUrl]="answer().tableauUrl" />
+            <eli-answer-evidence [block]="b" [figures]="answer().figures ?? []" [model]="answer().model" [latencyMs]="answer().latencyMs" [tableauUrl]="answer().tableauUrl" (openTableau)="openTableau()" />
           }
           @case ('bullets') {
             <section class="block">
@@ -155,7 +158,7 @@ import { AnswerText } from './answer-text';
       &.ok { background: rgb(43 159 135 / 18%); color: var(--eli-status-positive-text); } &.warn { background: rgb(255 147 46 / 16%); color: var(--eli-accent-orange); }
       &.info { background: rgb(99 171 255 / 14%); color: var(--eli-accent-link); } &.bad { background: rgb(255 51 51 / 14%); color: var(--eli-status-negative-text); } }
     .scope { padding: 2px var(--eli-space-5); border-radius: var(--eli-radius-pill); background: var(--eli-bg-row); color: var(--eli-text-muted-2); font-size: var(--eli-font-size-xs); }
-    .tab-link { display: inline-flex; align-items: center; gap: var(--eli-space-2); margin-left: auto; color: var(--eli-accent-link); font-size: var(--eli-font-size-s); text-decoration: none; &:hover { text-decoration: underline; } mat-icon { width: 13px; height: 13px; } }
+    .tab-link { padding: 0; border: 0; background: none; font-family: inherit; cursor: pointer; &.on { color: var(--eli-text-strong); } display: inline-flex; align-items: center; gap: var(--eli-space-2); margin-left: auto; color: var(--eli-accent-link); font-size: var(--eli-font-size-s); text-decoration: none; &:hover { text-decoration: underline; } mat-icon { width: 13px; height: 13px; } }
     .asof { display: flex; align-items: center; gap: var(--eli-space-3); margin: 0; color: var(--eli-text-muted); font-size: var(--eli-font-size-s); mat-icon { flex: none; width: 14px; height: 14px; } }
     .parity { display: flex; align-items: flex-start; gap: var(--eli-space-3); margin: 0; color: var(--eli-text-muted-2); font-size: var(--eli-font-size-s);
       mat-icon { flex: none; width: 14px; height: 14px; margin-top: 2px; }
@@ -197,6 +200,19 @@ import { AnswerText } from './answer-text';
   `,
 })
 export class AnswerCard {
+  private readonly pane = inject(TableauPaneService);
+
+  /** Opens the Tableau split view beside the chat with this answer's view and filters. */
+  protected openTableau(): void {
+    const e = this.answer().embed;
+    if (e) this.pane.open({ ...e, scope: this.answer().scope });
+  }
+
+  protected isOpen(): boolean {
+    const v = this.pane.view();
+    return !!v && v.url === this.answer().embed?.url;
+  }
+
   protected parityText(p: TableauParity): string {
     return parityLine(p, shortDate(this.answer().businessDate));
   }

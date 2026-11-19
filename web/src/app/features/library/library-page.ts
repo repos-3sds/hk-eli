@@ -1,13 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { LIBRARY_FOCUS, LibraryPrompt, libraryFor } from '../../core/chat/prompt-library';
 import { SessionService } from '../../core/session/session.service';
 
-export type LibraryChoice = { readonly action: 'ask' | 'edit'; readonly question: string };
-
-/** The Prompt Library: every question, by category from the discovery docs, with search. Ask it now or edit it first. */
+/** The Prompt Library tab (below Today and Chat): every question, by category from the discovery docs, with search. Ask it now or edit it first. */
 @Component({
   selector: 'eli-prompt-library',
   imports: [FormsModule, MatIconModule],
@@ -16,12 +14,11 @@ export type LibraryChoice = { readonly action: 'ask' | 'edit'; readonly question
     <header class="head">
       <h2 class="title"><mat-icon svgIcon="list-checks" aria-hidden="true" />Prompt library</h2>
       <span class="count">For {{ session.roleLabel() }} · {{ total() }} questions</span>
-      <button type="button" class="x" aria-label="Close" (click)="ref.close()"><mat-icon svgIcon="x" /></button>
     </header>
-    <p class="focus">{{ focus() }}. Grouped by the discovery docs' intents; switch role in the header to see another persona's library.</p>
+    <p class="focus">{{ focus() }}. Grouped by the discovery docs' intents; switch role in the header to see another persona's library. Pick a question to ask it, or the pen to edit it first.</p>
     <div class="search">
       <mat-icon svgIcon="funnel" aria-hidden="true" />
-      <input type="search" [ngModel]="q()" (ngModelChange)="q.set($event)" placeholder="Search questions, views or topics" aria-label="Search the prompt library" cdkFocusInitial />
+      <input type="search" [ngModel]="q()" (ngModelChange)="q.set($event)" placeholder="Search questions, views or topics" aria-label="Search the prompt library" />
     </div>
     <nav class="cats" aria-label="Categories">
       <button type="button" [class.on]="cat() === null" (click)="cat.set(null)">All</button>
@@ -54,11 +51,10 @@ export type LibraryChoice = { readonly action: 'ask' | 'edit'; readonly question
     </div>
   `,
   styles: `
-    :host { display: flex; flex-direction: column; max-height: 80vh; width: 100%; min-width: 0; background: var(--eli-bg-dock); color: var(--eli-text-primary); }
+    :host { display: flex; flex-direction: column; height: 100%; min-height: 0; width: 100%; max-width: 980px; margin: 0 auto; background: var(--eli-bg-dock); color: var(--eli-text-primary); }
     .head { display: flex; align-items: center; gap: var(--eli-space-6); padding: var(--eli-space-7) var(--eli-space-8) var(--eli-space-4); }
     .title { display: flex; align-items: center; gap: var(--eli-space-4); margin: 0; color: var(--eli-text-strong); font-size: var(--eli-font-size-xl); font-weight: var(--eli-weight-semibold); mat-icon { color: var(--eli-accent-orange); } }
     .count { color: var(--eli-text-muted); font-size: var(--eli-font-size-s); }
-    .x { margin-left: auto; display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: var(--eli-radius-s); background: none; color: var(--eli-text-muted); cursor: pointer; &:hover { background: var(--eli-bg-row); color: var(--eli-text-strong); } mat-icon { width: 16px; height: 16px; } }
     .focus { margin: 0 var(--eli-space-8) var(--eli-space-5); color: var(--eli-text-muted-2); font-size: var(--eli-font-size-s); }
     .search { display: flex; align-items: center; gap: var(--eli-space-4); margin: 0 var(--eli-space-8); padding: 0 var(--eli-space-6); border: 1px solid var(--eli-border); border-radius: var(--eli-radius-m); background: var(--eli-bg-input);
       &:focus-within { border-color: var(--eli-focus-ring); } mat-icon { width: 15px; height: 15px; color: var(--eli-text-muted); }
@@ -82,14 +78,13 @@ export type LibraryChoice = { readonly action: 'ask' | 'edit'; readonly question
     .empty { color: var(--eli-text-muted); }
   `,
 })
-export class PromptLibraryDialog {
-  protected readonly ref = inject<MatDialogRef<PromptLibraryDialog, LibraryChoice>>(MatDialogRef);
-  protected readonly data = inject<{ category?: string } | null>(MAT_DIALOG_DATA, { optional: true });
+export class PromptLibraryPage {
+  private readonly router = inject(Router);
   protected readonly session = inject(SessionService);
   protected readonly library = computed(() => libraryFor(this.session.role()));
   protected readonly focus = computed(() => LIBRARY_FOCUS[this.session.role()]);
   protected readonly q = signal('');
-  protected readonly cat = signal<string | null>(this.data?.category ?? null);
+  protected readonly cat = signal<string | null>(null);
   protected readonly total = computed(() => this.library().reduce((s, c) => s + c.prompts.length, 0));
 
   protected readonly shown = computed(() => {
@@ -106,6 +101,6 @@ export class PromptLibraryDialog {
   });
 
   protected choose(action: 'ask' | 'edit', p: LibraryPrompt): void {
-    this.ref.close({ action, question: p.question });
+    void this.router.navigate(['/chat'], { queryParams: action === 'ask' ? { q: p.question } : { draft: p.question } });
   }
 }

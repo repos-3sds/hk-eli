@@ -23,6 +23,12 @@ export const routes: Routes = [
     title: 'Chat · HK ELI Chatbot',
     loadComponent: () => import('./features/chat/chat-page').then((m) => m.ChatPage),
   },
+  {
+    // Every question by category, unique to each persona (Hawk: its own tab below Today and Chat).
+    path: 'library',
+    title: 'Prompt library · HK ELI Chatbot',
+    loadComponent: () => import('./features/library/library-page').then((m) => m.PromptLibraryPage),
+  },
   // Beyond the discovery docs, so hidden (Hawk, 2026-11-20). Old links land on Today.
   ...['ideas', 'shelf', 'update', 'alerts', 'feedback'].map((path) => ({ path, redirectTo: 'today' })),
   // Old RM-first links.

@@ -1,9 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
+import { TableauPaneService } from '../tableau/tableau-pane.service';
 import { Router } from '@angular/router';
-import { MatDialog } from '@angular/material/dialog';
-import { LibraryChoice, PromptLibraryDialog } from '../chat/prompt-library-dialog';
 import { ChatDataSource } from '../../core/chat/chat-data-source';
 import { ChatAnswer } from '../../core/chat/chat.models';
 import { DISCOVERY_QUESTIONS, DiscoveryQuestion } from '../../core/chat/discovery-questions';
@@ -82,7 +81,7 @@ const CHIPS: Record<LaunchRole, readonly string[]> = {
                 <p class="c-detail">{{ i.detail }}</p>
                 <div class="c-foot">
                   <span class="src" [title]="'Worked out from the ' + i.source + ' Tableau view'">{{ i.source }}</span>
-                  @if (i.tableauUrl) {<a [href]="i.tableauUrl" target="_blank" rel="noopener">Tableau ↗</a>}
+                  @if (i.tableauUrl) {<button type="button" class="eli-link tab" (click)="showTableau(i)" title="Open Chat with this Tableau view beside it">Tableau</button>}
                   <button type="button" class="eli-link more" (click)="ask(i.askMore)">Ask more</button>
                 </div>
               </article>
@@ -112,7 +111,7 @@ const CHIPS: Record<LaunchRole, readonly string[]> = {
     .watch .bar span { background: var(--eli-accent-orange); }
     .c-detail { margin: 0; color: var(--eli-text-muted-2); font-size: var(--eli-font-size-s); line-height: var(--eli-line-height-s); }
     .c-foot { display: flex; align-items: center; gap: var(--eli-space-5); margin-top: auto; padding-top: var(--eli-space-3); font-size: var(--eli-font-size-xs);
-      a { color: var(--eli-accent-link); text-decoration: none; } .more { margin-left: auto; font-size: var(--eli-font-size-s); } }
+      a, .tab { color: var(--eli-accent-link); text-decoration: none; } .tab { font-size: var(--eli-font-size-s); } .more { margin-left: auto; font-size: var(--eli-font-size-s); } }
     .src { color: var(--eli-text-muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .ins-title { margin: 0; color: var(--eli-text-muted-2); font-size: var(--eli-font-size-xs); font-weight: var(--eli-weight-semibold); letter-spacing: 0.06em; text-transform: uppercase; }
     .ghost { color: var(--eli-text-muted); font-weight: var(--eli-weight-regular); }
@@ -138,7 +137,7 @@ const CHIPS: Record<LaunchRole, readonly string[]> = {
 export class BookPage {
   private readonly data = inject(ChatDataSource);
   private readonly router = inject(Router);
-  private readonly dialog = inject(MatDialog);
+  private readonly pane = inject(TableauPaneService);
   private readonly session = inject(SessionService);
   private readonly clock = inject(BusinessClock);
 
@@ -187,15 +186,14 @@ export class BookPage {
     }
   }
 
+  /** Opens Chat with the insight's Tableau view in the split view. */
+  protected showTableau(i: Insight): void {
+    this.pane.open({ view: i.source, url: i.tableauUrl! });
+    void this.router.navigate(['/chat']);
+  }
+
   protected openLibrary(): void {
-    this.dialog
-      .open<PromptLibraryDialog, unknown, LibraryChoice>(PromptLibraryDialog, { panelClass: 'eli-library-panel', autoFocus: 'input', width: '860px', maxWidth: '92vw' })
-      .afterClosed()
-      .subscribe((c) => {
-        if (!c) return;
-        if (c.action === 'ask') this.ask(c.question);
-        else this.draft.set(c.question);
-      });
+    void this.router.navigate(['/library']);
   }
 
   protected ask(question: string): void {
@@ -215,7 +213,7 @@ export class BookPage {
       set({ q, status: 'done', answer: cached });
       return;
     }
-    this.data.ask({ text: q.question, clientId: null }).subscribe({
+    this.data.ask({ text: q.question, clientId: null, background: true }).subscribe({
       next: (answer) => {
         if (!answer.fallback) SESSION_CACHE.set(q.id, answer);
         set({ q, status: 'done', answer });

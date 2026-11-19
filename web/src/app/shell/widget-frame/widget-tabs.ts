@@ -21,4 +21,5 @@ export const HIDDEN_TABS: readonly WidgetTab[] = [
 export const WIDGET_TABS: readonly WidgetTab[] = [
   { path: 'today', label: 'Today', icon: 'sun' },
   { path: 'chat', label: 'Chat', icon: 'message-square' },
+  { path: 'library', label: 'Prompts', icon: 'list-checks' },
 ];

@@ -195,7 +195,7 @@ export class ChatStore {
       },
       error: () => {
         this.finish(turnId);
-        this.patch(turnId, { status: 'error', error: 'The answer did not come back in time. Nothing was sent anywhere.' });
+        this.patch(turnId, { status: 'error', error: 'The answer did not come back in time. Try again.' });
       },
     });
   }
