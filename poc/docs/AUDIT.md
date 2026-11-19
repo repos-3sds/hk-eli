@@ -23,7 +23,7 @@ Status: **Fixed** in this change, **Open** (with the owner or office check that 
 | Prompt library | Insight Generation §3–6; C6/C13; Gemini schema subset | 1 Critical (no prompts) | Fixed | Per-view insight guidance (Low) |
 | Office package | Office handoff pack (JFrog pins, hashes, IT-safe, clean zip) | 1 Critical | Fixed, verify READY | 3 test-only packages to prove in JFrog |
 
-Tests: 31 before, 80 after (all pass on the JFrog-pinned versions, Python 3.12, from a fresh venv with
+Tests: 31 before, 83 after (all pass on the JFrog-pinned versions, Python 3.12, from a fresh venv with
 hashes). Evaluation set: 20 questions, 20 pass in rules mode.
 
 ## 1. Backend

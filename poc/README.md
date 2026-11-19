@@ -34,7 +34,7 @@ python3.12 -m venv .venv
 .venv/bin/python -m pip install --no-cache-dir --require-hashes -r requirements.txt
 .venv/bin/python -m pip install --no-cache-dir --require-hashes -r requirements-dev.txt   # tests only
 .venv/bin/python -m pip check
-.venv/bin/python -m pytest -q -p no:cacheprovider               # 80 passed
+.venv/bin/python -m pytest -q -p no:cacheprovider               # 83 passed
 cp .env.example .env                                              # fill in office values
 .venv/bin/python office/smoke_test.py                             # SMOKE PASS
 ./run.sh                                                          # http://127.0.0.1:8050, Ctrl+C to stop

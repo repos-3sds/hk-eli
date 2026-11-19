@@ -102,6 +102,7 @@ class LLMSettings:
     max_retries: int = 2
     temperature: float = 0.0
     ca_bundle: str | None = None
+    provider: str = "Gemini"    # label shown in answers (meta.provider)
 
     @property
     def enabled(self) -> bool:
@@ -157,11 +158,13 @@ def load() -> Settings:
         model=_env("LLM_MODEL", "gemini-2.5-flash"),
         api_key=secret("LLM_API_KEY"),
         auth_header=_env("LLM_AUTH_HEADER", "Authorization"),
-        auth_scheme=_env("LLM_AUTH_SCHEME", "Bearer"),
+        # Set but empty means "no scheme": the key is sent alone (e.g. LLM_AUTH_HEADER=x-goog-api-key).
+        auth_scheme=os.environ.get("LLM_AUTH_SCHEME", "Bearer").strip(),
         timeout_s=_float("LLM_TIMEOUT_S", 20.0, 1, 120),
         max_retries=_int("LLM_MAX_RETRIES", 2, 0, 5),
         temperature=_float("LLM_TEMPERATURE", 0.0, 0, 1),
         ca_bundle=_env("LLM_CA_BUNDLE"),
+        provider=_env("LLM_PROVIDER_LABEL", "Gemini"),
     )
     if llm.enabled and not llm.gateway_url:
         raise ConfigError("LLM_MODE=gateway needs LLM_GATEWAY_URL")

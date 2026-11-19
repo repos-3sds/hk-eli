@@ -107,6 +107,8 @@ def merge_intent(base: Intent, raw: dict, kb: KB.Knowledge, today: date) -> tupl
     if problems:
         return base, problems
 
+    if intent == "unknown" and base.intent != "unknown":
+        intent = base.intent      # the model gave up but the rules found a supported intent: use it
     h = base.hints
     it = Intent(question=base.question, hints=h, unsupported=base.unsupported, source="gateway")
     it.intent = intent

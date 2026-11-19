@@ -70,6 +70,7 @@ def answer(question: str, http, site: str, scenario: str | None = None, user: st
            "caveats": [], "headline": "", "bullets": [], "table": None, "chart": None, "numbers": [],
            "evidence": [], "embed": None, "followups": [], "as_of": None, "scope": "", "trace": tr.steps,
            "meta": {"understanding": "rules", "insight": "template", "model": getattr(llm, "model", "off"),
+                    "provider": getattr(llm, "provider", "none"),
                     "knowledge_sha256": kb.sha256[:12],
                     "prompts": {k: f"{p.version}+{p.sha256[:12]}" for k, p in lib.items()}},
            "_llm_calls": calls}
@@ -475,11 +476,23 @@ def _write(it, pl, cols, rows, out):
 
     elif it.intent == "wps_exposure":
         by = _sum_by(cols, rows, ["Wps"])
-        out["headline"] = (f"{by[0][0][0]} is the largest WPS exposure at {_num(out, by[0][1], money(by[0][1]), 'hkd', src)}"
-                           f" ({_num(out, by[0][1] / total, pct(by[0][1] / total), 'share', src + ' (sum ratio)')} of {money(total)}), "
-                           f"followed by {by[1][0][0]} and {by[2][0][0]}.")
-        out["table"] = {"columns": ["WPS", "HKD"], "rows": [[k[0], money(x)] for k, x in by[:8]]}
-        out["followups"] = [f"Show me the distribution on {by[0][0][0]}"]
+        named = next(((k, x, n) for n, (k, x) in enumerate(by, 1) if k[0] == it.wps), None) if it.wps else None
+        if it.wps and not named:
+            out["bullets"].append(f"{it.wps} is not the worst-performing stock of any ELI in this scope.")
+        if named:
+            (k, x, rank) = named
+            out["headline"] = (f"{k[0]} carries {_num(out, x, money(x), 'hkd', src)} of outstanding ELI as the worst-performing stock "
+                               f"({_num(out, x / total, pct(x / total), 'share', src + ' (sum ratio)')} of {_num(out, total, money(total), 'hkd', src)}), "
+                               f"rank {rank} of {len(by)}. The largest is {by[0][0][0]} at {_num(out, by[0][1], money(by[0][1]), 'hkd', src)}.")
+            out["table"] = {"columns": ["WPS", "HKD"], "rows": [[kk[0], money(xx)] for kk, xx in by[:8]]}
+            out["followups"] = [f"Show me the distribution on {k[0]}"]
+            pl.embed_highlight, pl.embed_highlight_field = [k[0]], "wps"
+        else:
+            out["headline"] = (f"{by[0][0][0]} is the largest WPS exposure at {_num(out, by[0][1], money(by[0][1]), 'hkd', src)}"
+                               f" ({_num(out, by[0][1] / total, pct(by[0][1] / total), 'share', src + ' (sum ratio)')} of {money(total)}), "
+                               f"followed by {by[1][0][0]} and {by[2][0][0]}.")
+            out["table"] = {"columns": ["WPS", "HKD"], "rows": [[k[0], money(x)] for k, x in by[:8]]}
+            out["followups"] = [f"Show me the distribution on {by[0][0][0]}"]
 
     elif it.intent == "mtm_distribution":
         bi, ci = cols.index("MTM% (bin)"), cols.index("Count of Asset Id")

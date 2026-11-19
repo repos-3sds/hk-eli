@@ -48,6 +48,7 @@ class Call:
 class OffClient:
     enabled = False
     model = "off"
+    provider = "none"
 
     def generate_json(self, system: str, user: str, schema: dict) -> dict:
         raise LLMError("OFF", "Model calls are off (LLM_MODE=off)")
@@ -59,6 +60,7 @@ class GatewayClient:
     def __init__(self, s: LLMSettings, http: httpx.Client | None = None):
         self.s = s
         self.model = s.model
+        self.provider = s.provider
         self.http = http or httpx.Client(timeout=s.timeout_s, verify=s.ca_bundle or True)
 
     def _headers(self) -> dict:

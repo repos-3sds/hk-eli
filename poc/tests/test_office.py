@@ -112,7 +112,7 @@ def test_health_ready_config_and_headers():
     r = client.get("/readyz").json()
     assert r["ready"] and set(r["checks"]) == {"store", "knowledge", "prompts", "tableau", "llm"}
     c = client.get("/api/v1/config").json()
-    assert c["llm_mode"] == "off" and c["prompts"] == {"understand": "1.0.0", "write_answer": "1.0.0"}
+    assert c["llm_mode"] == "off" and c["prompts"] == {"understand": "1.1.0", "write_answer": "1.0.0"}
     page = client.get("/")
     csp = page.headers["Content-Security-Policy"]
     assert "default-src 'self'" in csp and "http" not in csp
@@ -260,4 +260,30 @@ def test_llm_calls_are_audited_with_prompt_version(monkeypatch):
     a = client.post("/api/v1/ask", json={"question": "What is total outstanding ELI?"}).json()
     rows = appmod.S.store._con.execute("SELECT step, prompt_version, outcome FROM llm_call WHERE turn_id = ?",
                                        (a["turn_id"],)).fetchall()
-    assert [tuple(r) for r in rows] == [("understand", "1.0.0", "ok"), ("write_answer", "1.0.0", "error")]
+    assert [tuple(r) for r in rows] == [("understand", "1.1.0", "ok"), ("write_answer", "1.0.0", "error")]
+
+
+def test_empty_auth_scheme_sends_key_alone(monkeypatch):
+    monkeypatch.setenv("LLM_MODE", "gateway")
+    monkeypatch.setenv("LLM_GATEWAY_URL", "https://gw.example")
+    monkeypatch.setenv("LLM_AUTH_HEADER", "x-goog-api-key")
+    monkeypatch.setenv("LLM_AUTH_SCHEME", "")
+    monkeypatch.setenv("LLM_API_KEY", "k123")
+    s = config.reload().llm
+    assert s.auth_scheme == "" and GatewayClient(s)._headers()["x-goog-api-key"] == "k123"
+    monkeypatch.delenv("LLM_AUTH_SCHEME")
+    assert GatewayClient(config.reload().llm)._headers()["x-goog-api-key"] == "Bearer k123"
+
+
+def test_model_unknown_does_not_override_a_rules_intent():
+    llm = gateway([{"intent": "unknown", "segments": [], "ranking": False, "needs_clarification": True,
+                    "clarification": "Which stock?"}, 500, 500, 500])
+    a = run("Where is Alibaba exposure?", llm)
+    assert a["intent"] == "wps_exposure" and a["status"] == "OK" and a["meta"]["understanding"] == "gateway"
+    assert a["meta"]["provider"] == "Gemini" and a["meta"]["model"] == "gemini-test"
+
+
+def test_named_stock_exposure_leads_with_that_stock():
+    a = run("What is our exposure to Tencent?", OffClient())
+    assert a["intent"] == "wps_exposure" and a["headline"].startswith("700 HK carries")
+    assert a["meta"]["provider"] == "none"
