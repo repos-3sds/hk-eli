@@ -127,7 +127,7 @@ def all_filter(field: str) -> str:
 
 
 def sheet(name: str, *, rows=(), cols=(), mark="Automatic", color=None, size=None, text=(), label=(),
-          tooltip=(), fixed=None, shown=(), title="", sort=None, zoom="entire-view", tpl=None, big=False) -> tuple[str, str]:
+          tooltip=(), fixed=None, shown=(), title="", sort=None, zoom="entire-view", tpl=None, big=False, label_mode=None) -> tuple[str, str]:
     """fixed: list of (field, values, context, exclude). shown: fields with an all-values shown filter."""
     fixed = fixed or []
     uses: list[tuple[str, str]] = []
@@ -181,7 +181,9 @@ def sheet(name: str, *, rows=(), cols=(), mark="Automatic", color=None, size=Non
           f"<aggregation value='true' /></view><style>{fmts}</style>"
           f"<panes><pane selection-relaxation-option='selection-relaxation-allow'><view><breakdown value='auto' /></view>"
           f"<mark class='{mark}' />" + (f"<encodings>{enc}</encodings>" if enc else "") + label_xml
-          + ("<style><style-rule element='mark'><format attr='mark-labels-show' value='true' /></style-rule></style>"
+          + ("<style><style-rule element='mark'><format attr='mark-labels-show' value='true' />"
+             + (f"<format attr='mark-labels-mode' value='{label_mode}' />" if label_mode else "")
+             + "</style-rule></style>"
              if label else "") + "</pane></panes>"
           f"<rows>{('(' + r + ')') if len(rows) > 1 else r}</rows><cols>{('(' + c + ')') if len(cols) > 1 else c}</cols>"
           f"</table><simple-id uuid='{{{str(uuid.uuid5(uuid.NAMESPACE_URL, 'hkeli/' + name)).upper()}}}' /></worksheet>")
@@ -229,7 +231,7 @@ def sheets():
               title="Outstanding ELI and customers by segment and predicted result"),
         # Spec: Columns DAY(predict_maturity); Rows SUM; colour predict_result; label SUM
         sheet("TRE_maturity_calendar_n30d", cols=[N("predict_maturity")], rows=[SUM], mark="Bar",
-              color=N("predict_result"), label=[AMT], tooltip=[CUST], fixed=[TRE, LIVE], shown=tre_shown,
+              color=N("predict_result"), tooltip=[AMT, CUST], fixed=[TRE, LIVE], shown=tre_shown,
               title="TRE predicted maturity by date (HKD)"),
         # Spec: Columns cust_district > cust_branch, predict_result; Rows SUM
         sheet("TRE_maturity_branch_n30d", cols=[N("cust_district"), N("cust_branch")], rows=[SUM], mark="Bar",
@@ -241,26 +243,26 @@ def sheets():
               title="TRE predicted maturity: clients and positions"),
         # Spec: Columns bp_div_type (> cust_district); Rows SUM; colour predict_result; label SUM
         sheet("ALL_outstanding_District_n30d", cols=[N("bp_div_type"), N("cust_district")], rows=[SUM], mark="Bar",
-              color=N("predict_result"), label=[AMT], tooltip=[CUST],
+              color=N("predict_result"), tooltip=[AMT, CUST],
               fixed=[("calc_in_scope", ["In scope"], True, False), LIVE],
               shown=["deal_status", "bp_div_type", "predict_maturity", *W1],
               title="Outstanding ELI by segment and district (excludes TPC)"),
         # Spec: Rows wps; Columns SUM; segmented by predict_result
         sheet("ALL_outstanding_simulation_n30d", rows=[N("wps")], cols=[SUM], mark="Bar", color=N("predict_result"),
-              label=[AMT], fixed=[LIVE], shown=["deal_status", "bp_div_type", "predict_maturity", *W1], sort="wps",
+              tooltip=[AMT], fixed=[LIVE], shown=["deal_status", "bp_div_type", "predict_maturity", *W1], sort="wps",
               zoom="fit-width", title="Outstanding ELI by worst-performing stock (all segments)"),
         sheet("TRE_outstanding_simulation_n30d", rows=[N("wps")], cols=[SUM], mark="Bar", color=N("predict_result"),
-              label=[AMT], fixed=[TRE, LIVE], shown=["cust_district", "cust_branch", "predict_maturity", *W1],
+              tooltip=[AMT], fixed=[TRE, LIVE], shown=["cust_district", "cust_branch", "predict_maturity", *W1],
               sort="wps", zoom="fit-width", title="TRE outstanding ELI by worst-performing stock"),
         # Spec: Columns MTM% (bin); Rows deal count; colour predict_result; size SUM; label wps
         sheet("ALL_outstanding_distribution_n30d", cols=[N("calc_mtm_bin")], rows=[("ctd", "asset_id")], mark="Circle",
-              size=SUM, color=N("predict_result"), label=[N("wps")], tooltip=[SUM], fixed=[LIVE],
+              size=SUM, color=N("predict_result"), label=[N("wps")], tooltip=[AMT], fixed=[LIVE], label_mode="selection",
               shown=["deal_status", "bp_div_type", "cust_district", "cust_branch", "predict_maturity", *W1],
               title="MTM distribution: deals by MTM% bin, size = HKD"),
         # Spec: "Data-recency KPI"
         sheet("max_trade_date", mark="Text", text=[("usr", "calc_max_trade_date")], big=True, shown=["bp_div_type"],
               title="Latest trade date"),
-        sheet("data_as_of", rows=[N("business_date"), N("last_refresh")], mark="Text", big=True,
+        sheet("data_as_of", mark="Text", text=[N("business_date"), N("last_refresh")], big=True,
               title="Data as of (business date, last refresh)"),
     ]
 
