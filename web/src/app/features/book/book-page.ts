@@ -15,14 +15,13 @@ interface Line {
 }
 
 const D = DISCOVERY_QUESTIONS;
-/** The headline, then a three-line brief: where the book is heading in the next 30 days, and the risk. */
-const HEADLINE = D.outstanding;
-const BRIEF: readonly DiscoveryQuestion[] = [D.calendar, D.branches, D.koShare];
-const CHIPS: readonly DiscoveryQuestion[] = [D.branches, D.wps, D.clients, D.segments];
+/** Today's insights, below the ask box: the book, where it is heading in the next 30 days, and the risk. */
+const INSIGHTS: readonly DiscoveryQuestion[] = [D.outstanding, D.calendar, D.branches, D.koShare];
+const CHIPS: readonly DiscoveryQuestion[] = [D.branches, D.wps];
 
 /**
- * Today: a calm landing. A greeting, one headline and a three-line brief, each the pipeline's own answer from a
- * HK_ELI Tableau view, then the ask box with suggested questions. Charts and evidence live in Chat: any line opens
+ * Today: a calm landing. A big greeting, the ask box with two suggested questions, then today's insights, each the
+ * pipeline's own answer from a HK_ELI Tableau view. Charts and evidence live in Chat: any line opens
  * there as a question.
  */
 @Component({
@@ -32,32 +31,8 @@ const CHIPS: readonly DiscoveryQuestion[] = [D.branches, D.wps, D.clients, D.seg
   template: `
     <div class="page eli-scroll">
       <main class="col">
-        <p class="hello"><mat-icon svgIcon="sun" aria-hidden="true" />{{ greeting() }}</p>
-        <h2 class="headline">
-          @switch (headline().status) {
-            @case ('loading') {<span class="ghost">Reading the ELI book…</span>}
-            @case ('error') {<span class="ghost">The ELI book isn't answering right now.</span>}
-            @default {{{ text(headline().answer!) }}}
-          }
-        </h2>
-
-        <ul class="brief" aria-label="Today's brief">
-          @for (l of brief(); track l.q.id) {
-            <li>
-              <button type="button" class="line" (click)="ask(l.q.question)" [title]="'Open in Chat: ' + l.q.question">
-                <mat-icon class="b-icon" [svgIcon]="l.q.icon" aria-hidden="true" />
-                <span class="b-text">
-                  @switch (l.status) {
-                    @case ('loading') {<span class="ghost">{{ l.q.title }}…</span>}
-                    @case ('error') {<span class="ghost">{{ l.q.title }}: no answer.</span>}
-                    @default {{{ text(l.answer!) }}}
-                  }
-                </span>
-                <mat-icon class="go" svgIcon="chevron-right" aria-hidden="true" />
-              </button>
-            </li>
-          }
-        </ul>
+        <h2 class="hero"><mat-icon svgIcon="sun" aria-hidden="true" />{{ greeting() }}</h2>
+        <p class="lede">Ask anything about the ELI book. Answers come from the HK_ELI Tableau views.</p>
 
         <form class="ask" (submit)="$event.preventDefault(); ask(draft())">
           <label class="eli-visually-hidden" for="today-ask">Ask about the ELI book</label>
@@ -70,7 +45,27 @@ const CHIPS: readonly DiscoveryQuestion[] = [D.branches, D.wps, D.clients, D.seg
           }
         </div>
 
-        @if (asOf(); as a) {<p class="asof"><mat-icon svgIcon="info" aria-hidden="true" />{{ a }}</p>}
+        <section class="insights" aria-label="Today's insights">
+          <h3 class="ins-title">Today's insights</h3>
+          <ul class="brief">
+            @for (l of lines(); track l.q.id) {
+              <li>
+                <button type="button" class="line" (click)="ask(l.q.question)" [title]="'Open in Chat: ' + l.q.question">
+                  <mat-icon class="b-icon" [svgIcon]="l.q.icon" aria-hidden="true" />
+                  <span class="b-text">
+                    @switch (l.status) {
+                      @case ('loading') {<span class="ghost">{{ l.q.title }}…</span>}
+                      @case ('error') {<span class="ghost">{{ l.q.title }}: no answer.</span>}
+                      @default {{{ text(l.answer!) }}}
+                    }
+                  </span>
+                  <mat-icon class="go" svgIcon="chevron-right" aria-hidden="true" />
+                </button>
+              </li>
+            }
+          </ul>
+          @if (asOf(); as a) {<p class="asof"><mat-icon svgIcon="info" aria-hidden="true" />{{ a }}</p>}
+        </section>
       </main>
     </div>
   `,
@@ -78,8 +73,10 @@ const CHIPS: readonly DiscoveryQuestion[] = [D.branches, D.wps, D.clients, D.seg
     :host { display: block; height: 100%; }
     .page { height: 100%; overflow: auto; box-sizing: border-box; padding: 6vh var(--eli-space-7) var(--eli-space-8); }
     .col { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: var(--eli-space-7); }
-    .hello { display: flex; align-items: center; gap: var(--eli-space-4); margin: 0; color: var(--eli-text-muted-2); font-size: var(--eli-font-size-m); mat-icon { width: 18px; height: 18px; color: var(--eli-accent-orange); } }
-    .headline { margin: 0; color: var(--eli-text-strong); font-size: 24px; line-height: 32px; font-weight: var(--eli-weight-semibold); }
+    .hero { display: flex; align-items: center; gap: var(--eli-space-6); margin: 0; color: var(--eli-text-strong); font-size: 34px; line-height: 42px; font-weight: var(--eli-weight-semibold); mat-icon { width: 32px; height: 32px; color: var(--eli-accent-orange); } }
+    .lede { margin: calc(-1 * var(--eli-space-4)) 0 0; color: var(--eli-text-muted-2); font-size: var(--eli-font-size-l); }
+    .insights { display: flex; flex-direction: column; gap: var(--eli-space-4); margin-top: var(--eli-space-7); }
+    .ins-title { margin: 0; color: var(--eli-text-muted-2); font-size: var(--eli-font-size-xs); font-weight: var(--eli-weight-semibold); letter-spacing: 0.06em; text-transform: uppercase; }
     .ghost { color: var(--eli-text-muted); font-weight: var(--eli-weight-regular); }
     .brief { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; border-top: 1px solid var(--eli-separator); }
     .line { display: flex; align-items: flex-start; gap: var(--eli-space-6); width: 100%; padding: var(--eli-space-6) var(--eli-space-2); border: 0; border-bottom: 1px solid var(--eli-separator); background: none; color: var(--eli-text-primary); font: inherit; font-size: var(--eli-font-size-m); line-height: var(--eli-line-height-l); text-align: left; cursor: pointer;
@@ -87,7 +84,7 @@ const CHIPS: readonly DiscoveryQuestion[] = [D.branches, D.wps, D.clients, D.seg
     .b-icon { flex: none; width: 16px; height: 16px; margin-top: 3px; color: var(--eli-accent-orange); }
     .b-text { flex: 1; }
     .go { flex: none; width: 16px; height: 16px; margin-top: 3px; color: var(--eli-accent-link); opacity: 0.4; }
-    .ask { display: flex; align-items: center; gap: var(--eli-space-4); margin-top: var(--eli-space-4); padding: var(--eli-space-3) var(--eli-space-3) var(--eli-space-3) var(--eli-space-7); border: 1px solid var(--eli-border); border-radius: var(--eli-radius-m); background: var(--eli-bg-input);
+    .ask { display: flex; align-items: center; gap: var(--eli-space-4); padding: var(--eli-space-3) var(--eli-space-3) var(--eli-space-3) var(--eli-space-7); border: 1px solid var(--eli-border); border-radius: var(--eli-radius-m); background: var(--eli-bg-input);
       &:focus-within { border-color: var(--eli-focus-ring); } }
     .ask input { flex: 1; min-width: 0; height: 40px; border: 0; outline: 0; background: none; color: var(--eli-text-primary); font: inherit; font-size: var(--eli-font-size-l); }
     .send { display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 50%; background: var(--eli-accent-blue); color: #fff; cursor: pointer;
@@ -106,8 +103,7 @@ export class BookPage {
 
   protected readonly chips = CHIPS;
   protected readonly draft = signal('');
-  protected readonly headline = signal<Line>({ q: HEADLINE, status: 'loading' });
-  protected readonly brief = signal<readonly Line[]>(BRIEF.map((q) => ({ q, status: 'loading' })));
+  protected readonly lines = signal<readonly Line[]>(INSIGHTS.map((q) => ({ q, status: 'loading' })));
 
   protected readonly greeting = computed(() => {
     const hour = this.clock.hour();
@@ -116,15 +112,14 @@ export class BookPage {
   });
 
   protected readonly asOf = computed(() => {
-    const a = [this.headline(), ...this.brief()].find((l) => l.answer?.businessDate)?.answer;
+    const a = this.lines().find((l) => l.answer?.businessDate)?.answer;
     if (!a) return null;
-    const sources = new Set([this.headline(), ...this.brief()].flatMap((l) => l.answer?.sources ?? []));
+    const sources = new Set(this.lines().flatMap((l) => l.answer?.sources ?? []));
     return `Data as of ${a.businessDate}${a.refreshedAt ? `, refreshed ${a.refreshedAt.replace('T', ' ')}` : ''} · from ${sources.size} HK_ELI Tableau views · Internal use only`;
   });
 
   constructor() {
-    this.load(HEADLINE, (l) => this.headline.set(l));
-    BRIEF.forEach((q, i) => this.load(q, (l) => this.brief.update((all) => all.map((x, n) => (n === i ? l : x)))));
+    INSIGHTS.forEach((q, i) => this.load(q, (l) => this.lines.update((all) => all.map((x, n) => (n === i ? l : x)))));
   }
 
   protected ask(question: string): void {
