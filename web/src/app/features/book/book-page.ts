@@ -15,6 +15,15 @@ interface Line {
 }
 
 const D = DISCOVERY_QUESTIONS;
+
+/** The data refreshes overnight, so one answer per insight per session is enough; going back to Today is instant. */
+const SESSION_CACHE = new Map<string, ChatAnswer>();
+
+/** The first sentence, not split inside figures like "HKD 2.46bn." or "10.7%". */
+export function firstSentence(text: string): string {
+  const m = /^.*?[.!?](?=\s+[A-Z(]|$)/s.exec(text.trim());
+  return m ? m[0] : text.trim();
+}
 /** Today's insights, below the ask box: the book, where it is heading in the next 30 days, and the risk. */
 const INSIGHTS: readonly DiscoveryQuestion[] = [D.outstanding, D.calendar, D.branches, D.koShare];
 const CHIPS: readonly DiscoveryQuestion[] = [D.branches, D.wps];
@@ -127,14 +136,23 @@ export class BookPage {
     if (q) void this.router.navigate(['/chat'], { queryParams: { q } });
   }
 
+  /** One sentence per insight: the figure. The full answer, chart and evidence open in Chat. */
   protected text(a: ChatAnswer): string {
     const b = a.blocks[0];
-    return b?.kind === 'text' ? b.text : '';
+    return b?.kind === 'text' ? firstSentence(b.text) : '';
   }
 
   private load(q: DiscoveryQuestion, set: (l: Line) => void): void {
+    const cached = SESSION_CACHE.get(q.id);
+    if (cached) {
+      set({ q, status: 'done', answer: cached });
+      return;
+    }
     this.data.ask({ text: q.question, clientId: null }).subscribe({
-      next: (answer) => set({ q, status: 'done', answer }),
+      next: (answer) => {
+        if (!answer.fallback) SESSION_CACHE.set(q.id, answer);
+        set({ q, status: 'done', answer });
+      },
       error: () => set({ q, status: 'error' }),
     });
   }
