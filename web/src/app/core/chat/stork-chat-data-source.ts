@@ -26,7 +26,7 @@ export interface StorkAnswer {
   readonly scope?: string | null;
   readonly trace?: readonly { readonly n: number; readonly name: string; readonly detail: unknown; readonly ms: number }[];
   readonly assumptions?: readonly string[];
-  readonly meta?: { readonly understanding?: string; readonly insight?: string; readonly model?: string | null };
+  readonly meta?: { readonly understanding?: string; readonly insight?: string; readonly model?: string | null; readonly provider?: string };
 }
 
 /** Statuses where the pipeline could not answer from data and only says what it can answer. */
@@ -103,7 +103,7 @@ function writtenBy(meta: StorkAnswer['meta']): string | undefined {
   // The pipeline names the setting ("gateway"); users want to know it was Gemini.
   const who = (s: string | undefined, fallback: string) => {
     const v = (s ?? fallback).trim();
-    return /^(gateway|gemini|model)\b/i.test(v) ? 'Gemini' : v === 'template' ? 'template (no model)' : v;
+    return /^(gateway|gemini|model)\b/i.test(v) ? (meta.provider ?? 'Gemini') : v === 'template' ? 'template (no model)' : v;
   };
   return `Question read by ${who(meta.understanding, 'rules')} · words by ${who(meta.insight, 'template')}${model ? ` · ${model}` : ''}`;
 }
