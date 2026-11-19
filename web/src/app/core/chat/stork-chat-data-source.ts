@@ -100,7 +100,12 @@ export function toChatAnswer(a: StorkAnswer, id: string): ChatAnswer {
 function writtenBy(meta: StorkAnswer['meta']): string | undefined {
   if (!meta) return undefined;
   const model = meta.model && meta.model !== 'off' ? meta.model : null;
-  return `Question read by ${meta.understanding ?? 'rules'} · words by ${meta.insight ?? 'template'}${model ? ` · ${model}` : ''}`;
+  // The pipeline names the setting ("gateway"); users want to know it was Gemini.
+  const who = (s: string | undefined, fallback: string) => {
+    const v = (s ?? fallback).trim();
+    return /^(gateway|gemini|model)\b/i.test(v) ? 'Gemini' : v === 'template' ? 'template (no model)' : v;
+  };
+  return `Question read by ${who(meta.understanding, 'rules')} · words by ${who(meta.insight, 'template')}${model ? ` · ${model}` : ''}`;
 }
 
 function safeDecode(s: string): string {
