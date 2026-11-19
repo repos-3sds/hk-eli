@@ -1,0 +1,391 @@
+{
+  "id": "hkeli-glossary",
+  "version": "1.0.0",
+  "about": "Business words to canonical concepts and Tableau filter values. Derived from the discovery transcripts (Concept Resolution, Filter Resolution, What is HK ELI). Synthetic values only: the office replaces districts, branches and tickers with the workbook's real value lists (see OFFICE.md, office check C3). Code reads this file; the model never decides a value that is not listed here.",
+  "concepts": [
+    {
+      "id": "volume_bu",
+      "kind": "measure",
+      "label": "HKD-equivalent notional",
+      "terms": [
+        "outstanding",
+        "outstanding amount",
+        "ELI exposure",
+        "ELI notional",
+        "notional amount",
+        "HKD equivalent",
+        "HKD outstanding"
+      ],
+      "rule": "'Outstanding' means two things: population deal_status = LIVE and measure SUM(volume_bu). Never invent another money field."
+    },
+    {
+      "id": "deal_status",
+      "kind": "status",
+      "label": "Deal status",
+      "terms": [
+        "live",
+        "outstanding",
+        "active"
+      ],
+      "values": [
+        {
+          "value": "LIVE",
+          "patterns": [
+            "\\blive\\b",
+            "\\boutstanding\\b"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bp_div_type",
+      "kind": "dimension",
+      "label": "Business segment",
+      "terms": [
+        "segment",
+        "business segment",
+        "business division",
+        "TRE",
+        "Treasures",
+        "TPC",
+        "Private Client",
+        "PB",
+        "Private Banking"
+      ],
+      "values": [
+        {
+          "value": "Treasures(TPC)",
+          "short": "TPC",
+          "patterns": [
+            "\\btpc\\b",
+            "treasures\\s*\\(?tpc",
+            "treasures private client"
+          ]
+        },
+        {
+          "value": "Treasures(HK)",
+          "short": "TRE",
+          "patterns": [
+            "\\btre\\b",
+            "treasures(?!\\s*\\(?tpc)(?! private client)"
+          ]
+        },
+        {
+          "value": "PB",
+          "short": "PB",
+          "patterns": [
+            "\\bpb\\b",
+            "private bank"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cif_id",
+      "kind": "identifier",
+      "label": "Customer",
+      "terms": [
+        "CIF",
+        "CIF ID",
+        "customer ID",
+        "client ID",
+        "customer identifier"
+      ],
+      "rule": "Customer counts are COUNTD(cif_id): distinct customers, not additive across groups."
+    },
+    {
+      "id": "cust_district",
+      "kind": "dimension",
+      "label": "Customer district",
+      "terms": [
+        "district",
+        "D1",
+        "D2",
+        "D3"
+      ],
+      "values": [
+        {
+          "value": "TRE-D1",
+          "short": "D1",
+          "patterns": [
+            "\\bd\\s?1\\b",
+            "district\\s?1\\b"
+          ]
+        },
+        {
+          "value": "TRE-D2",
+          "short": "D2",
+          "patterns": [
+            "\\bd\\s?2\\b",
+            "district\\s?2\\b"
+          ]
+        },
+        {
+          "value": "TRE-D3",
+          "short": "D3",
+          "patterns": [
+            "\\bd\\s?3\\b",
+            "district\\s?3\\b"
+          ]
+        }
+      ],
+      "rule": "Districts exist for Treasures (HK) only. PB and TPC show as Null and are never a named district."
+    },
+    {
+      "id": "cust_branch",
+      "kind": "dimension",
+      "label": "Customer branch",
+      "terms": [
+        "branch",
+        "customer branch",
+        "servicing branch"
+      ],
+      "values": [
+        {
+          "value": "Central",
+          "district": "TRE-D1"
+        },
+        {
+          "value": "Admiralty",
+          "district": "TRE-D1"
+        },
+        {
+          "value": "Wan Chai",
+          "district": "TRE-D1"
+        },
+        {
+          "value": "Causeway Bay",
+          "district": "TRE-D1"
+        },
+        {
+          "value": "Tsim Sha Tsui",
+          "district": "TRE-D2"
+        },
+        {
+          "value": "Mong Kok",
+          "district": "TRE-D2"
+        },
+        {
+          "value": "Kowloon Bay",
+          "district": "TRE-D2"
+        },
+        {
+          "value": "Kwun Tong",
+          "district": "TRE-D2"
+        },
+        {
+          "value": "Sha Tin",
+          "district": "TRE-D3"
+        },
+        {
+          "value": "Tsuen Wan",
+          "district": "TRE-D3"
+        },
+        {
+          "value": "Tuen Mun",
+          "district": "TRE-D3"
+        },
+        {
+          "value": "Yuen Long",
+          "district": "TRE-D3"
+        }
+      ]
+    },
+    {
+      "id": "reg_mgr_onebank_id",
+      "kind": "dimension",
+      "label": "Team lead",
+      "terms": [
+        "team lead",
+        "team leader"
+      ]
+    },
+    {
+      "id": "rm_name",
+      "kind": "dimension",
+      "label": "Relationship manager",
+      "terms": [
+        "RM",
+        "RM name",
+        "relationship manager"
+      ]
+    },
+    {
+      "id": "wps",
+      "kind": "dimension",
+      "label": "Worst-performing stock",
+      "terms": [
+        "WPS",
+        "worst-performing stock",
+        "worst performer",
+        "weakest underlying",
+        "worst-performing underlying"
+      ],
+      "rule": "WPS membership is not basket membership. 'ELI containing 9988 HK' is not wps = 9988 HK and is unsupported until a basket view exists.",
+      "aliases": {
+        "alibaba": "9988 HK",
+        "baba": "9988 HK",
+        "tencent": "700 HK",
+        "meituan": "3690 HK",
+        "xiaomi": "1810 HK",
+        "byd": "1211 HK",
+        "nvidia": "NVDA UW",
+        "nvda": "NVDA UW",
+        "intel": "INTC UW",
+        "intc": "INTC UW",
+        "tesla": "TSLA UW",
+        "tsla": "TSLA UW",
+        "apple": "AAPL UW",
+        "aapl": "AAPL UW",
+        "amd": "AMD UW"
+      }
+    },
+    {
+      "id": "predict_result",
+      "kind": "dimension",
+      "label": "Predicted result",
+      "terms": [
+        "predicted result",
+        "expected result",
+        "predicted outcome",
+        "expected outcome",
+        "predicted KO",
+        "predicted expiry"
+      ],
+      "values": [
+        {
+          "value": "EXP(Below Strike)",
+          "patterns": [
+            "below strike"
+          ]
+        },
+        {
+          "value": "KO",
+          "patterns": [
+            "\\bko\\b",
+            "knock[\\s-]?out"
+          ]
+        },
+        {
+          "value": "EX",
+          "patterns": [
+            "\\bex\\b",
+            "exercis",
+            "physical delivery"
+          ]
+        },
+        {
+          "value": "EXP",
+          "patterns": [
+            "\\bexp\\b",
+            "expire"
+          ]
+        }
+      ],
+      "rule": "Predicted categories are model estimates, never confirmed outcomes."
+    },
+    {
+      "id": "predict_maturity",
+      "kind": "event",
+      "label": "Predicted maturity",
+      "terms": [
+        "predicted maturity",
+        "expected maturity",
+        "estimated maturity",
+        "upcoming maturity",
+        "maturity opportunity",
+        "maturing next X days"
+      ],
+      "rule": "Plain 'maturity' in a next-X-days sales context means predicted maturity, and the answer says so."
+    },
+    {
+      "id": "maturity_date",
+      "kind": "event",
+      "label": "Contractual maturity",
+      "terms": [
+        "contractual maturity",
+        "scheduled maturity",
+        "original maturity",
+        "legal maturity"
+      ],
+      "patterns": [
+        "contractual maturit",
+        "scheduled maturit",
+        "original maturit",
+        "legal maturit"
+      ],
+      "supported": false,
+      "rule": "Never resolve these to predict_maturity. No published view answers contractual maturity yet.",
+      "user_text": "No published view gives contractual maturity yet. I can show predicted maturity for Treasures (HK) instead."
+    },
+    {
+      "id": "basket_membership",
+      "kind": "dimension",
+      "label": "Any underlying in the basket",
+      "terms": [
+        "containing",
+        "with exposure to",
+        "linked to",
+        "basket includes"
+      ],
+      "patterns": [
+        "\\bcontain",
+        "basket (includes|has|with)",
+        "\\blinked to\\b",
+        "any underlying"
+      ],
+      "supported": false,
+      "rule": "Needs an any-underlying view. Do not answer it with wps.",
+      "user_text": "I can only see the worst-performing stock of each ELI, not every stock in its basket, so I can't list all ELI that contain a stock. I can show ELI where it is the worst-performing stock."
+    },
+    {
+      "id": "market_spot",
+      "kind": "parameter",
+      "label": "Market spot scenario",
+      "terms": [
+        "market spot",
+        "market scenario multiplier",
+        "price shock multiplier",
+        "simulate market at 95%"
+      ],
+      "patterns": [
+        "simulat",
+        "market spot",
+        "price shock",
+        "scenario"
+      ],
+      "supported": false,
+      "rule": "Scenario results are simulated. Not supported in this build (views 9 and 10 list the parameter only).",
+      "user_text": "Market scenarios (market spot) are not available in this version. I can show today's predicted results instead."
+    },
+    {
+      "id": "trade_date",
+      "kind": "event",
+      "label": "Trade date",
+      "terms": [
+        "trade date",
+        "latest trade"
+      ]
+    }
+  ],
+  "windows": {
+    "standard_days": 30,
+    "published_flags": [
+      7,
+      14,
+      30,
+      60,
+      90
+    ],
+    "patterns": {
+      "next_n": "next\\s+(\\d+)\\s*(day|week)",
+      "next_week": "next week",
+      "next_month": "next month"
+    }
+  },
+  "number_format": {
+    "hkd": "HKD 125M style; B for billions, K for thousands",
+    "share": "one decimal place, from the view's own share field",
+    "customers": "always 'distinct customers'"
+  }
+}

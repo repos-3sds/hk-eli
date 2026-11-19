@@ -20,14 +20,17 @@ from ..svg import money
 from ..workbook import CAPTION
 from . import plan as P
 from .tableau_client import TableauClient, TableauError
-from .understand import understand
+from . import agent
+from .. import config, knowledge as KB, prompts as PR
+from ..llm import OffClient
 
 SEVERITY = ["SYSTEM_ERROR", "VALIDATION_FAILED", "UNSUPPORTED", "NEEDS_CLARIFICATION", "NO_DATA",
             "PARTIAL", "OK_FALLBACK", "OK_WITH_WARNING", "OK"]
 
 
 def demo_today() -> date:
-    return date.fromisoformat(os.environ.get("DEMO_TODAY", "2026-11-19"))
+    """Business 'today': DEMO_TODAY when set (mock default 2026-11-19), else the clock in APP_TIMEZONE."""
+    return config.get().today()
 
 
 def pct(x: float) -> str:
@@ -53,27 +56,48 @@ def _idx(cols, name):
     return cols.index(name) if name in cols else None
 
 
-def answer(question: str, http, site: str, scenario: str | None = None, user: str = "demo.user") -> dict:
+def answer(question: str, http, site: str, scenario: str | None = None, user: str = "demo.user",
+           llm=None, lib: dict | None = None, kb: KB.Knowledge | None = None) -> dict:
+    cfg = config.get()
     today = demo_today()
+    llm = llm or OffClient()
+    kb = kb or KB.load(str(cfg.knowledge_dir))
+    lib = lib or PR.library(str(cfg.prompts_dir))
+    calls: list = []
     tr = Trace()
     client = TableauClient(http, site, user=user, scenario=scenario)
     out = {"question": question, "site": site, "scenario": scenario, "status": "OK", "reasons": [],
            "caveats": [], "headline": "", "bullets": [], "table": None, "chart": None, "numbers": [],
            "evidence": [], "embed": None, "followups": [], "as_of": None, "scope": "", "trace": tr.steps,
-           "meta": {"understanding": "deterministic rules (Gemini adapter off in POC)",
-                    "insight": "template over validated numbers"}}
+           "meta": {"understanding": "rules", "insight": "template", "model": getattr(llm, "model", "off"),
+                    "knowledge_sha256": kb.sha256[:12],
+                    "prompts": {k: f"{p.version}+{p.sha256[:12]}" for k, p in lib.items()}},
+           "_llm_calls": calls}
 
-    # 1-2 understand
-    it = understand(question, today)
+    # 1-2 understand (rules pre-parse, then the model when it is on; code validates and merges)
+    it = agent.interpret(question, today, llm, lib, kb, calls)
+    out["meta"]["understanding"] = it.source
+    out["intent"] = it.intent
     tr.add("Pre-parse", {k: v for k, v in it.hints.items() if v})
-    tr.add("Understand", {"intent": it.intent, "grain": it.grain, "assumptions": it.assumptions})
+    tr.add("Understand", {"intent": it.intent, "grain": it.grain, "assumptions": it.assumptions, "by": it.source})
     out["scope"] = it.scope_line()
-    out["assumptions"] = it.assumptions
+    out["assumptions"] = [a for a in it.assumptions if not a.startswith("clarify: ")]
+    if it.unsupported:
+        u = it.unsupported[0]
+        out.update(status="UNSUPPORTED", reasons=["CONCEPT_NOT_SUPPORTED"],
+                   headline=f"I can't answer that yet. {u['user_text']}".strip())
+        out["caveats"].append({"code": "CONCEPT_NOT_SUPPORTED", "level": "block", "text": u["user_text"]})
+        out["followups"] = ["What is total outstanding ELI?", "How much TRE ELI is predicted to mature in the next 30 days?"]
+        tr.add("Route", {"view": None, "reason": f"unsupported concept {u['id']}"})
+        return out
     if it.intent == "unknown":
+        clar = next((a[len("clarify: "):] for a in it.assumptions if a.startswith("clarify: ") and len(a) > 10), None)
         out.update(status="NEEDS_CLARIFICATION", reasons=["AMBIGUOUS_INTENT"],
                    headline="I can answer questions about outstanding ELI, shares by segment, predicted maturity "
                             "(TRE), clients to follow up, WPS exposure, MTM distribution and data freshness. "
                             "Could you rephrase with one of those?")
+        if clar:
+            out["headline"] = clar
         out["followups"] = ["What is total outstanding ELI?", "Which branches in D1 have the largest TRE maturity in the next 30 days?"]
         return out
 
@@ -151,7 +175,10 @@ def answer(question: str, http, site: str, scenario: str | None = None, user: st
     if out["status"] in ("OK",):
         _write(it, pl, cols, rows, out)
         out["chart"] = _chart(it, pl, cols, rows)
-    tr.add("Write answer", {"mode": "template", "numbers": len(out["numbers"])})
+    if out["status"] in ("OK",):
+        _finish(out)
+        out["meta"]["insight"] = agent.word(out, llm, lib, kb, calls)
+    tr.add("Write answer", {"mode": out["meta"]["insight"], "numbers": len(out["numbers"])})
     if pl.view and out["status"] not in ("UNSUPPORTED", "VALIDATION_FAILED", "SYSTEM_ERROR"):
         out["embed"] = _embed(site, pl, scenario)
     tr.add("Compose", {"embed": bool(out["embed"]), "followups": len(out["followups"])})

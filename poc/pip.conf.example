@@ -1,0 +1,19 @@
+# pip's settings for the office's JFrog. Never commit a filled copy: the URL can carry a token.
+#
+# Where pip reads this file:
+#   Windows:  %APPDATA%\pip\pip.ini
+#   macOS:    ~/Library/Application Support/pip/pip.conf  (or ~/.config/pip/pip.conf)
+#   Linux:    ~/.config/pip/pip.conf
+# Or set it per shell instead:  set PIP_INDEX_URL=...   (Windows)   export PIP_INDEX_URL=...   (macOS, Linux)
+#
+# The PyPI one is named in JFrog's
+# "Set Me Up" page for PyPI; it is usually .../api/pypi/<repo>/simple, and the /simple at the end matters.
+
+[global]
+index-url = https://<jfrog-host>/artifactory/api/pypi/<pypi-remote-or-virtual>/simple
+
+# With a token (JFrog "Set Me Up" gives it):
+# index-url = https://<user>:<token>@<jfrog-host>/artifactory/api/pypi/<pypi-remote-or-virtual>/simple
+
+# Only if pip reports CERTIFICATE_VERIFY_FAILED: the office's root certificate. Never use trusted-host instead.
+# cert = C:\path\to\office-root-ca.pem

@@ -32,7 +32,7 @@ function el(tag, attrs = {}, ...kids) {
   return n;
 }
 
-function isNum(s) { return /^(HKD |-)?[\d,.]+(m|bn|k|%)?$/.test(String(s)); }
+function isNum(s) { return /^(HKD |-)?[\d,.]+(m|bn|k|M|B|K|%)?$/.test(String(s)); }
 
 function renderAnswer(a, opts = {}) {
   const [label, cls] = STATUS[a.status] || [a.status, "b-info"];
@@ -82,6 +82,7 @@ function renderAnswer(a, opts = {}) {
       el("dt", {}, "Same scope"), el("dd", {}, a.embed.scope_equivalent ? "Yes" : `No: cannot apply ${a.embed.cannot_apply.join(", ")}`)));
     card.append(d);
   }
+  if (a.turn_id) card.append(feedbackRow(a));
   if (a.trace && a.trace.length) {
     const d = el("details", { class: "ev", open: "" }, el("summary", {}, `Pipeline: ${a.trace.length} steps`));
     d.append(el("ol", { class: "steps" }, a.trace.map(s => el("li", {}, el("span", { class: "no" }, s.n), el("span", { class: "nm" }, s.name),
@@ -89,6 +90,28 @@ function renderAnswer(a, opts = {}) {
     card.append(d);
   }
   return card;
+}
+
+// Feedback on an answer (stored with the turn) and how it was produced: rules or the model.
+const READ_BY = { rules: "rules", gateway: "Gemini", "gateway->rules": "rules (Gemini unavailable)" };
+const WORDED_BY = { template: "template", gateway: "Gemini, figures checked", "gateway->template": "template (Gemini text rejected or unavailable)" };
+function feedbackRow(a) {
+  const note = el("span", { class: "scope", role: "status" });
+  const send = async (rating, btns) => {
+    btns.forEach(b => b.disabled = true);
+    try {
+      const r = await fetch("/api/v1/feedback", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ turn_id: a.turn_id, rating }) });
+      note.textContent = r.ok ? "Thanks, noted." : "Couldn't save that. Try again later.";
+      if (!r.ok) btns.forEach(b => b.disabled = false);
+    } catch { note.textContent = "Couldn't save that. Try again later."; btns.forEach(b => b.disabled = false); }
+  };
+  const up = el("button", { class: "chip", type: "button" }, "Useful");
+  const down = el("button", { class: "chip", type: "button" }, "Not useful");
+  up.onclick = () => send(1, [up, down]); down.onclick = () => send(-1, [up, down]);
+  const m = a.meta || {};
+  return el("div", { class: "asof fb" }, el("span", {}, `Read by ${READ_BY[m.understanding] || m.understanding} · worded by ${WORDED_BY[m.insight] || m.insight}`),
+    el("span", { class: "chips" }, up, down, note));
 }
 
 window.POC = { el, renderAnswer, STATUS };

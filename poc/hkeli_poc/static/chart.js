@@ -20,9 +20,9 @@
   function hkd(x, unit) {
     if (unit === "customers") return `${Math.round(x)}`;
     const a = Math.abs(x);
-    if (a >= 1e9) return `HKD ${(x / 1e9).toFixed(2)}bn`;
-    if (a >= 1e6) return `HKD ${(x / 1e6).toFixed(1)}m`;
-    if (a >= 1e3) return `HKD ${(x / 1e3).toFixed(0)}k`;
+    if (a >= 1e9) return `HKD ${(x / 1e9).toFixed(2)}B`;
+    if (a >= 1e6) return `HKD ${(x / 1e6).toFixed(1)}M`;
+    if (a >= 1e3) return `HKD ${(x / 1e3).toFixed(0)}K`;
     return `HKD ${Math.round(x)}`;
   }
   function legend(results) {

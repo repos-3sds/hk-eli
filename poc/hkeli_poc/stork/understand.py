@@ -13,25 +13,14 @@ import re
 from dataclasses import dataclass, field
 from datetime import date
 
-from ..data import DISTRICTS
+from .. import knowledge as KB
 
-SEGMENT_WORDS = [
-    (r"\btpc\b|treasures\s*\(?tpc", "Treasures(TPC)"),
-    (r"\btre\b|treasures(?!\s*\(?tpc)", "Treasures(HK)"),
-    (r"\bpb\b|private bank", "PB"),
-]
-TICKER_ALIASES = {
-    "alibaba": "9988 HK", "baba": "9988 HK", "tencent": "700 HK", "meituan": "3690 HK",
-    "xiaomi": "1810 HK", "byd": "1211 HK", "nvidia": "NVDA UW", "nvda": "NVDA UW",
-    "intel": "INTC UW", "intc": "INTC UW", "tesla": "TSLA UW", "tsla": "TSLA UW",
-    "apple": "AAPL UW", "aapl": "AAPL UW", "amd": "AMD UW",
-}
-RESULT_WORDS = [
-    (r"below strike", "EXP(Below Strike)"),
-    (r"\bko\b|knock[\s-]?out", "KO"),
-    (r"\bex\b|exercis|physical delivery", "EX"),
-    (r"\bexp\b|expire", "EXP"),
-]
+
+def _kb():
+    from .. import config
+    return KB.load(str(config.get().knowledge_dir))
+
+
 MONTHS = {m: i for i, m in enumerate(["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"], 1)}
 
 
@@ -50,6 +39,8 @@ class Intent:
     ranking: bool = False
     assumptions: list[str] = field(default_factory=list)
     hints: dict = field(default_factory=dict)
+    unsupported: list[dict] = field(default_factory=list)   # glossary concepts this build can't answer
+    source: str = "rules"                                   # rules | gateway | gateway->rules
 
     def scope_line(self) -> str:
         bits = []
@@ -70,28 +61,31 @@ class Intent:
 
 
 def preparse(q: str, today: date) -> dict:
+    """Deterministic hints from the glossary. These are facts the model may not override."""
+    kb = _kb()
     s = q.lower()
     hints: dict = {"segments": []}
-    for pat, val in SEGMENT_WORDS:
+    for pat, val in kb.value_patterns("bp_div_type"):
         if re.search(pat, s) and val not in hints["segments"]:
             hints["segments"].append(val)
-    m = re.search(r"\bd\s?([123])\b", s)
-    if m:
-        hints["district"] = f"TRE-D{m.group(1)}"
-    for d, branches in DISTRICTS.items():
-        for b in branches:
-            if b.lower() in s:
-                hints["branch"] = b
+    for pat, val in kb.value_patterns("cust_district"):
+        if re.search(pat, s):
+            hints["district"] = val
+            break
+    for b in kb.branches:
+        if b.lower() in s:
+            hints["branch"] = b
     m = re.search(r"\b(\d{3,4})\s*(?:\.?\s?hk)\b", s)
     if m:
         hints["wps"] = f"{int(m.group(1))} HK"
-    for alias, t in TICKER_ALIASES.items():
+    for alias, t in kb.ticker_aliases.items():
         if re.search(rf"\b{alias}\b", s):
             hints["wps"] = t
-    for pat, val in RESULT_WORDS:
+    for pat, val in kb.value_patterns("predict_result"):
         if re.search(pat, s):
             hints["result"] = val
             break
+    hints["unsupported"] = [c["id"] for c in kb.unsupported_hits(q)]
     m = re.search(r"next\s+(\d+)\s*(day|week)", s)
     if m:
         n = int(m.group(1))
@@ -115,6 +109,9 @@ def understand(q: str, today: date) -> Intent:
     it = Intent(question=q, segments=h["segments"], district=h.get("district"), branch=h.get("branch"),
                 wps=h.get("wps"), result=h.get("result"), window_days=h.get("window_days"),
                 on_date=h.get("on_date"), ranking=h["ranking"], hints=h)
+    kb = _kb()
+    it.unsupported = [{"id": c["id"], "label": c["label"], "rule": c.get("rule", ""),
+                      "user_text": c.get("user_text") or f"Questions about {c['label'].lower()} are not supported yet."} for c in kb.unsupported_hits(q)]
     maturity = bool(re.search(r"matur|calendar|roll|coming due", s))
     customers = bool(re.search(r"how many\b[^?]*?\b(customers|clients)|number of (customers|clients)|customer count|distinct customers", s))
 
@@ -144,6 +141,25 @@ def understand(q: str, today: date) -> Intent:
     elif re.search(r"outstanding|total|how much", s):
         it.intent, it.grain = "outstanding_total", "kpi"
 
+    return apply_defaults(it)
+
+
+GRAIN = {"outstanding_total": "kpi", "segment_share": "segment", "segment_result_share": "segment_result",
+         "customer_count": "segment_result", "mtm_distribution": "mtm_bin", "maturity_detail": "position",
+         "wps_exposure": "wps", "maturity_branch": "branch", "district": "district", "maturity_calendar": "date",
+         "data_recency": "kpi", "data_as_of": "kpi", "unknown": ""}
+
+
+def grain_for(it: Intent) -> str:
+    if it.intent == "customer_count_maturity":
+        return "branch" if it.branch else "district"
+    return GRAIN.get(it.intent, "")
+
+
+def apply_defaults(it: Intent) -> Intent:
+    """Business defaults the spec fixes in code, whoever classified the question (rules or model)."""
+    s = it.question.lower()
+    maturity = bool(re.search(r"matur|calendar|roll|coming due", s))
     if it.intent.startswith("maturity") or it.intent == "customer_count_maturity":
         if not it.segments:
             it.segments = ["Treasures(HK)"]

@@ -2,3 +2,10 @@
 __pycache__/
 .pytest_cache/
 out/
+var/
+dist/
+.env
+pip.conf
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm

@@ -107,7 +107,15 @@
   async function show(host, a, onAsk) {
     if (!a || !a.embed) return false;
     const c = await config();
-    if (c.mode === "real" && a.embed.mode === "real") { await showReal(host, a, onAsk); return true; }
+    if (c.mode === "real" && a.embed.mode === "real") {
+      if (a.embed.presentation === "link") {   // TABLEAU_EMBED=link: open the view on the Tableau server instead
+        const qs = new URLSearchParams(Object.entries(a.embed.filters_by_caption || {}).map(([k, v]) => [k, v.join(",")]));
+        window.open(a.embed.src + (qs.toString() ? "?" + qs : ""), "_blank", "noopener");
+        message(host, "Opened the view in Tableau.", "This site shows its own charts; the live view opens on the Tableau server in a new tab.");
+        return true;
+      }
+      await showReal(host, a, onAsk); return true;
+    }
     const f = document.createElement("iframe");
     f.title = "Embedded Tableau view"; f.src = a.embed.url;
     host.replaceChildren(f);

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Start the HK ELI Chatbot POC (mock Tableau + Stork pipeline + demo pages).
-set -euo pipefail
+# Start the HK ELI Chatbot in this terminal (Ctrl+C stops it). Settings come from .env (see .env.example).
+# Needs the project's own .venv, installed by hand from the hashed lock (README "Office install").
+set -eu
 cd "$(dirname "$0")"
-if [ ! -d .venv ]; then
-  python3 -m venv .venv
-  .venv/bin/pip install -q -r requirements.txt
+if [ ! -x .venv/bin/python ]; then
+  echo "No .venv yet. Install first:"
+  echo "  python3.12 -m venv .venv && .venv/bin/python -m pip install --require-hashes -r requirements.txt"
+  exit 1
 fi
-PORT="${PORT:-8050}"
-echo "HK ELI Chatbot POC on http://localhost:${PORT}  (side-by-side demos: /compare)"
-exec .venv/bin/uvicorn hkeli_poc.app:app --host 0.0.0.0 --port "${PORT}"
+exec .venv/bin/python -m hkeli_poc

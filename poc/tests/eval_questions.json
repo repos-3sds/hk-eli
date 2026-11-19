@@ -1,0 +1,25 @@
+{
+  "about": "Evaluation set v1: questions with the intent, status and view the pipeline must produce on the proposed mock workbook, rules mode. Run with the tests (test_eval.py). In the office, run it again with LLM_MODE=gateway (scripts/run_eval.py) and send back only the pass/fail counts.",
+  "cases": [
+    {"q": "What is total outstanding ELI?", "intent": "outstanding_total", "status": "OK", "view": "outstanding-total-all"},
+    {"q": "What is TRE outstanding ELI?", "intent": "outstanding_total", "status": "OK", "view": "outstanding-total-all"},
+    {"q": "What share of outstanding ELI is TRE?", "intent": "segment_share", "status": "OK", "view": "outstanding-segment"},
+    {"q": "What percentage of outstanding ELI is TRE predicted KO?", "intent": "segment_result_share", "status": "OK", "view": "outstanding-segment-result"},
+    {"q": "How many TRE customers are predicted to KO?", "intent": "customer_count", "status": "OK", "view": "outstanding-segment-customers"},
+    {"q": "How many TRE customers in D1 have predicted maturity in the next 30 days?", "intent": "customer_count_maturity", "status": "OK", "view": "outstanding-district-wps-n30-all"},
+    {"q": "How much TRE ELI is predicted to mature in the next 7 days?", "intent": "maturity_calendar", "status": "OK", "view": "maturity-calendar-n30-tre"},
+    {"q": "What is maturing next week?", "intent": "maturity_calendar", "status": "OK", "view": "maturity-calendar-n30-tre"},
+    {"q": "Which branches in D1 have the largest TRE predicted maturity in the next 60 days?", "intent": "maturity_branch", "status": "OK", "view": "maturity-branch-n30-tre"},
+    {"q": "Which TRE clients have WPS 9988 HK maturing in the next 30 days?", "intent": "maturity_detail", "status": "OK", "view": "maturity-details-n30-tre"},
+    {"q": "Give me the client and RM list for Alibaba maturing next month", "intent": "maturity_detail", "status": "OK", "view": "maturity-details-n30-tre"},
+    {"q": "Compare outstanding ELI across districts for TRE", "intent": "district", "status": "OK", "view": "outstanding-district-wps-n30-all"},
+    {"q": "Which worst-performing stocks carry the most outstanding ELI?", "intent": "wps_exposure", "status": "OK", "view": "outstanding-wps-n30-all"},
+    {"q": "Show me the MTM distribution on 9988 HK", "intent": "mtm_distribution", "status": "OK", "view": "outstanding-distribution-wps-n30-all"},
+    {"q": "What is the latest trade date?", "intent": "data_recency", "status": "OK", "view": "max-trade-date"},
+    {"q": "How fresh is the data?", "intent": "data_as_of", "status": "OK", "view": "data-as-of"},
+    {"q": "Which PB clients are maturing in the next 30 days?", "intent": "maturity_detail", "status": "UNSUPPORTED", "view": null},
+    {"q": "What is the contractual maturity profile next month?", "intent": "maturity_calendar", "status": "UNSUPPORTED", "view": null},
+    {"q": "Show all ELI containing Tencent", "intent": "*", "status": "UNSUPPORTED", "view": null},
+    {"q": "Tell me a joke", "intent": "unknown", "status": "NEEDS_CLARIFICATION", "view": null}
+  ]
+}

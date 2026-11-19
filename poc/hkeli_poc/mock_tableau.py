@@ -143,3 +143,53 @@ def embed(site: str, view_name: str, request: Request):
 @router.get("/api/catalog/{site}")
 def catalog_json(site: str):
     return JSONResponse(public_catalog(_site(site)))
+
+
+class InProcessMock:
+    """The mock's REST shape called directly in-process (no test client in the serving path).
+
+    Same contract as the HTTP routes above: sign-in token, view list, CSV Query View Data.
+    """
+
+    class _R:
+        def __init__(self, status_code: int, payload=None, text: str = ""):
+            self.status_code, self._p, self.text = status_code, payload, text
+
+        def json(self):
+            return self._p
+
+    PREFIX = "/tableau/api/3.24"
+
+    def post(self, path: str, json=None):  # noqa: A002 - mirrors httpx
+        if path == f"{self.PREFIX}/auth/signin":
+            user = ((json or {}).get("credentials") or {}).get("user", "demo.user")
+            token = secrets.token_hex(12)
+            _TOKENS[token] = user
+            return self._R(200, {"credentials": {"token": token, "user": user}})
+        return self._R(404)
+
+    def get(self, path: str, headers=None):
+        from urllib.parse import parse_qsl, urlsplit
+        tok = (headers or {}).get("X-Tableau-Auth")
+        if not tok or tok not in _TOKENS:
+            return self._R(401)
+        u = urlsplit(path)
+        parts = u.path[len(self.PREFIX):].strip("/").split("/")
+        # sites/{site}/views  |  sites/{site}/views/{luid}/data
+        if len(parts) < 3 or parts[0] != "sites" or parts[1] not in SITES or parts[2] != "views":
+            return self._R(404)
+        site = parts[1]
+        if len(parts) == 3:
+            return self._R(200, {"views": {"view": public_catalog(site)}})
+        if len(parts) == 5 and parts[4] == "data":
+            view = find_view(site, parts[3])
+            if not view:
+                return self._R(404)
+            params = dict(parse_qsl(u.query, keep_blank_values=True))
+            cols, rows, _info = query_view(site, view, parse_vf(params), stale=params.get("scenario") == "stale")
+            buf = io.StringIO()
+            w = csv.writer(buf)
+            w.writerow(cols)
+            w.writerows(rows)
+            return self._R(200, text=buf.getvalue())
+        return self._R(404)
