@@ -1,6 +1,10 @@
 package hk.eli.gateway.chat;
 
+import hk.eli.gateway.agents.AgentAnswerMapper;
+import hk.eli.gateway.agents.AgentClient;
+import hk.eli.gateway.agents.AgentClient.AgentException;
 import hk.eli.gateway.ai.AnswerWording;
+import hk.eli.gateway.audit.PromptAudit;
 import hk.eli.gateway.chat.ChatModels.ChatAnswer;
 import hk.eli.gateway.chat.ChatModels.ChatQuestion;
 import hk.eli.gateway.skills.SkillAnswerMapper;
@@ -20,9 +24,15 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * POST /chat/answers. Book-level questions go to the HK ELI skills service when it is switched on
- * (eli.skills.enabled); everything else, and every question while it is off, is computed here. Either way the wording
- * model may only reword the lead sentence.
+ * POST /chat/answers. Order, when switched on:
+ *
+ * <ol>
+ *   <li>Book-level questions go to the HK ELI agents (eli.agents.enabled): the model picks tools over the HK_ELI
+ *       skills and the SQLite book, code runs them and checks every figure in the answer.</li>
+ *   <li>If the agents are off or fail, the typed skills plans (eli.skills.enabled) answer the questions they cover.</li>
+ *   <li>Everything else, questions about one picked client, and advice or forecasts, are computed here; the wording
+ *       model may only reword the lead sentence.</li>
+ * </ol>
  */
 @RestController
 public class ChatController {
@@ -33,9 +43,16 @@ public class ChatController {
   private final SkillRouter router;
   private final SkillServiceClient skills;
   private final SkillAnswerMapper mapper;
+  private final AgentClient agents;
+  private final AgentAnswerMapper agentMapper;
+  private final PromptAudit audit;
   private final AtomicInteger counter = new AtomicInteger();
 
-  public ChatController(ChatService chat, AnswerWording wording, SkillRouter router, SkillServiceClient skills, SkillAnswerMapper mapper) {
+  public ChatController(ChatService chat, AnswerWording wording, SkillRouter router, SkillServiceClient skills, SkillAnswerMapper mapper,
+      AgentClient agents, AgentAnswerMapper agentMapper, PromptAudit audit) {
+    this.agents = agents;
+    this.agentMapper = agentMapper;
+    this.audit = audit;
     this.chat = chat;
     this.wording = wording;
     this.router = router;
@@ -51,6 +68,45 @@ public class ChatController {
     if (question.text().length() > 1000) {
       throw new IllegalArgumentException("Questions are limited to 1,000 characters.");
     }
+    String agentFailure = null;
+    if (agents.enabled() && agentsTake(question, chat.findClient(question.text().toLowerCase(java.util.Locale.ROOT)) != null)) {
+      Caller caller = Caller.from(req);
+      long start = System.nanoTime();
+      try {
+        var fin = agents.ask(question.text(), caller.role());
+        ChatAnswer mapped = agentMapper.map("a" + counter.incrementAndGet(), fin);
+        auditAgent(question.text(), caller, fin.path("model").asText(fin.path("provider").asText()), fin.path("answer").asText(), "agent",
+            fin.path("check").path("status").asText(null), start);
+        return mapped;
+      } catch (AgentException e) {
+        log.warn("Agent answer failed: {}", e.getMessage());
+        auditAgent(question.text(), caller, "agents", null, "failed", e.getMessage(), start);
+        agentFailure = e.getMessage() + " This answer comes from the gateway instead.";
+      }
+    }
+    ChatAnswer answer = skillsOrLocal(question, req);
+    if (agentFailure != null && !answer.fallback()) {
+      List<String> notes = new java.util.ArrayList<>(answer.limitations() == null ? List.of() : answer.limitations());
+      notes.add(0, agentFailure);
+      return answer.withLimitations(notes);
+    }
+    return answer;
+  }
+
+  /**
+   * The agents answer book-level questions. A picked or named client (so the client brief keeps its ideas and hand-off
+   * actions) and advice or forecasts stay with the gateway's own answers.
+   */
+  static boolean agentsTake(ChatQuestion question, boolean namesClient) {
+    return question.clientId() == null && !namesClient && !ChatService.intentOf(question.text(), false, false).equals("advice");
+  }
+
+  private void auditAgent(String question, Caller caller, String provider, String output, String outcome, String reason, long start) {
+    audit.record(new PromptAudit.Entry(null, null, caller.user(), caller.role(), question, "agents", "agents:" + provider,
+        "persona=" + caller.role(), output, outcome, reason, (System.nanoTime() - start) / 1_000_000, null));
+  }
+
+  private ChatAnswer skillsOrLocal(ChatQuestion question, HttpServletRequest req) {
     if (skills.enabled()) {
       var route = router.route(question.text(), question.clientId() != null);
       if (route.isPresent()) {

@@ -37,6 +37,14 @@ describe('AnswerCard with a skills-service answer', () => {
     expect(el.querySelector('.partial')).toBeNull();
   });
 
+  it('names the HK ELI agents, the model and the figure check when they answered', () => {
+    const origin = 'HK ELI agents · written by AI (gemini-3.5-flash) from 1 lookup · figures checked by code: 24 of 24 found in the data';
+    const el = render({ ...BASE, sourceMode: 'MOCK', status: 'complete', origin, blocks: [{ kind: 'bullets', title: '', items: ['Call Chan'] }] });
+    expect(el.textContent).toContain(origin);
+    expect(el.textContent).not.toContain('Answered by the HK ELI skills service');
+    expect(el.querySelector('.bullets')?.closest('section')?.querySelector('.block-title')).toBeNull();
+  });
+
   it('flags a partial answer and lists what it does not cover', () => {
     const el = render({ ...BASE, sourceMode: 'MOCK', status: 'partial', limitations: ['Sums every recorded trade, not only this month.'] });
     expect(el.querySelector('.partial')?.textContent).toContain('Partial answer');

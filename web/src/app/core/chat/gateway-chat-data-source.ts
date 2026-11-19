@@ -14,6 +14,6 @@ export class GatewayChatDataSource extends ChatDataSource {
   ask(question: ChatQuestion): Observable<ChatAnswer> {
     return this.http
       .post<ChatAnswer>(`${this.config.gatewayBaseUrl}/chat/answers`, question)
-      .pipe(timeout(this.config.requestTimeoutMs * 3));
+      .pipe(timeout(this.config.chatTimeoutMs ?? this.config.requestTimeoutMs * 3));
   }
 }

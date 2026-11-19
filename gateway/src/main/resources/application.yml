@@ -50,6 +50,12 @@ eli:
     profile: synthetic-hk-rm
     timeout: 15s
     poll-interval: 150ms
+  # HK ELI agents (chatbot/, Python): model-chosen tools over the skills and the SQLite book, figures checked by code.
+  # Off unless switched on; when on, they answer book-level questions first and the skills and gateway are the fallback.
+  agents:
+    enabled: ${ELI_AGENTS_ENABLED:false}
+    base-url: ${ELI_AGENTS_URL:http://127.0.0.1:8040}
+    timeout: 60s
 
 management:
   endpoints:

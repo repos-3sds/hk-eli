@@ -5,6 +5,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { Router } from '@angular/router';
 import { LoadState } from '../../core/data/load-state';
 import { pageLoad } from '../../core/data/page-load';
 import { FeedbackButtons } from '../../core/feedback/feedback-buttons';
@@ -33,6 +34,12 @@ export class ShelfPage {
   private readonly myPacks = inject(MyPacksStore);
   private readonly clock = inject(BusinessClock);
   private readonly snack = inject(MatSnackBar);
+  private readonly router = inject(Router);
+
+  /** Hands a question about this card to Chat, where the HK ELI agents answer it from the book. */
+  protected ask(question: string): void {
+    void this.router.navigate(['/chat'], { queryParams: { q: question } });
+  }
 
   protected readonly demand = demandLines();
   protected readonly funnel = DIGIBANK_FUNNEL;

@@ -3,6 +3,7 @@
   "dataSource": "gateway",
   "gatewayBaseUrl": "/api/hk-eli",
   "requestTimeoutMs": 8000,
+  "chatTimeoutMs": 65000,
   "mockLatencyMs": 450,
   "mockScenario": "normal",
   "asOfDate": null,

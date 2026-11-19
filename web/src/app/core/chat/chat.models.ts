@@ -94,6 +94,8 @@ export interface ChatAnswer {
   readonly limitations?: readonly string[];
   /** Where each figure came from. */
   readonly evidence?: readonly EvidenceRecord[];
+  /** Who answered, shown above the answer: the HK ELI agents (model, lookups, figure check) or the skills service. */
+  readonly origin?: string;
 }
 
 /** One figure's provenance: the metric and its dimensions, value, unit, data date, LIVE or MOCK, source and scope. */

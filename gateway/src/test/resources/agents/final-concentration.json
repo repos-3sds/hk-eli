@@ -1,0 +1,184 @@
+{
+    "type": "final",
+    "answer": "As of 2026-11-02, **NVDA** has the highest concentration at 24.63% (USD 147.78m) of the total ELI book, approaching its 25.0% limit. All underlyings remain below their review threshold.\n\nHere are the top underlyings by exposure relative to their concentration limits:\n\n| Underlying | Exposure (USD) | Share of Book | Limit | Clients |\n| :--- | :--- | :--- | :--- | :--- |\n| **NVDA** | USD 147.78m | 24.63% | 25.0% | 595 |\n| **TSLA** | USD 107.40m | 17.90% | 25.0% | 461 |\n| **AMD** | USD 85.20m | 14.20% | 25.0% | 353 |\n| **META** | USD 57.60m | 9.60% | 25.0% | 248 |\n| **0700.HK** | USD 42.60m | 7.10% | 25.0% | 185 |",
+    "followups": [
+        "Which branch has the highest exposure to NVDA?",
+        "What is the RFQ conversion rate by underlying?",
+        "Which products offer the highest coupon yields right now?"
+    ],
+    "results": [
+        {
+            "tool": "book_concentration",
+            "title": "Book concentration by underlying",
+            "source": "HK_ELI skill eli.risk.concentration",
+            "source_kind": "skill",
+            "as_of": "2026-11-02",
+            "columns": [
+                {
+                    "key": "underlying",
+                    "label": "Underlying",
+                    "kind": "text"
+                },
+                {
+                    "key": "notional_usd",
+                    "label": "Exposure",
+                    "kind": "money"
+                },
+                {
+                    "key": "share_pct",
+                    "label": "Share of book",
+                    "kind": "pct"
+                },
+                {
+                    "key": "limit_pct",
+                    "label": "Limit",
+                    "kind": "pct"
+                },
+                {
+                    "key": "clients",
+                    "label": "Clients",
+                    "kind": "number"
+                },
+                {
+                    "key": "maturing_in_window_usd",
+                    "label": "Maturing in window",
+                    "kind": "money"
+                }
+            ],
+            "rows": [
+                {
+                    "underlying": "NVDA",
+                    "notional_usd": 147780000,
+                    "share_pct": 24.63,
+                    "limit_pct": 25.0,
+                    "over_review_threshold": false,
+                    "clients": 595,
+                    "worst_of_notional_usd": 24332320,
+                    "maturing_in_window_usd": 2423320
+                },
+                {
+                    "underlying": "TSLA",
+                    "notional_usd": 107400000,
+                    "share_pct": 17.9,
+                    "limit_pct": 25.0,
+                    "over_review_threshold": false,
+                    "clients": 461,
+                    "worst_of_notional_usd": 20443040,
+                    "maturing_in_window_usd": 2034000
+                },
+                {
+                    "underlying": "AMD",
+                    "notional_usd": 85200000,
+                    "share_pct": 14.2,
+                    "limit_pct": 25.0,
+                    "over_review_threshold": false,
+                    "clients": 353,
+                    "worst_of_notional_usd": 15971480,
+                    "maturing_in_window_usd": 3174080
+                },
+                {
+                    "underlying": "META",
+                    "notional_usd": 57600000,
+                    "share_pct": 9.6,
+                    "limit_pct": 25.0,
+                    "over_review_threshold": false,
+                    "clients": 248,
+                    "worst_of_notional_usd": 10570820,
+                    "maturing_in_window_usd": 1167000
+                },
+                {
+                    "underlying": "0700.HK",
+                    "notional_usd": 42600000,
+                    "share_pct": 7.1,
+                    "limit_pct": 25.0,
+                    "over_review_threshold": false,
+                    "clients": 185,
+                    "worst_of_notional_usd": 6825000,
+                    "maturing_in_window_usd": 310000
+                },
+                {
+                    "underlying": "TCEHY",
+                    "notional_usd": 14492730,
+                    "share_pct": 2.42,
+                    "limit_pct": null,
+                    "over_review_threshold": false,
+                    "clients": 61,
+                    "worst_of_notional_usd": 2535000,
+                    "maturing_in_window_usd": 0
+                },
+                {
+                    "underlying": "AAPL",
+                    "notional_usd": 14492727,
+                    "share_pct": 2.42,
+                    "limit_pct": null,
+                    "over_review_threshold": false,
+                    "clients": 62,
+                    "worst_of_notional_usd": 3240000,
+                    "maturing_in_window_usd": 41000
+                },
+                {
+                    "underlying": "AMZN",
+                    "notional_usd": 14492727,
+                    "share_pct": 2.42,
+                    "limit_pct": null,
+                    "over_review_threshold": false,
+                    "clients": 65,
+                    "worst_of_notional_usd": 2856300,
+                    "maturing_in_window_usd": 28300
+                },
+                {
+                    "underlying": "AVGO",
+                    "notional_usd": 14492727,
+                    "share_pct": 2.42,
+                    "limit_pct": null,
+                    "over_review_threshold": false,
+                    "clients": 63,
+                    "worst_of_notional_usd": 2149900,
+                    "maturing_in_window_usd": 602900
+                },
+                {
+                    "underlying": "BABA",
+                    "notional_usd": 14492727,
+                    "share_pct": 2.42,
+                    "limit_pct": null,
+                    "over_review_threshold": false,
+                    "clients": 77,
+                    "worst_of_notional_usd": 3825000,
+                    "maturing_in_window_usd": 0
+                }
+            ],
+            "totals": {
+                "book_notional_usd": 600000000
+            },
+            "notes": [
+                "Exposure is look-through: a worst-of deal counts under each underlying in its basket.",
+                "Review threshold is 25% of book per underlying."
+            ],
+            "warnings": [
+                "SYNTHETIC demonstration data; definitions are unapproved business assumptions. No live/mock joins.",
+                "Date window uses fixed fixture as-of date 2026-11-02; excludes as-of and includes end date.",
+                "Underlying is fixture primary allocation; worst-of is a flagged subset, not full basket look-through. Top 10 subset; shares use full scoped denominator."
+            ],
+            "total_rows": null,
+            "error": null
+        }
+    ],
+    "check": {
+        "checked": 24,
+        "matched": 24,
+        "unmatched": [],
+        "status": "all-matched"
+    },
+    "provider": "gemini",
+    "model": "gemini-3.5-flash",
+    "written_by": "model",
+    "tools_used": [
+        "book_concentration"
+    ],
+    "ms": 6742,
+    "usage": {
+        "input_tokens": 4253,
+        "output_tokens": 346
+    },
+    "as_of": "2026-11-02"
+}

@@ -20,7 +20,7 @@ import { UsdPipe } from '../today/shared/format';
       @if (answer().sourceMode; as mode) {
         <div class="origin">
           <span class="mode" [class.mock]="mode.includes('MOCK')">{{ mode.includes('MOCK') ? 'Demo data · not live' : 'Live data' }}</span>
-          <span class="origin-text">Answered by the HK ELI skills service</span>
+          <span class="origin-text">{{ answer().origin ?? 'Answered by the HK ELI skills service' }}</span>
         </div>
       }
       @if (answer().status === 'partial') {
@@ -100,7 +100,7 @@ import { UsdPipe } from '../today/shared/format';
           }
           @case ('bullets') {
             <section class="block">
-              <h4 class="block-title">{{ b.title }}</h4>
+              @if (b.title) {<h4 class="block-title">{{ b.title }}</h4>}
               <ul class="bullets">
                 @for (item of b.items; track item) {
                   <li>{{ item }}</li>

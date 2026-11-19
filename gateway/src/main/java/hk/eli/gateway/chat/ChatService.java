@@ -300,7 +300,7 @@ public class ChatService {
   }
 
   /** A client named in the question, matched on family name or full name. */
-  String findClient(String text) {
+  public String findClient(String text) {
     return seed.today().clients().stream().filter(c -> {
       String[] parts = c.name().toLowerCase(Locale.ROOT).split(" ");
       return text.contains(c.name().toLowerCase(Locale.ROOT)) || has("\\b" + Pattern.quote(parts[0]) + "\\b", text);

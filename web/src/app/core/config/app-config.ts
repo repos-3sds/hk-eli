@@ -15,6 +15,8 @@ export interface AppConfig {
   readonly dataSource: DataSourceKind;
   readonly gatewayBaseUrl: string;
   readonly requestTimeoutMs: number;
+  /** How long a chat answer may take. Optional; the HK ELI agents can take several tool rounds. Default 3 × requestTimeoutMs. */
+  readonly chatTimeoutMs?: number;
   readonly mockLatencyMs: number;
   readonly mockScenario: MockScenario;
   /** ISO date (YYYY-MM-DD) to pin "today" for demos; null means the real date in `timeZone`. */

@@ -75,22 +75,31 @@ public final class ChatModels {
   public record Evidence(String id, String label, String value, String unit, String asOf, String sourceMode, String source, String scope) {}
 
   /**
-   * An answer. The last five fields are optional and only set when the HK ELI skills service answered: run id,
-   * LIVE or MOCK, complete or partial, what the answer does not cover, and the evidence behind its figures.
+   * An answer. The last six fields are optional and only set when the HK ELI skills service or the HK ELI agents answered:
+   * run id, LIVE or MOCK, complete or partial, what the answer does not cover, the evidence behind its figures, and
+   * who answered (origin, shown above the answer).
    */
   @JsonInclude(JsonInclude.Include.NON_NULL)
   public record ChatAnswer(String id, List<Block> blocks, List<String> followUps, String businessDate, List<String> sources, boolean fallback, Parity parity,
-      String runId, String sourceMode, String status, List<String> limitations, List<Evidence> evidence) {
+      String runId, String sourceMode, String status, List<String> limitations, List<Evidence> evidence, String origin) {
     public ChatAnswer(String id, List<Block> blocks, List<String> followUps, String businessDate, List<String> sources, boolean fallback, Parity parity) {
-      this(id, blocks, followUps, businessDate, sources, fallback, parity, null, null, null, null, null);
+      this(id, blocks, followUps, businessDate, sources, fallback, parity, null, null, null, null, null, null);
     }
 
+    /** A skills-service answer: origin defaults to the skills service. */
+    public ChatAnswer(String id, List<Block> blocks, List<String> followUps, String businessDate, List<String> sources, boolean fallback, Parity parity,
+        String runId, String sourceMode, String status, List<String> limitations, List<Evidence> evidence) {
+      this(id, blocks, followUps, businessDate, sources, fallback, parity, runId, sourceMode, status, limitations, evidence, SKILLS_ORIGIN);
+    }
+
+    public static final String SKILLS_ORIGIN = "Answered by the HK ELI skills service";
+
     public ChatAnswer withBlocks(List<Block> b) {
-      return new ChatAnswer(id, b, followUps, businessDate, sources, fallback, parity, runId, sourceMode, status, limitations, evidence);
+      return new ChatAnswer(id, b, followUps, businessDate, sources, fallback, parity, runId, sourceMode, status, limitations, evidence, origin);
     }
 
     public ChatAnswer withLimitations(List<String> l) {
-      return new ChatAnswer(id, blocks, followUps, businessDate, sources, fallback, parity, runId, sourceMode, status, l, evidence);
+      return new ChatAnswer(id, blocks, followUps, businessDate, sources, fallback, parity, runId, sourceMode, status, l, evidence, origin);
     }
   }
 }

@@ -1,0 +1,98 @@
+{
+    "type": "final",
+    "answer": "As of 2026-11-02, there are 2 deals close to their knock-out barrier (within 5%), both linked to TSLA. \n\nHere are the details for the deals near knock-out observation:\n\n* **Wong Ka Lok** (RM: Jason Yu) \u2013 Deal `P00014`, Underlying: **TSLA**, Distance to KO: **-1.80%**, Next Observation: **2026-11-04**, Notional: **USD 260,000**\n* **Tsang Jun** (RM: Peter Leung) \u2013 Deal `P00071`, Underlying: **TSLA**, Distance to KO: **-2.60%**, Next Observation: **2026-11-12**, Notional: **USD 200,000**\n\nDistances are calculated relative to the last close from the overnight load.",
+    "followups": [
+        "Which deals mature in the next 10 business days?",
+        "What is our concentration risk by underlying?",
+        "What pre-built ELI ideas are available for TSLA?"
+    ],
+    "results": [
+        {
+            "tool": "knockout_watch",
+            "title": "Deals within 5% of the knock-out barrier",
+            "source": "Book query: positions.last_vs_ko_pct",
+            "source_kind": "book",
+            "as_of": "2026-11-02",
+            "columns": [
+                {
+                    "key": "name",
+                    "label": "Client",
+                    "kind": "text"
+                },
+                {
+                    "key": "underlying",
+                    "label": "Underlying",
+                    "kind": "text"
+                },
+                {
+                    "key": "last_vs_ko_pct",
+                    "label": "Vs KO barrier",
+                    "kind": "pct"
+                },
+                {
+                    "key": "next_ko_observation",
+                    "label": "Next KO observation",
+                    "kind": "date"
+                },
+                {
+                    "key": "notional_usd",
+                    "label": "Notional",
+                    "kind": "money"
+                },
+                {
+                    "key": "rm",
+                    "label": "RM",
+                    "kind": "text"
+                }
+            ],
+            "rows": [
+                {
+                    "deal": "P00014",
+                    "name": "Wong Ka Lok",
+                    "rm": "Jason Yu",
+                    "underlying": "TSLA",
+                    "last_vs_ko_pct": -1.8,
+                    "next_ko_observation": "2026-11-04",
+                    "notional_usd": 260000
+                },
+                {
+                    "deal": "P00071",
+                    "name": "Tsang Jun",
+                    "rm": "Peter Leung",
+                    "underlying": "TSLA",
+                    "last_vs_ko_pct": -2.6,
+                    "next_ko_observation": "2026-11-12",
+                    "notional_usd": 200000
+                }
+            ],
+            "totals": {},
+            "notes": [
+                "Distances are from the last close in the overnight load, not live prices."
+            ],
+            "warnings": [],
+            "total_rows": null,
+            "error": null
+        }
+    ],
+    "check": {
+        "checked": 5,
+        "matched": 4,
+        "unmatched": [
+            "5%"
+        ],
+        "status": "some-unmatched"
+    },
+    "provider": "gemini",
+    "model": "gemini-3.5-flash",
+    "written_by": "model",
+    "tools_used": [
+        "knockout_watch"
+    ],
+    "ms": 4596,
+    "usage": {
+        "input_tokens": 3613,
+        "output_tokens": 258,
+        "thinking_tokens": 330
+    },
+    "as_of": "2026-11-02"
+}
