@@ -1,4 +1,4 @@
-import { MockVizDriver, safeMockUrl } from './tableau-viz';
+import { MockVizDriver, safeMockUrl, sameValues } from './tableau-viz';
 
 describe('safeMockUrl', () => {
   it('only lets mock Tableau view pages into the frame', () => {
@@ -50,5 +50,27 @@ describe('MockVizDriver', () => {
     reply({ source: 'hkeli-viz', event: 'resize', height: 0 });
     reply({ source: 'hkeli-viz', event: 'resize', height: 999 }, 'https://evil.example');
     expect(heights).toEqual([812]);
+  });
+
+  it('reads the view\'s filter cards and clears a filter', async () => {
+    const { d, posted, reply } = setup();
+    const card = { field: 'bp_div_type', caption: 'Bp Div Type', values: ['PB'], applied: null };
+    const p = d.getFiltersAsync();
+    expect(posted[0].msg).toMatchObject({ method: 'getFiltersAsync' });
+    reply({ source: 'hkeli-viz', event: 'done', id: posted[0].msg['id'], data: [card] });
+    await expect(p).resolves.toEqual([card]);
+    const c = d.clearFilterAsync('bp_div_type');
+    expect(posted[1].msg).toMatchObject({ method: 'clearFilterAsync', field: 'bp_div_type' });
+    reply({ source: 'hkeli-viz', event: 'done', id: posted[1].msg['id'] });
+    await expect(c).resolves.toBeUndefined();
+  });
+});
+
+describe('sameValues', () => {
+  it('treats null as all values and lists as sets', () => {
+    expect(sameValues(null, null)).toBe(true);
+    expect(sameValues(null, [])).toBe(false);
+    expect(sameValues(['a', 'b'], ['b', 'a'])).toBe(true);
+    expect(sameValues(['a'], ['a', 'b'])).toBe(false);
   });
 });

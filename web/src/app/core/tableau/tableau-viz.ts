@@ -4,13 +4,26 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { firstValueFrom } from 'rxjs';
 import { APP_CONFIG } from '../config/app-config';
 import { TableauEmbed } from '../chat/chat.models';
+import { VizFilterChange, VizFilters } from './viz-filters';
 
 export type VizState = 'loading' | 'ready' | 'updating' | 'error';
+
+/** One filter card on a view: its values (the domain) and what is applied now (null = all values). */
+export interface VizFilterCard {
+  /** The name the runtime calls take: the mock's field id, or the field's name on the Tableau server. */
+  readonly field: string;
+  readonly caption: string;
+  readonly values: readonly string[];
+  readonly applied: readonly string[] | null;
+}
 
 /** Runtime calls the widget makes on an embedded view. Same names as the Tableau Embedding API v3. */
 export interface VizDriver {
   changeParameterValueAsync(name: string, value: number | string): Promise<void>;
   applyFilterAsync(field: string, values: readonly string[]): Promise<void>;
+  clearFilterAsync(field: string): Promise<void>;
+  /** The view's filters with their domains (getFiltersAsync + getDomainAsync in the Embedding API). */
+  getFiltersAsync(): Promise<VizFilterCard[]>;
   dispose(): void;
 }
 
@@ -21,21 +34,27 @@ export function safeMockUrl(url: string | undefined): string | null {
 
 let seq = 0;
 
+/** Same filter state: null is all values; lists compare as sets. */
+export function sameValues(a: readonly string[] | null, b: readonly string[] | null): boolean {
+  if (a === null || b === null) return a === b;
+  return a.length === b.length && a.every((v) => b.includes(v));
+}
+
 /**
  * The mock Tableau page answers the same runtime calls over postMessage (poc mock_tableau.EMBED_JS):
  * a call is posted to the frame, the page re-renders with the new value and replies "done" with the call's id.
  */
 export class MockVizDriver implements VizDriver {
-  private readonly pending = new Map<string, { ok: () => void; fail: (e: Error) => void }>();
+  private readonly pending = new Map<string, { ok: (data: unknown) => void; fail: (e: Error) => void }>();
   private readonly onMessage = (ev: MessageEvent) => {
-    const d = ev.data as { source?: string; event?: string; id?: string; message?: string; height?: number } | null;
+    const d = ev.data as { source?: string; event?: string; id?: string; message?: string; height?: number; data?: unknown } | null;
     if (ev.origin !== this.origin || ev.source !== this.frame.contentWindow || d?.source !== 'hkeli-viz') return;
     if (d.event === 'firstinteractive') this.events.firstInteractive();
     if (d.event === 'resize' && typeof d.height === 'number' && d.height > 0) this.events.resize?.(d.height);
     const p = d.id ? this.pending.get(d.id) : undefined;
     if (!p) return;
     this.pending.delete(d.id!);
-    if (d.event === 'done') p.ok();
+    if (d.event === 'done') p.ok(d.data);
     else p.fail(new Error(d.message ?? 'The view could not update'));
   };
 
@@ -48,10 +67,11 @@ export class MockVizDriver implements VizDriver {
     win.addEventListener('message', this.onMessage);
   }
 
-  private call(msg: Record<string, unknown>): Promise<void> {
+  private call<T = void>(msg: Record<string, unknown>): Promise<T> {
     const id = `c${++seq}`;
-    return new Promise<void>((ok, fail) => {
-      this.pending.set(id, { ok, fail });
+    return new Promise<T>((ok, fail) => {
+      const done = (data: unknown) => ok(data as T);
+      this.pending.set(id, { ok: done, fail });
       this.frame.contentWindow?.postMessage({ target: 'hkeli-viz', id, ...msg }, this.origin);
       setTimeout(() => {
         if (this.pending.delete(id)) fail(new Error('The view did not answer in time'));
@@ -67,27 +87,77 @@ export class MockVizDriver implements VizDriver {
     return this.call({ method: 'applyFilterAsync', field, values: [...values] });
   }
 
+  clearFilterAsync(field: string): Promise<void> {
+    return this.call({ method: 'clearFilterAsync', field });
+  }
+
+  async getFiltersAsync(): Promise<VizFilterCard[]> {
+    const cards = await this.call<unknown>({ method: 'getFiltersAsync' });
+    return Array.isArray(cards) ? (cards as VizFilterCard[]) : [];
+  }
+
   dispose(): void {
     this.win.removeEventListener('message', this.onMessage);
     this.pending.clear();
   }
 }
 
+/** The parts of the Embedding API v3 sheet and filter objects the widget uses. */
+interface TableauDataValue { value: unknown; formattedValue?: string }
+interface TableauFilter {
+  fieldName: string;
+  filterType: string;
+  isAllSelected?: boolean;
+  appliedValues?: TableauDataValue[];
+  getDomainAsync(domainType?: 'relevant' | 'database'): Promise<{ values: TableauDataValue[] }>;
+}
+interface TableauSheet {
+  sheetType: string;
+  worksheets?: TableauSheet[];
+  applyFilterAsync(field: string, values: string[], updateType: 'replace' | 'add' | 'remove' | 'all'): Promise<unknown>;
+  clearFilterAsync(field: string): Promise<unknown>;
+  getFiltersAsync(): Promise<TableauFilter[]>;
+}
 /** A <tableau-viz> element (Embedding API v3) on the office Tableau server. */
 interface TableauVizElement extends HTMLElement {
   workbook: {
     changeParameterValueAsync(name: string, value: number | string): Promise<unknown>;
-    activeSheet: { applyFilterAsync(field: string, values: string[], updateType: 'replace' | 'add' | 'remove' | 'all'): Promise<unknown> };
+    activeSheet: TableauSheet;
   };
 }
+
+const text = (v: TableauDataValue) => v.formattedValue ?? String(v.value);
 
 export class RealVizDriver implements VizDriver {
   constructor(private readonly viz: TableauVizElement) {}
   async changeParameterValueAsync(name: string, value: number | string): Promise<void> {
     await this.viz.workbook.changeParameterValueAsync(name, value);
   }
+  /** A dashboard's filters live on its worksheets; a single view is its own worksheet. */
+  private sheets(): TableauSheet[] {
+    const s = this.viz.workbook.activeSheet;
+    return s.sheetType === 'dashboard' ? (s.worksheets ?? []) : [s];
+  }
   async applyFilterAsync(field: string, values: readonly string[]): Promise<void> {
-    await this.viz.workbook.activeSheet.applyFilterAsync(field, [...values], 'replace');
+    await Promise.all(this.sheets().map((s) => s.applyFilterAsync(field, [...values], 'replace')));
+  }
+  async clearFilterAsync(field: string): Promise<void> {
+    await Promise.all(this.sheets().map((s) => s.clearFilterAsync(field)));
+  }
+  async getFiltersAsync(): Promise<VizFilterCard[]> {
+    const out = new Map<string, VizFilterCard>();
+    for (const sheet of this.sheets()) {
+      for (const f of await sheet.getFiltersAsync()) {
+        // categorical filters only: ranges and relative dates keep Tableau's own controls
+        if (f.filterType !== 'categorical' || out.has(f.fieldName)) continue;
+        const domain = await f.getDomainAsync('database');
+        out.set(f.fieldName, {
+          field: f.fieldName, caption: f.fieldName, values: domain.values.map(text),
+          applied: f.isAllSelected ? null : (f.appliedValues ?? []).map(text),
+        });
+      }
+    }
+    return [...out.values()];
   }
   dispose(): void {
     this.viz.remove();
@@ -118,7 +188,12 @@ function loadTableauScript(src: string): Promise<void> {
 @Component({
   selector: 'eli-tableau-viz',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [VizFilters],
   template: `
+    @if (cards().length && state() !== 'error') {
+      <eli-viz-filters [cards]="cards()" [view]="embed().view" [busy]="state() !== 'ready'" [changed]="filtersChanged()"
+                       (change)="onFilter($event)" (reset)="resetFilters()" />
+    }
     <div class="frame" [style.height.px]="fit() ?? height()" [attr.aria-busy]="state() !== 'ready' && state() !== 'error'">
       @if (frameUrl(); as u) {
         <iframe #frame [src]="u" [title]="'Tableau view ' + embed().view" loading="lazy" (load)="onFrameLoad()"></iframe>
@@ -171,6 +246,15 @@ export class TableauViz {
   private driver: VizDriver | null = null;
   private applied: Record<string, number | string> = {};
   private timer: ReturnType<typeof setTimeout> | null = null;
+  /** The view's filter cards, read from the view itself so they match what Tableau would show. */
+  protected readonly cards = signal<readonly VizFilterCard[]>([]);
+  /** The answer's own filters when the view first loaded, for Reset. */
+  private initial: Record<string, readonly string[] | null> | null = null;
+  protected readonly filtersChanged = computed(() => {
+    const init = this.initialSig();
+    return !!init && this.cards().some((c) => !sameValues(c.applied, init[c.field] ?? null));
+  });
+  private readonly initialSig = signal<Record<string, readonly string[] | null> | null>(null);
 
   protected readonly frameUrl = computed<SafeResourceUrl | null>(() => {
     const n = this.nonce();
@@ -216,6 +300,9 @@ export class TableauViz {
 
   private start(e: TableauEmbed): void {
     this.teardown();
+    this.cards.set([]);
+    this.initial = null;
+    this.initialSig.set(null);
     this.state.set('loading');
     this.applied = Object.fromEntries(e.parameters.map((p) => [p.name, p.value]));
     this.timer = setTimeout(() => {
@@ -237,7 +324,8 @@ export class TableauViz {
       const viz = document.createElement('tableau-viz') as TableauVizElement;
       viz.setAttribute('src', e.src ?? '');
       viz.setAttribute('token', token);
-      viz.setAttribute('toolbar', 'hidden');
+      // Tableau's own toolbar (undo, revert, download) as users have it in Tableau; filters sit above the view
+      viz.setAttribute('toolbar', 'bottom');
       viz.setAttribute('hide-tabs', '');
       viz.setAttribute('width', '100%');
       viz.setAttribute('height', '100%');
@@ -267,6 +355,47 @@ export class TableauViz {
     this.state.set('ready');
     const p = this.params();
     if (p) void this.apply(p);
+    void this.loadFilters();
+  }
+
+  /** Reads the view's filters again: a parameter or another filter can change which values exist. */
+  private async loadFilters(): Promise<void> {
+    const d = this.driver;
+    if (!d) return;
+    try {
+      const cards = await d.getFiltersAsync();
+      if (d !== this.driver) return;
+      this.cards.set(cards);
+      if (!this.initial) {
+        this.initial = Object.fromEntries(cards.map((c) => [c.field, c.applied]));
+        this.initialSig.set(this.initial);
+      }
+    } catch {
+      // an older agent page without filter support: the view still works, just without filter cards
+      this.cards.set([]);
+    }
+  }
+
+  protected async onFilter(changes: readonly VizFilterChange[]): Promise<void> {
+    const d = this.driver;
+    if (!d || this.state() !== 'ready') return;
+    this.state.set('updating');
+    try {
+      for (const c of changes) {
+        const cur = this.cards().find((x) => x.field === c.field);
+        if (cur && sameValues(cur.applied, c.values)) continue;
+        await (c.values === null ? d.clearFilterAsync(c.field) : d.applyFilterAsync(c.field, c.values));
+      }
+      await this.loadFilters();
+      this.state.set('ready');
+    } catch (err) {
+      this.fail(err instanceof Error ? err.message : 'The filter could not be applied.');
+    }
+  }
+
+  protected resetFilters(): void {
+    const init = this.initial;
+    if (init) void this.onFilter(Object.entries(init).map(([field, values]) => ({ field, values })));
   }
 
   private async apply(p: Readonly<Record<string, number | string>>): Promise<void> {
@@ -280,6 +409,7 @@ export class TableauViz {
         this.applied[name] = value;
       }
       this.state.set('ready');
+      void this.loadFilters();
       // a newer value may have arrived while this one was applied
       const latest = this.params();
       if (latest && Object.entries(latest).some(([k, v]) => this.applied[k] !== v)) void this.apply(latest);
