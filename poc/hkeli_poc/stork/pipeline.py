@@ -77,6 +77,7 @@ def answer(question: str, http, site: str, scenario: str | None = None, user: st
            "meta": {"understanding": "rules", "insight": "template", "model": getattr(llm, "model", "off"),
                     "provider": getattr(llm, "provider", "none"),
                     "knowledge_sha256": kb.sha256[:12],
+                    "concept_matcher": cfg.concept_matcher,
                     "prompts": {k: f"{p.version}+{p.sha256[:12]}" for k, p in lib.items()}},
            "_llm_calls": calls}
 
@@ -84,7 +85,12 @@ def answer(question: str, http, site: str, scenario: str | None = None, user: st
     it = agent.interpret(question, today, llm, lib, kb, calls)
     out["meta"]["understanding"] = it.source
     out["intent"] = it.intent
-    tr.add("Pre-parse", {k: v for k, v in it.hints.items() if v})
+    tr.add("Pre-parse", {k: v for k, v in it.hints.items() if v and k not in ("concepts", "gaps", "clarify")})
+    if cfg.concept_matcher:
+        tr.add("Concepts", {"found": [c["concept"] + (f"={c['value']}" if c["value"] else "") for c in it.concepts
+                                      if not c.get("gap")],
+                            "not_in_views": [c["concept"] for c in it.concepts if c.get("gap")],
+                            "clarify": it.clarify})
     tr.add("Understand", {"intent": it.intent, "grain": it.grain, "assumptions": it.assumptions, "by": it.source})
     out["scope"] = it.scope_line()
     out["assumptions"] = [a for a in it.assumptions if not a.startswith("clarify: ")]
@@ -96,6 +102,20 @@ def answer(question: str, http, site: str, scenario: str | None = None, user: st
         out["scope"] = ""   # the parsed scope would mislead here (e.g. a basket stock shown as WPS)
         out["followups"] = ["What is total outstanding ELI?", "How much TRE ELI is predicted to mature in the next 30 days?"]
         tr.add("Route", {"view": None, "reason": f"unsupported concept {u['id']}"})
+        return out
+    if it.clarify:
+        c = it.clarify
+        opts = c.get("options") or []
+        label = {"cust_district": "district", "cust_branch": "branch"}.get(c["concept"], "value")
+        shown = [o.replace("TRE-", "") for o in opts]
+        if c["code"] == "VALUE_AMBIGUOUS":
+            head = f"'{c['text'].title()}' fits more than one {label}: {', '.join(shown)}. Which one do you mean?"
+        else:
+            head = (f"I can't find a {label} called {c['text'].upper() if label == 'district' else c['text']}. "
+                    f"The {label}s I know are {', '.join(shown)}. Which one do you mean?")
+        out.update(status="NEEDS_CLARIFICATION", reasons=[c["code"]], headline=head)
+        out["followups"] = [_swap(question, c["text"], o) for o in shown[:3]]
+        tr.add("Route", {"view": None, "reason": f"{c['code'].lower()} {label}"})
         return out
     if it.intent == "unknown":
         clar = next((a[len("clarify: "):] for a in it.assumptions if a.startswith("clarify: ") and len(a) > 10), None)
@@ -190,6 +210,13 @@ def answer(question: str, http, site: str, scenario: str | None = None, user: st
         out["embed"] = _embed(site, pl, scenario)
     tr.add("Compose", {"embed": bool(out["embed"]), "followups": len(out["followups"])})
     return _finish(out)
+
+
+def _swap(question: str, text: str, option: str) -> str:
+    """The user's question with the unclear value replaced by one real option (a follow-up chip)."""
+    import re as _re
+    q, n = _re.subn(_re.escape(text), option, question, count=1, flags=_re.I)
+    return q if n else f"{question.rstrip('?')} in {option}?"
 
 
 RESULT_ORDER = ["KO", "EXP", "EXP(Below Strike)", "EX"]
@@ -437,9 +464,14 @@ def _write(it, pl, cols, rows, out):
             for r in rows:
                 cust[(r[0], r[1])] = r[ci]
         lead = by[0]
-        out["headline"] = (f"{lead[0][1]} leads with {_num(out, lead[1], money(lead[1]), 'hkd', src)} of TRE predicted maturity in the {win}"
-                           + (f", followed by {by[1][0][1]} at {_num(out, by[1][1], money(by[1][1]), 'hkd', src)}" if len(by) > 1 else "")
-                           + f". Total {_num(out, total, money(total), 'hkd', src)} across {len(by)} branches.")
+        if len(by) == 1:
+            out["headline"] = (f"{lead[0][1]} has {_num(out, lead[1], money(lead[1]), 'hkd', src)} of TRE predicted maturity "
+                               f"in the {win}.")
+        else:
+            out["headline"] = (f"{lead[0][1]} leads with {_num(out, lead[1], money(lead[1]), 'hkd', src)} of TRE predicted "
+                               f"maturity in the {win}, followed by {by[1][0][1]} at "
+                               f"{_num(out, by[1][1], money(by[1][1]), 'hkd', src)}. Total "
+                               f"{_num(out, total, money(total), 'hkd', src)} across {len(by)} branches.")
         out["table"] = {"columns": ["District", "Branch", "HKD"] + (["Customers"] if cust else []),
                         "rows": [[k[0].replace("TRE-", ""), k[1], money(x)] + ([cust.get(k, "")] if cust else []) for k, x in by]}
         out["followups"] = [f"Show the clients behind {lead[0][1]} maturing in the {win}"]

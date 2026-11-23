@@ -251,7 +251,8 @@ def ask(body: Ask, request: Request):
     return _ask(body, current_user(request), request.state.request_id)
 
 
-STAGE_LABEL = {"Pre-parse": "Reading the question", "Understand": "Understanding the question",
+STAGE_LABEL = {"Pre-parse": "Reading the question", "Concepts": "Matching catalog terms",
+               "Understand": "Understanding the question",
                "Data as-of": "Checking the data date", "Route": "Choosing the Tableau view",
                "Plan check": "Checking the plan", "Compile": "Building the filters",
                "Fetch": "Querying the view as you", "Validate": "Checking the result",

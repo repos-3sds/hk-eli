@@ -126,6 +126,8 @@ class Settings:
     edge_token: str | None = field(repr=False, default=None)
     default_user: str = "demo.user"
     llm: LLMSettings | None = None
+    catalog_path: Path | None = None   # office: the merged real catalog (office/import_catalog.py); None = packaged synthetic one
+    concept_matcher: bool = True        # catalog concept matcher and value translation (logical-query-mcp rules)
 
     def today(self) -> date:
         if self.demo_today:
@@ -192,6 +194,8 @@ def load() -> Settings:
         edge_token=edge_token,
         default_user=_env("DEFAULT_USER", "demo.user"),
         llm=llm,
+        catalog_path=_path("CATALOG_PATH", Path("")) if _env("CATALOG_PATH") else None,
+        concept_matcher=_bool("CONCEPT_MATCHER", True),
     )
 
 

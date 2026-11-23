@@ -16,6 +16,7 @@ text is rejected if it holds a figure that is not in that evidence.
 | Model adapter | `hkeli_poc/llm.py`, `stork/agent.py` | Gemini through the office model gateway: two structured calls, validated and audited, with rule and template fallbacks |
 | Store | `hkeli_poc/db.py` | SQLite: conversations, answers, model-call audit, feedback. Numbered migrations |
 | Knowledge base | `hkeli_poc/knowledge/` | Glossary (terms, concepts, allowed values), intent list, domain notes. Data, not code |
+| Semantic catalog | `hkeli_poc/catalog/`, `stork/concepts.py`, `stork/values.py` | Concepts, the views that carry them, glossary, standard calculations (logical-query-mcp shape). Concept matcher and value translation; the office merges its real catalog with `office/import_catalog.py` |
 | Prompt library | `hkeli_poc/prompts/` | Versioned prompts and Gemini response schemas; id, version and sha256 recorded per call |
 | Tableau | `hkeli_poc/tableau_real.py`, `mock_tableau.py`, `workbook.py` | Real server (Connected App, per-user REST sign-in, Query View Data, embed) or the built-in mock workbook |
 | Pages | `hkeli_poc/static/` | `/` chat with evidence pane, `/compare` W1–W7 side by side, `/workbook` view list |
@@ -34,7 +35,7 @@ python3.12 -m venv .venv
 .venv/bin/python -m pip install --no-cache-dir --require-hashes -r requirements.txt
 .venv/bin/python -m pip install --no-cache-dir --require-hashes -r requirements-dev.txt   # tests only
 .venv/bin/python -m pip check
-.venv/bin/python -m pytest -q -p no:cacheprovider               # 86 passed
+.venv/bin/python -m pytest -q -p no:cacheprovider               # 111 passed
 cp .env.example .env                                              # fill in office values
 .venv/bin/python office/smoke_test.py                             # SMOKE PASS
 ./run.sh                                                          # http://127.0.0.1:8050, Ctrl+C to stop
@@ -88,6 +89,20 @@ The mock holds the 12 published HK_ELI views on synthetic data, in two versions:
 describes it today) and `proposed` (with worksheet changes W1–W7). `/compare` runs one question per change
 on both. All data is invented. `scripts/check_tableau.py` compares a real site with the view contract and
 prints only names, counts and pass/fail.
+
+## Semantic catalog and concept matcher
+
+The catalog (`hkeli_poc/catalog/hkeli_catalog.json`, built by `scripts/build_catalog.py`) lists every
+business concept, its aliases and allowed values, and which published views carry it. The shape follows
+logical-query-mcp's catalog (datasources, entities, relationships, glossary, metrics) plus a `concepts` list
+in the office catalog's own style, so the office's real catalog can be merged in without leaving the office.
+
+The concept matcher runs inside the pre-parse step, after the regex hints, using logical-query-mcp's rules
+re-implemented in memory: glossary readings of short forms, whole-word matching only, longest match first,
+and an honest gap when the catalog knows a concept that no view carries. Value translation asks when a named
+value fits several stored values ("Bay branch") and says so when it fits none ("D4"). Regex hints still win,
+every value still comes from a list, and no model is involved. `CONCEPT_MATCHER=false` turns it off;
+`office/compare_matcher.py` shows what changes.
 
 ## Known gaps
 

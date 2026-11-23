@@ -306,7 +306,7 @@ def test_stream_sends_stages_then_the_answer():
         text = "".join(r.iter_text())
     events = [(b.split("\n")[0][7:], json.loads(b.split("\n")[1][6:])) for b in text.strip().split("\n\n")]
     kinds = [k for k, _ in events]
-    assert kinds[-1] == "answer" and kinds.count("stage") == 10 and set(kinds) == {"stage", "answer"}
+    assert kinds[-1] == "answer" and kinds.count("stage") == 11 and set(kinds) == {"stage", "answer"}
     assert events[0][1]["label"] == "Reading the question" and "detail" not in events[0][1]
     assert events[-1][1]["status"] == "OK" and events[-1][1]["turn_id"]
 

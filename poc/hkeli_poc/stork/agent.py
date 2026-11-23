@@ -44,7 +44,7 @@ def interpret(question: str, today: date, llm, lib: dict, kb: KB.Knowledge, call
     call = _call("understand", pr, llm)
     t0 = time.perf_counter()
     try:
-        hints = {k: v for k, v in base.hints.items() if v and k != "unsupported"}
+        hints = {k: v for k, v in base.hints.items() if v and k not in ("unsupported", "concepts", "gaps", "clarify")}
         sys_txt, user_txt = pr.render(
             question=question, today=today.isoformat(), hints_json=json.dumps(hints),
             intents_json=json.dumps(kb.intents["intents"]),
@@ -110,7 +110,8 @@ def merge_intent(base: Intent, raw: dict, kb: KB.Knowledge, today: date) -> tupl
     if intent == "unknown" and base.intent != "unknown":
         intent = base.intent      # the model gave up but the rules found a supported intent: use it
     h = base.hints
-    it = Intent(question=base.question, hints=h, unsupported=base.unsupported, source="gateway")
+    it = Intent(question=base.question, hints=h, unsupported=base.unsupported, source="gateway",
+                concepts=base.concepts, clarify=base.clarify)
     it.intent = intent
     it.segments = h.get("segments") or segs
     it.district = h.get("district") or raw.get("district") or None
