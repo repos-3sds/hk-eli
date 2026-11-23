@@ -206,3 +206,35 @@ def test_every_slider_step_fits_the_tableau_parameter_ranges():
                 assert PARAM_META["market_spot"]["min"] <= round(1 + m, 2) <= PARAM_META["market_spot"]["max"]
             else:
                 assert PARAM_META["shock_pct"]["min"] <= m <= PARAM_META["shock_pct"]["max"]
+
+
+# ---------------------------------------------------------------- baskets of 3 and 4 stocks (documentation extract)
+def _rows_with_legs(n: int) -> tuple[list[str], list[list[str]]]:
+    cols = list(SC.COLUMNS.values()) + [c for pair in SC.EXTRA_LEGS[: n - 2] for c in pair]
+    base = {"Pos Id": "P1", "Asset Id": "E1", "Cif Id": "C1", "Bp Div Type": "PB", "Cust District": "Null",
+            "Cust Branch": "Null", "Rm Name": "RM", "Asset Tks": "AAA", "Asset Tks 2": "BBB", "Asset Tks Mtm": "110",
+            "Asset Tks 2 Mtm": "105", "Wps": "CCC", "Wps Mtm": "95", "Strike Percentage": "85", "Ko Percentage": "100",
+            "Ki Percentage": "70", "Has Knocked In": "False", "Predict Result": "EXP", "Volume Bu": "1000000",
+            "Asset Tks 3": "CCC", "Asset Tks 3 Mtm": "95", "Asset Tks 4": "DDD", "Asset Tks 4 Mtm": "102"}
+    return cols, [[base[c] for c in cols]]
+
+
+def test_three_stock_basket_takes_the_worst_of_all_three():
+    cols, rows = _rows_with_legs(3)
+    p = SC.positions_from_rows(cols, rows)[0]
+    assert SC.basket(p) == ["AAA", "BBB", "CCC"]
+    assert SC.simulate(p, "single", "AAA", -0.05)["wps"] == "CCC"           # third stock is still the worst
+    r = SC.simulate(p, "single", "CCC", -0.15)                                 # 95 x 0.85 = 80.75: below strike
+    assert (r["wps"], r["sim"], r["status"]) == ("CCC", 80.8, "EXP(Below Strike)")
+    assert SC.simulate(p, "market", None, 0.06)["status"] == "KO"             # 95 x 1.06 = 100.7, every leg >= KO
+
+
+def test_four_stock_basket_and_a_two_stock_view_still_work():
+    cols, rows = _rows_with_legs(4)
+    p = SC.positions_from_rows(cols, rows)[0]
+    assert SC.basket(p) == ["AAA", "BBB", "CCC", "DDD"]
+    assert SC.simulate(p, "single", "DDD", -0.20)["wps"] == "DDD"              # 102 x 0.8 = 81.6 < 95
+    assert SC.simulate(p, "market", None, -0.30)["status"] == "EX"            # 95 x 0.7 = 66.5 < KI 70
+    cols2, rows2 = _rows_with_legs(2)                                          # today's HK_ELI shape: two legs
+    p2 = SC.positions_from_rows(cols2, rows2)[0]
+    assert SC.basket(p2) == ["AAA", "BBB"] and SC.simulate(p2, "single", "AAA", -0.10)["wps"] == "AAA"

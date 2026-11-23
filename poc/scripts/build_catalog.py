@@ -168,6 +168,21 @@ METRICS = [
 ]
 
 
+# Field names used by the colleague's documentation extract (eli-extract.md, synthetic) for the same concepts,
+# so a question or an export that uses them lands on our field. Spelled as written there; underscores also as spaces.
+DOC_ALIASES = {
+    "strike_percentage": ["strike_pct", "strike pct", "exercise price"],
+    "ko_percentage": ["ko_pct", "ko pct", "ko_price", "call price"],
+    "ki_percentage": ["ki_pct", "ki pct", "ki_price", "knock-in price"],
+    "asset_id": ["deal_id"],
+    "wps_mtm": ["mtm_pct", "mtm pct", "wps mtm pct", "current spot pct"],
+    "volume_bu": ["notional_hkd", "notional hkd"],
+    "asset_tks": ["underlying_1", "asset_1"],
+    "asset_tks_2": ["underlying_2", "asset_2"],
+}
+DOC_METRIC_SYNONYMS = {"distinct_customers": ["client_count", "client count"]}
+
+
 def concepts() -> list[dict]:
     g = json.loads(GLOSSARY.read_text())
     out = []
@@ -201,6 +216,10 @@ def concepts() -> list[dict]:
         out.append(d)
     out += [dict(c) for c in EXTRA]
     out += [dict(c, inViews=False) for c in NOT_IN_VIEWS]
+    for d in out:
+        extra = [x for x in DOC_ALIASES.get(d["id"], []) if x not in d.get("aliases", [])]
+        if extra:
+            d["aliases"] = [*d.get("aliases", []), *extra]
     return out
 
 
@@ -241,7 +260,7 @@ def build() -> dict:
         "entities": entities(cons),
         "relationships": [],
         "glossary": [{"id": i, "term": t, "aliases": a, "meaning": m, "mapsTo": to} for i, t, a, m, to in GLOSSARY_TERMS],
-        "metrics": METRICS,
+        "metrics": [dict(m, synonyms=[*m["synonyms"], *DOC_METRIC_SYNONYMS.get(m["id"], [])]) for m in METRICS],
         "concepts": cons,
     }
 
