@@ -1,5 +1,5 @@
 # Tests the widget, builds the nginx image and (on main or a v* tag) pushes it to GHCR.
-# Pull it into the bank registry for OpenShift: ghcr.io/<owner>/hk-eli-chatbot-web:<tag>
+# Pull it into the bank registry for OpenShift: ghcr.io/<owner>/hk-eli-frontend:<tag>
 name: web-image
 on:
   push:
@@ -27,7 +27,7 @@ jobs:
       - uses: docker/metadata-action@v5.8.0
         id: meta
         with:
-          images: ghcr.io/${{ github.repository_owner }}/hk-eli-chatbot-web
+          images: ghcr.io/${{ github.repository_owner }}/hk-eli-frontend
           tags: |
             type=sha,format=short
             type=ref,event=tag
@@ -39,10 +39,10 @@ jobs:
         with:
           context: .
           load: true
-          tags: hk-eli-chatbot-web:ci
+          tags: hk-eli-frontend:ci
       - name: Smoke test the image (random UID, like OpenShift)
         run: |
-          docker run -d --name web --user 1000770000:0 -e API_URL=http://127.0.0.1:9 -p 8081:8080 hk-eli-chatbot-web:ci
+          docker run -d --name web --user 1000770000:0 -e API_URL=http://127.0.0.1:9 -p 8081:8080 hk-eli-frontend:ci
           for i in $(seq 1 20); do curl -fs localhost:8081/healthz && break; sleep 1; done
           curl -fs localhost:8081/ | grep -q '<eli-root'
           curl -fs localhost:8081/config/app-config.json | grep -q '"gatewayBaseUrl": "/api/stork"'

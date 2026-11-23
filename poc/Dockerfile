@@ -1,6 +1,6 @@
 # HK ELI Chatbot API (the Python Stork agent) for OpenShift UAT.
-#   docker build -t hk-eli-chatbot-api:local .
-#   docker run -p 8080:8080 hk-eli-chatbot-api:local
+#   docker build -t hk-eli-backend:local .
+#   docker run -p 8080:8080 hk-eli-backend:local
 # Base image and package index are build arguments so the bank build can point at its own registry and
 # Artifactory without editing this file. Versions are pinned; Python packages install from the hashed lock.
 ARG PYTHON_IMAGE=python:3.12.12-slim-bookworm
@@ -18,7 +18,7 @@ RUN --mount=type=secret,id=ca,required=false \
  && /opt/venv/bin/pip install --index-url "${PIP_INDEX_URL}" --require-hashes --no-deps -r requirements.txt
 
 FROM ${PYTHON_IMAGE}
-LABEL org.opencontainers.image.title="hk-eli-chatbot-api" \
+LABEL org.opencontainers.image.title="hk-eli-backend" \
       org.opencontainers.image.description="HK ELI Chatbot agent API. *Will be part of Ask-MIRA in future." \
       io.openshift.expose-services="8080:http"
 ENV PATH=/opt/venv/bin:$PATH \

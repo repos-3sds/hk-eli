@@ -1,5 +1,5 @@
 # Tests the agent, builds the image and (on main or a v* tag) pushes it to GHCR.
-# Pull it into the bank registry for OpenShift: ghcr.io/<owner>/hk-eli-chatbot-api:<tag>
+# Pull it into the bank registry for OpenShift: ghcr.io/<owner>/hk-eli-backend:<tag>
 name: api-image
 on:
   push:
@@ -27,7 +27,7 @@ jobs:
       - uses: docker/metadata-action@v5.8.0
         id: meta
         with:
-          images: ghcr.io/${{ github.repository_owner }}/hk-eli-chatbot-api
+          images: ghcr.io/${{ github.repository_owner }}/hk-eli-backend
           tags: |
             type=sha,format=short
             type=ref,event=tag
@@ -39,10 +39,10 @@ jobs:
         with:
           context: .
           load: true
-          tags: hk-eli-chatbot-api:ci
+          tags: hk-eli-backend:ci
       - name: Smoke test the image (random UID, read-only root, like OpenShift)
         run: |
-          docker run -d --name api --user 1000770000:0 --read-only --tmpfs /tmp --tmpfs /app/var -p 8080:8080 hk-eli-chatbot-api:ci
+          docker run -d --name api --user 1000770000:0 --read-only --tmpfs /tmp --tmpfs /app/var -p 8080:8080 hk-eli-backend:ci
           for i in $(seq 1 30); do curl -fs localhost:8080/readyz && break; sleep 1; done
           curl -fs localhost:8080/readyz
           curl -fs -X POST localhost:8080/api/v1/ask -H 'content-type: application/json' \

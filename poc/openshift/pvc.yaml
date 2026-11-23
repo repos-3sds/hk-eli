@@ -3,8 +3,8 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: hk-eli-chatbot-api-var
-  labels: {app.kubernetes.io/name: hk-eli-chatbot-api, app.kubernetes.io/part-of: hk-eli-chatbot}
+  name: hk-eli-backend-var
+  labels: {app.kubernetes.io/name: hk-eli-backend, app.kubernetes.io/part-of: hk-eli-chatbot}
 spec:
   accessModes: [ReadWriteOnce]
   resources:

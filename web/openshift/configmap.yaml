@@ -2,11 +2,11 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: hk-eli-chatbot-web
-  labels: {app.kubernetes.io/name: hk-eli-chatbot-web, app.kubernetes.io/part-of: hk-eli-chatbot}
+  name: hk-eli-frontend
+  labels: {app.kubernetes.io/name: hk-eli-frontend, app.kubernetes.io/part-of: hk-eli-chatbot}
 data:
   # Where nginx forwards /api/stork/* and /tableau/* (the agent's internal Service).
-  API_URL: http://hk-eli-chatbot-api:8080
+  API_URL: http://hk-eli-backend:8080
   APP_NAME: HK ELI Chatbot
   REQUEST_TIMEOUT_MS: "20000"
   # Pins "today" for the fictional demo book. Empty = the real date in APP_TIMEZONE.

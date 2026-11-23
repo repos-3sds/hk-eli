@@ -1,6 +1,6 @@
 # HK ELI Chatbot web (the Angular widget) for OpenShift UAT.
-#   docker build -t hk-eli-chatbot-web:local .
-#   docker run -p 8081:8080 -e API_URL=http://hk-eli-chatbot-api:8080 hk-eli-chatbot-web:local
+#   docker build -t hk-eli-frontend:local .
+#   docker run -p 8081:8080 -e API_URL=http://hk-eli-backend:8080 hk-eli-frontend:local
 # One image for every environment: the agent's address (API_URL) and the app settings are read when the
 # container starts, not baked in at build time. The browser only ever talks to this nginx; nginx forwards
 # /api/stork/* and /tableau/* to the agent, so there is no CORS to configure and the mock Tableau views stay
@@ -20,11 +20,11 @@ COPY . .
 RUN npm run build -- --configuration production
 
 FROM ${NGINX_IMAGE}
-LABEL org.opencontainers.image.title="hk-eli-chatbot-web" \
+LABEL org.opencontainers.image.title="hk-eli-frontend" \
       org.opencontainers.image.description="HK ELI Chatbot widget. *Will be part of Ask-MIRA in future." \
       io.openshift.expose-services="8080:http"
 # Defaults; override per environment in the ConfigMap.
-ENV API_URL=http://hk-eli-chatbot-api:8080 \
+ENV API_URL=http://hk-eli-backend:8080 \
     APP_NAME="HK ELI Chatbot" \
     REQUEST_TIMEOUT_MS=20000 \
     AS_OF_DATE="" \
