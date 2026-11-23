@@ -1,0 +1,110 @@
+{
+ "about": "Concept and filter resolution set: the discovery Concept Resolution examples plus value and gap cases. Expected results are with CONCEPT_MATCHER on, proposed mock workbook, rules mode. office/compare_matcher.py runs it with the matcher off and on and prints only counts and case numbers.",
+ "cases": [
+  {
+   "q": "How much TRE ELI is outstanding?",
+   "status": "OK",
+   "intent": "outstanding_total",
+   "view": "outstanding-total-all",
+   "why": "discovery CR example 1"
+  },
+  {
+   "q": "How many TRE customers are predicted to KO?",
+   "status": "OK",
+   "intent": "customer_count",
+   "view": "outstanding-segment-customers",
+   "why": "discovery CR example 2"
+  },
+  {
+   "q": "Show maturity calendar for D1 next 30 days.",
+   "status": "OK",
+   "intent": "maturity_calendar",
+   "view": "maturity-calendar-n30-tre",
+   "why": "discovery CR example 3"
+  },
+  {
+   "q": "Which branches in D1 have most maturity?",
+   "status": "OK",
+   "intent": "maturity_branch",
+   "view": "maturity-branch-n30-tre",
+   "why": "discovery CR example 4"
+  },
+  {
+   "q": "Show WPS concentration for D2.",
+   "status": "OK",
+   "intent": "wps_exposure",
+   "view": "outstanding-wps-n30-all",
+   "why": "discovery CR example 5"
+  },
+  {
+   "q": "Show me the distribution on 9988 HK.",
+   "status": "OK",
+   "intent": "mtm_distribution",
+   "view": "outstanding-distribution-wps-n30-all",
+   "why": "discovery CR example 6"
+  },
+  {
+   "q": "Simulate PB WPS exposure with market spot at 95%.",
+   "status": "UNSUPPORTED",
+   "intent": "*",
+   "view": null,
+   "why": "discovery CR example 7: scenarios not in this build"
+  },
+  {
+   "q": "How much TRE ELI matures in D4 in the next 30 days?",
+   "status": "NEEDS_CLARIFICATION",
+   "intent": "*",
+   "view": null,
+   "why": "unknown district: ask, never answer for all districts"
+  },
+  {
+   "q": "How much TRE ELI matures in Bay branch in the next 30 days?",
+   "status": "NEEDS_CLARIFICATION",
+   "intent": "*",
+   "view": null,
+   "why": "ambiguous branch: ask which one"
+  },
+  {
+   "q": "How much TRE ELI matures in Kowloon branch in the next 30 days?",
+   "status": "OK",
+   "intent": "maturity_branch",
+   "view": "maturity-branch-n30-tre",
+   "why": "partial branch name that fits one branch"
+  },
+  {
+   "q": "What coupon do our TRE ELIs pay?",
+   "status": "UNSUPPORTED",
+   "intent": "*",
+   "view": null,
+   "why": "known concept, no view carries it"
+  },
+  {
+   "q": "What is the tenor of live TRE deals?",
+   "status": "UNSUPPORTED",
+   "intent": "*",
+   "view": null,
+   "why": "known concept, no view carries it"
+  },
+  {
+   "q": "Show the result announcement date for D1 positions",
+   "status": "UNSUPPORTED",
+   "intent": "*",
+   "view": null,
+   "why": "office catalog concept, no view carries it"
+  },
+  {
+   "q": "Which RMs in D2 have clients maturing next week?",
+   "status": "OK",
+   "intent": "maturity_detail",
+   "view": "maturity-details-n30-tre",
+   "why": "glossary: RMs"
+  },
+  {
+   "q": "How much Alibaba WPS exposure does TRE have?",
+   "status": "OK",
+   "intent": "wps_exposure",
+   "view": "outstanding-wps-n30-tre",
+   "why": "value alias: Alibaba -> 9988 HK"
+  }
+ ]
+}

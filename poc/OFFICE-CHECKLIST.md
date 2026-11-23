@@ -10,9 +10,10 @@ only (pass/fail, counts, names of views or columns): never values, rows, host na
 - [ ] A2 `python3.12 -V` is 3.12.x and `uname -m` noted
 - [ ] A3 both preflights say every pinned package downloads (or FAIL lines sent back)
 - [ ] A4 `pip install --require-hashes` for both lock files, `pip check` clean, nothing built from source
-- [ ] A5 `pytest`: 86 passed
+- [ ] A5 `pytest`: 111 passed
 - [ ] A6 `office/smoke_test.py`: SMOKE PASS
 - [ ] A7 `office/run_eval.py` (mock, model off): eval 20 of 20 pass
+- [ ] A8 `office/compare_matcher.py` (mock, model off, packaged catalog): eval 20 of 20 both ways, concepts 15 of 15 with the matcher on, broken: none
 
 ## B. Office checks
 
@@ -34,6 +35,17 @@ until the W1–W7 changes are published).
 | B11 | Embed: Connected App domain allowlist and the open decision | `TABLEAU_EMBED=embed`, ask a question, press "Open in Tableau"; then `TABLEAU_EMBED=link` | embed loads yes/no (and the error code if not); link opens yes/no | pick `embed` or `link` for launch |
 | B12 | Model gateway call shape | Fill `LLM_*`, set `LLM_MODE=gateway`, run `office/smoke_test.py` then `office/run_eval.py` | the smoke `ask:` line (read by / worded by), the eval count and path lines | adjust `LLM_GATEWAY_PATH`, `LLM_AUTH_HEADER`, `LLM_AUTH_SCHEME`, `LLM_MODEL`; if the gateway needs a client library, see docs/AUDIT.md G3 |
 | B13 | Java edge passes identity | With the edge in front: `TRUST_EDGE_HEADERS=true`, `EDGE_SHARED_TOKEN_FILE` set; ask as two users; `GET /api/v1/history` as each | 401 without the token (yes/no); each user sees only their own turns (yes/no) | fix the edge headers |
+
+## C. Semantic catalog and concept matcher
+
+| # | Check | How | Send back | If it differs |
+|---|---|---|---|---|
+| C1 | The real catalog merges | `office/import_catalog.py --office <catalog json>` | the whole printed block (counts and key names only) | if FAILED, the FAILED line; the packaged catalog stays in use |
+| C2 | Answers do not get worse with the real catalog | `CATALOG_PATH=var/catalog-office.json`, then `office/compare_matcher.py` (mock first, then `TABLEAU_MODE=real`) | the printed lines | a `broken:` case number: send it; set `CONCEPT_MATCHER=false` until fixed |
+| C3 | Generic aliases on concepts no view carries | the `single_word_aliases_on_no_view` count from C1 | the count | above about 20: read those aliases in the office and remove the generic ones from the merged copy |
+| C4 | Value lists in the real catalog | does the catalog list values for districts, branches, predicted result (yes/no each) | three yes/no | if no, keep B3 and B4 (glossary edits) as the source of values |
+| C5 | Is there a SQL copy of the ELI data (warehouse table or MariaDB) behind the Tableau extract | ask the data owner | yes/no, and the database type | yes: the later step (logical-query-mcp over MCP for questions outside the 12 views) becomes possible |
+| C6 | Can logical-query-mcp itself run here | are MongoDB, Elasticsearch 8 and MariaDB available to us, and are mcp 2.3.0, fastapi, pymongo, elasticsearch 8.19.3, PyMySQL in JFrog | yes/no per item | all yes and C5 yes: plan the MCP step; otherwise stay with the in-process matcher |
 
 When a check changes a file in the office copy, note which file in the reply (not its contents), so the
 same change can be made in the source and shipped in the next zip.

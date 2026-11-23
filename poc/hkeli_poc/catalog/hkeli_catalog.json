@@ -1,0 +1,3317 @@
+{
+ "schemaVersion": "hkeli-catalog/1",
+ "catalogId": "synthetic-hkeli",
+ "about": "HK ELI semantic catalog in the logical-query-mcp shape, plus a concepts list. Synthetic. Built by scripts/build_catalog.py; the office merges the real catalog with office/import_catalog.py.",
+ "usecase": {
+  "id": "hk_eli",
+  "name": "HK ELI"
+ },
+ "datasources": [
+  {
+   "id": "hk_eli_workbook",
+   "name": "HK_ELI Tableau workbook",
+   "plugin": "tableau",
+   "host": "",
+   "port": 0,
+   "database": "HK_ELI",
+   "description": "Published HK_ELI views, read with REST Query View Data as the user."
+  }
+ ],
+ "entities": [
+  {
+   "id": "outstanding-total-all",
+   "datasourceId": "hk_eli_workbook",
+   "name": "#all_outatanding_total",
+   "recordId": "outstanding-total-all",
+   "tableauView": "#all_outatanding_total",
+   "purpose": "Outstanding ELI, total",
+   "usage": "Intents: outstanding_total",
+   "grain": "single figure",
+   "synonyms": [],
+   "enabled": true,
+   "intents": [
+    "outstanding_total"
+   ],
+   "fields": [
+    {
+     "name": "deal_status",
+     "type": "status",
+     "description": "Lifecycle status of the deal. Outstanding means LIVE.",
+     "synonyms": [
+      "live",
+      "outstanding",
+      "active"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "LIVE",
+       "meaning": "Live, outstanding deal"
+      }
+     ]
+    },
+    {
+     "name": "bp_div_type",
+     "type": "dimension",
+     "description": "Business segment of the customer: Treasures (HK), Treasures Private Client, Private Banking.",
+     "synonyms": [
+      "segment",
+      "business segment",
+      "business division",
+      "TRE",
+      "Treasures",
+      "TPC"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "Treasures(TPC)",
+       "meaning": "Treasures Private Client"
+      },
+      {
+       "value": "Treasures(HK)",
+       "meaning": "Treasures Hong Kong"
+      },
+      {
+       "value": "PB",
+       "meaning": "Private Banking"
+      }
+     ]
+    },
+    {
+     "name": "volume_bu",
+     "type": "measure",
+     "description": "Outstanding notional of a position in HKD equivalent. 'Outstanding' always means SUM(volume_bu) over live deals.",
+     "synonyms": [
+      "outstanding",
+      "outstanding amount",
+      "ELI exposure",
+      "ELI notional",
+      "notional amount",
+      "HKD equivalent"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    }
+   ]
+  },
+  {
+   "id": "outstanding-segment",
+   "datasourceId": "hk_eli_workbook",
+   "name": "#all_outatanding_segment",
+   "recordId": "outstanding-segment",
+   "tableauView": "#all_outatanding_segment",
+   "purpose": "Outstanding ELI by segment, with share",
+   "usage": "Intents: segment_share",
+   "grain": "bp_div_type",
+   "synonyms": [],
+   "enabled": true,
+   "intents": [
+    "segment_share"
+   ],
+   "fields": [
+    {
+     "name": "bp_div_type",
+     "type": "dimension",
+     "description": "Business segment of the customer: Treasures (HK), Treasures Private Client, Private Banking.",
+     "synonyms": [
+      "segment",
+      "business segment",
+      "business division",
+      "TRE",
+      "Treasures",
+      "TPC"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "Treasures(TPC)",
+       "meaning": "Treasures Private Client"
+      },
+      {
+       "value": "Treasures(HK)",
+       "meaning": "Treasures Hong Kong"
+      },
+      {
+       "value": "PB",
+       "meaning": "Private Banking"
+      }
+     ]
+    },
+    {
+     "name": "deal_status",
+     "type": "status",
+     "description": "Lifecycle status of the deal. Outstanding means LIVE.",
+     "synonyms": [
+      "live",
+      "outstanding",
+      "active"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "LIVE",
+       "meaning": "Live, outstanding deal"
+      }
+     ]
+    },
+    {
+     "name": "volume_bu",
+     "type": "measure",
+     "description": "Outstanding notional of a position in HKD equivalent. 'Outstanding' always means SUM(volume_bu) over live deals.",
+     "synonyms": [
+      "outstanding",
+      "outstanding amount",
+      "ELI exposure",
+      "ELI notional",
+      "notional amount",
+      "HKD equivalent"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    }
+   ]
+  },
+  {
+   "id": "outstanding-segment-result",
+   "datasourceId": "hk_eli_workbook",
+   "name": "#all_outatanding_segment_result",
+   "recordId": "outstanding-segment-result",
+   "tableauView": "#all_outatanding_segment_result",
+   "purpose": "Outstanding ELI by segment and predicted result, share of overall",
+   "usage": "Intents: segment_result_share",
+   "grain": "bp_div_type x predict_result",
+   "synonyms": [],
+   "enabled": true,
+   "intents": [
+    "segment_result_share"
+   ],
+   "fields": [
+    {
+     "name": "bp_div_type",
+     "type": "dimension",
+     "description": "Business segment of the customer: Treasures (HK), Treasures Private Client, Private Banking.",
+     "synonyms": [
+      "segment",
+      "business segment",
+      "business division",
+      "TRE",
+      "Treasures",
+      "TPC"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "Treasures(TPC)",
+       "meaning": "Treasures Private Client"
+      },
+      {
+       "value": "Treasures(HK)",
+       "meaning": "Treasures Hong Kong"
+      },
+      {
+       "value": "PB",
+       "meaning": "Private Banking"
+      }
+     ]
+    },
+    {
+     "name": "predict_result",
+     "type": "dimension",
+     "description": "Model estimate of how the ELI ends: KO, EXP, EXP(Below Strike) or EX. Never a confirmed outcome.",
+     "synonyms": [
+      "predicted result",
+      "expected result",
+      "predicted outcome",
+      "expected outcome",
+      "predicted KO",
+      "predicted expiry"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "EXP(Below Strike)",
+       "meaning": "Expiry below strike predicted, cash settled"
+      },
+      {
+       "value": "KO",
+       "meaning": "Knock-out predicted"
+      },
+      {
+       "value": "EX",
+       "meaning": "Exercise predicted, stock delivered"
+      },
+      {
+       "value": "EXP",
+       "meaning": "Expiry above strike predicted"
+      }
+     ]
+    },
+    {
+     "name": "deal_status",
+     "type": "status",
+     "description": "Lifecycle status of the deal. Outstanding means LIVE.",
+     "synonyms": [
+      "live",
+      "outstanding",
+      "active"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "LIVE",
+       "meaning": "Live, outstanding deal"
+      }
+     ]
+    },
+    {
+     "name": "volume_bu",
+     "type": "measure",
+     "description": "Outstanding notional of a position in HKD equivalent. 'Outstanding' always means SUM(volume_bu) over live deals.",
+     "synonyms": [
+      "outstanding",
+      "outstanding amount",
+      "ELI exposure",
+      "ELI notional",
+      "notional amount",
+      "HKD equivalent"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    }
+   ]
+  },
+  {
+   "id": "outstanding-segment-customers",
+   "datasourceId": "hk_eli_workbook",
+   "name": "segment_outstanding",
+   "recordId": "outstanding-segment-customers",
+   "tableauView": "segment_outstanding",
+   "purpose": "Outstanding ELI and distinct customers by segment and predicted result",
+   "usage": "Intents: customer_count",
+   "grain": "bp_div_type x predict_result",
+   "synonyms": [],
+   "enabled": true,
+   "intents": [
+    "customer_count"
+   ],
+   "fields": [
+    {
+     "name": "bp_div_type",
+     "type": "dimension",
+     "description": "Business segment of the customer: Treasures (HK), Treasures Private Client, Private Banking.",
+     "synonyms": [
+      "segment",
+      "business segment",
+      "business division",
+      "TRE",
+      "Treasures",
+      "TPC"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "Treasures(TPC)",
+       "meaning": "Treasures Private Client"
+      },
+      {
+       "value": "Treasures(HK)",
+       "meaning": "Treasures Hong Kong"
+      },
+      {
+       "value": "PB",
+       "meaning": "Private Banking"
+      }
+     ]
+    },
+    {
+     "name": "predict_result",
+     "type": "dimension",
+     "description": "Model estimate of how the ELI ends: KO, EXP, EXP(Below Strike) or EX. Never a confirmed outcome.",
+     "synonyms": [
+      "predicted result",
+      "expected result",
+      "predicted outcome",
+      "expected outcome",
+      "predicted KO",
+      "predicted expiry"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "EXP(Below Strike)",
+       "meaning": "Expiry below strike predicted, cash settled"
+      },
+      {
+       "value": "KO",
+       "meaning": "Knock-out predicted"
+      },
+      {
+       "value": "EX",
+       "meaning": "Exercise predicted, stock delivered"
+      },
+      {
+       "value": "EXP",
+       "meaning": "Expiry above strike predicted"
+      }
+     ]
+    },
+    {
+     "name": "deal_status",
+     "type": "status",
+     "description": "Lifecycle status of the deal. Outstanding means LIVE.",
+     "synonyms": [
+      "live",
+      "outstanding",
+      "active"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "LIVE",
+       "meaning": "Live, outstanding deal"
+      }
+     ]
+    },
+    {
+     "name": "predict_maturity",
+     "type": "event",
+     "description": "Predicted maturity date: next observation date if KO is predicted, otherwise contractual maturity.",
+     "synonyms": [
+      "predicted maturity",
+      "expected maturity",
+      "estimated maturity",
+      "upcoming maturity",
+      "maturity opportunity",
+      "maturing next X days"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "days_to_pred_maturity",
+     "type": "measure",
+     "description": "Business days from the data date to the predicted maturity (W1 field).",
+     "synonyms": [
+      "days to maturity",
+      "days until maturity",
+      "days left"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n14",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 14 days (W1 field).",
+     "synonyms": [
+      "next 14 days flag",
+      "N14D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n30",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 30 days (W1 field).",
+     "synonyms": [
+      "next 30 days flag",
+      "N30D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n60",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 60 days (W1 field).",
+     "synonyms": [
+      "next 60 days flag",
+      "N60D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n7",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 7 days (W1 field).",
+     "synonyms": [
+      "next 7 days flag",
+      "N7D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n90",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 90 days (W1 field).",
+     "synonyms": [
+      "next 90 days flag",
+      "N90D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "volume_bu",
+     "type": "measure",
+     "description": "Outstanding notional of a position in HKD equivalent. 'Outstanding' always means SUM(volume_bu) over live deals.",
+     "synonyms": [
+      "outstanding",
+      "outstanding amount",
+      "ELI exposure",
+      "ELI notional",
+      "notional amount",
+      "HKD equivalent"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "cif_id",
+     "type": "identifier",
+     "description": "Customer identifier. Customer counts are distinct counts and never add up across groups.",
+     "synonyms": [
+      "CIF",
+      "CIF ID",
+      "customer ID",
+      "client ID",
+      "customer identifier",
+      "customer"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    }
+   ]
+  },
+  {
+   "id": "maturity-calendar-n30-tre",
+   "datasourceId": "hk_eli_workbook",
+   "name": "TRE_maturity_calendar_n30d",
+   "recordId": "maturity-calendar-n30-tre",
+   "tableauView": "TRE_maturity_calendar_n30d",
+   "purpose": "TRE predicted maturity calendar",
+   "usage": "Intents: maturity_calendar",
+   "grain": "predict_maturity x predict_result",
+   "synonyms": [],
+   "enabled": true,
+   "intents": [
+    "maturity_calendar"
+   ],
+   "fields": [
+    {
+     "name": "predict_maturity",
+     "type": "event",
+     "description": "Predicted maturity date: next observation date if KO is predicted, otherwise contractual maturity.",
+     "synonyms": [
+      "predicted maturity",
+      "expected maturity",
+      "estimated maturity",
+      "upcoming maturity",
+      "maturity opportunity",
+      "maturing next X days"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "predict_result",
+     "type": "dimension",
+     "description": "Model estimate of how the ELI ends: KO, EXP, EXP(Below Strike) or EX. Never a confirmed outcome.",
+     "synonyms": [
+      "predicted result",
+      "expected result",
+      "predicted outcome",
+      "expected outcome",
+      "predicted KO",
+      "predicted expiry"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "EXP(Below Strike)",
+       "meaning": "Expiry below strike predicted, cash settled"
+      },
+      {
+       "value": "KO",
+       "meaning": "Knock-out predicted"
+      },
+      {
+       "value": "EX",
+       "meaning": "Exercise predicted, stock delivered"
+      },
+      {
+       "value": "EXP",
+       "meaning": "Expiry above strike predicted"
+      }
+     ]
+    },
+    {
+     "name": "deal_status",
+     "type": "status",
+     "description": "Lifecycle status of the deal. Outstanding means LIVE.",
+     "synonyms": [
+      "live",
+      "outstanding",
+      "active"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "LIVE",
+       "meaning": "Live, outstanding deal"
+      }
+     ]
+    },
+    {
+     "name": "cust_district",
+     "type": "dimension",
+     "description": "Sales district of the customer. Treasures (HK) only.",
+     "synonyms": [
+      "district",
+      "D1",
+      "D2",
+      "D3"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "TRE-D1",
+       "meaning": ""
+      },
+      {
+       "value": "TRE-D2",
+       "meaning": ""
+      },
+      {
+       "value": "TRE-D3",
+       "meaning": ""
+      }
+     ]
+    },
+    {
+     "name": "cust_branch",
+     "type": "dimension",
+     "description": "Servicing branch of the customer. Treasures (HK) only.",
+     "synonyms": [
+      "branch",
+      "customer branch",
+      "servicing branch",
+      "branches"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "Central",
+       "meaning": ""
+      },
+      {
+       "value": "Admiralty",
+       "meaning": ""
+      },
+      {
+       "value": "Wan Chai",
+       "meaning": ""
+      },
+      {
+       "value": "Causeway Bay",
+       "meaning": ""
+      },
+      {
+       "value": "Tsim Sha Tsui",
+       "meaning": ""
+      },
+      {
+       "value": "Mong Kok",
+       "meaning": ""
+      },
+      {
+       "value": "Kowloon Bay",
+       "meaning": ""
+      },
+      {
+       "value": "Kwun Tong",
+       "meaning": ""
+      },
+      {
+       "value": "Sha Tin",
+       "meaning": ""
+      },
+      {
+       "value": "Tsuen Wan",
+       "meaning": ""
+      },
+      {
+       "value": "Tuen Mun",
+       "meaning": ""
+      },
+      {
+       "value": "Yuen Long",
+       "meaning": ""
+      }
+     ]
+    },
+    {
+     "name": "days_to_pred_maturity",
+     "type": "measure",
+     "description": "Business days from the data date to the predicted maturity (W1 field).",
+     "synonyms": [
+      "days to maturity",
+      "days until maturity",
+      "days left"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n14",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 14 days (W1 field).",
+     "synonyms": [
+      "next 14 days flag",
+      "N14D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n30",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 30 days (W1 field).",
+     "synonyms": [
+      "next 30 days flag",
+      "N30D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n60",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 60 days (W1 field).",
+     "synonyms": [
+      "next 60 days flag",
+      "N60D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n7",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 7 days (W1 field).",
+     "synonyms": [
+      "next 7 days flag",
+      "N7D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n90",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 90 days (W1 field).",
+     "synonyms": [
+      "next 90 days flag",
+      "N90D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "volume_bu",
+     "type": "measure",
+     "description": "Outstanding notional of a position in HKD equivalent. 'Outstanding' always means SUM(volume_bu) over live deals.",
+     "synonyms": [
+      "outstanding",
+      "outstanding amount",
+      "ELI exposure",
+      "ELI notional",
+      "notional amount",
+      "HKD equivalent"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "cif_id",
+     "type": "identifier",
+     "description": "Customer identifier. Customer counts are distinct counts and never add up across groups.",
+     "synonyms": [
+      "CIF",
+      "CIF ID",
+      "customer ID",
+      "client ID",
+      "customer identifier",
+      "customer"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    }
+   ]
+  },
+  {
+   "id": "maturity-branch-n30-tre",
+   "datasourceId": "hk_eli_workbook",
+   "name": "TRE_maturity_branch_n30d",
+   "recordId": "maturity-branch-n30-tre",
+   "tableauView": "TRE_maturity_branch_n30d",
+   "purpose": "TRE predicted maturity by district and branch",
+   "usage": "Intents: maturity_branch",
+   "grain": "cust_district x cust_branch x predict_result",
+   "synonyms": [],
+   "enabled": true,
+   "intents": [
+    "maturity_branch"
+   ],
+   "fields": [
+    {
+     "name": "cust_district",
+     "type": "dimension",
+     "description": "Sales district of the customer. Treasures (HK) only.",
+     "synonyms": [
+      "district",
+      "D1",
+      "D2",
+      "D3"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "TRE-D1",
+       "meaning": ""
+      },
+      {
+       "value": "TRE-D2",
+       "meaning": ""
+      },
+      {
+       "value": "TRE-D3",
+       "meaning": ""
+      }
+     ]
+    },
+    {
+     "name": "cust_branch",
+     "type": "dimension",
+     "description": "Servicing branch of the customer. Treasures (HK) only.",
+     "synonyms": [
+      "branch",
+      "customer branch",
+      "servicing branch",
+      "branches"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "Central",
+       "meaning": ""
+      },
+      {
+       "value": "Admiralty",
+       "meaning": ""
+      },
+      {
+       "value": "Wan Chai",
+       "meaning": ""
+      },
+      {
+       "value": "Causeway Bay",
+       "meaning": ""
+      },
+      {
+       "value": "Tsim Sha Tsui",
+       "meaning": ""
+      },
+      {
+       "value": "Mong Kok",
+       "meaning": ""
+      },
+      {
+       "value": "Kowloon Bay",
+       "meaning": ""
+      },
+      {
+       "value": "Kwun Tong",
+       "meaning": ""
+      },
+      {
+       "value": "Sha Tin",
+       "meaning": ""
+      },
+      {
+       "value": "Tsuen Wan",
+       "meaning": ""
+      },
+      {
+       "value": "Tuen Mun",
+       "meaning": ""
+      },
+      {
+       "value": "Yuen Long",
+       "meaning": ""
+      }
+     ]
+    },
+    {
+     "name": "predict_result",
+     "type": "dimension",
+     "description": "Model estimate of how the ELI ends: KO, EXP, EXP(Below Strike) or EX. Never a confirmed outcome.",
+     "synonyms": [
+      "predicted result",
+      "expected result",
+      "predicted outcome",
+      "expected outcome",
+      "predicted KO",
+      "predicted expiry"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "EXP(Below Strike)",
+       "meaning": "Expiry below strike predicted, cash settled"
+      },
+      {
+       "value": "KO",
+       "meaning": "Knock-out predicted"
+      },
+      {
+       "value": "EX",
+       "meaning": "Exercise predicted, stock delivered"
+      },
+      {
+       "value": "EXP",
+       "meaning": "Expiry above strike predicted"
+      }
+     ]
+    },
+    {
+     "name": "deal_status",
+     "type": "status",
+     "description": "Lifecycle status of the deal. Outstanding means LIVE.",
+     "synonyms": [
+      "live",
+      "outstanding",
+      "active"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "LIVE",
+       "meaning": "Live, outstanding deal"
+      }
+     ]
+    },
+    {
+     "name": "predict_maturity",
+     "type": "event",
+     "description": "Predicted maturity date: next observation date if KO is predicted, otherwise contractual maturity.",
+     "synonyms": [
+      "predicted maturity",
+      "expected maturity",
+      "estimated maturity",
+      "upcoming maturity",
+      "maturity opportunity",
+      "maturing next X days"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "days_to_pred_maturity",
+     "type": "measure",
+     "description": "Business days from the data date to the predicted maturity (W1 field).",
+     "synonyms": [
+      "days to maturity",
+      "days until maturity",
+      "days left"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n14",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 14 days (W1 field).",
+     "synonyms": [
+      "next 14 days flag",
+      "N14D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n30",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 30 days (W1 field).",
+     "synonyms": [
+      "next 30 days flag",
+      "N30D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n60",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 60 days (W1 field).",
+     "synonyms": [
+      "next 60 days flag",
+      "N60D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n7",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 7 days (W1 field).",
+     "synonyms": [
+      "next 7 days flag",
+      "N7D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n90",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 90 days (W1 field).",
+     "synonyms": [
+      "next 90 days flag",
+      "N90D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "volume_bu",
+     "type": "measure",
+     "description": "Outstanding notional of a position in HKD equivalent. 'Outstanding' always means SUM(volume_bu) over live deals.",
+     "synonyms": [
+      "outstanding",
+      "outstanding amount",
+      "ELI exposure",
+      "ELI notional",
+      "notional amount",
+      "HKD equivalent"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "cif_id",
+     "type": "identifier",
+     "description": "Customer identifier. Customer counts are distinct counts and never add up across groups.",
+     "synonyms": [
+      "CIF",
+      "CIF ID",
+      "customer ID",
+      "client ID",
+      "customer identifier",
+      "customer"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    }
+   ]
+  },
+  {
+   "id": "maturity-details-n30-tre",
+   "datasourceId": "hk_eli_workbook",
+   "name": "TRE_maturity_detail_n30d",
+   "recordId": "maturity-details-n30-tre",
+   "tableauView": "TRE_maturity_detail_n30d",
+   "purpose": "TRE predicted maturity detail (sales follow-up list)",
+   "usage": "Intents: maturity_detail",
+   "grain": "predict_maturity x cust_district x cust_branch",
+   "synonyms": [],
+   "enabled": true,
+   "intents": [
+    "maturity_detail"
+   ],
+   "fields": [
+    {
+     "name": "predict_maturity",
+     "type": "event",
+     "description": "Predicted maturity date: next observation date if KO is predicted, otherwise contractual maturity.",
+     "synonyms": [
+      "predicted maturity",
+      "expected maturity",
+      "estimated maturity",
+      "upcoming maturity",
+      "maturity opportunity",
+      "maturing next X days"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "cust_district",
+     "type": "dimension",
+     "description": "Sales district of the customer. Treasures (HK) only.",
+     "synonyms": [
+      "district",
+      "D1",
+      "D2",
+      "D3"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "TRE-D1",
+       "meaning": ""
+      },
+      {
+       "value": "TRE-D2",
+       "meaning": ""
+      },
+      {
+       "value": "TRE-D3",
+       "meaning": ""
+      }
+     ]
+    },
+    {
+     "name": "cust_branch",
+     "type": "dimension",
+     "description": "Servicing branch of the customer. Treasures (HK) only.",
+     "synonyms": [
+      "branch",
+      "customer branch",
+      "servicing branch",
+      "branches"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "Central",
+       "meaning": ""
+      },
+      {
+       "value": "Admiralty",
+       "meaning": ""
+      },
+      {
+       "value": "Wan Chai",
+       "meaning": ""
+      },
+      {
+       "value": "Causeway Bay",
+       "meaning": ""
+      },
+      {
+       "value": "Tsim Sha Tsui",
+       "meaning": ""
+      },
+      {
+       "value": "Mong Kok",
+       "meaning": ""
+      },
+      {
+       "value": "Kowloon Bay",
+       "meaning": ""
+      },
+      {
+       "value": "Kwun Tong",
+       "meaning": ""
+      },
+      {
+       "value": "Sha Tin",
+       "meaning": ""
+      },
+      {
+       "value": "Tsuen Wan",
+       "meaning": ""
+      },
+      {
+       "value": "Tuen Mun",
+       "meaning": ""
+      },
+      {
+       "value": "Yuen Long",
+       "meaning": ""
+      }
+     ]
+    },
+    {
+     "name": "rm_name",
+     "type": "dimension",
+     "description": "Relationship manager who serves the customer.",
+     "synonyms": [
+      "RM",
+      "RM name",
+      "relationship manager"
+     ],
+     "valueType": "lookup",
+     "enumValues": []
+    },
+    {
+     "name": "cif_id",
+     "type": "identifier",
+     "description": "Customer identifier. Customer counts are distinct counts and never add up across groups.",
+     "synonyms": [
+      "CIF",
+      "CIF ID",
+      "customer ID",
+      "client ID",
+      "customer identifier",
+      "customer"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "predict_result",
+     "type": "dimension",
+     "description": "Model estimate of how the ELI ends: KO, EXP, EXP(Below Strike) or EX. Never a confirmed outcome.",
+     "synonyms": [
+      "predicted result",
+      "expected result",
+      "predicted outcome",
+      "expected outcome",
+      "predicted KO",
+      "predicted expiry"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "EXP(Below Strike)",
+       "meaning": "Expiry below strike predicted, cash settled"
+      },
+      {
+       "value": "KO",
+       "meaning": "Knock-out predicted"
+      },
+      {
+       "value": "EX",
+       "meaning": "Exercise predicted, stock delivered"
+      },
+      {
+       "value": "EXP",
+       "meaning": "Expiry above strike predicted"
+      }
+     ]
+    },
+    {
+     "name": "trade_currency",
+     "type": "dimension",
+     "description": "Currency the ELI was traded in.",
+     "synonyms": [
+      "currency",
+      "trade currency",
+      "deal currency"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "volume",
+     "type": "measure",
+     "description": "Notional of the position in its trade currency.",
+     "synonyms": [
+      "notional in trade currency",
+      "original notional"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "asset_tks",
+     "type": "dimension",
+     "description": "Ticker of the first underlying stock.",
+     "synonyms": [
+      "underlying 1",
+      "first underlying",
+      "stock 1"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "asset_tks_2",
+     "type": "dimension",
+     "description": "Ticker of the second underlying stock.",
+     "synonyms": [
+      "underlying 2",
+      "second underlying",
+      "stock 2"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "strike_percentage",
+     "type": "measure",
+     "description": "Strike level as a percentage of the initial price.",
+     "synonyms": [
+      "strike",
+      "strike level",
+      "strike percentage"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "ko_percentage",
+     "type": "measure",
+     "description": "Knock-out barrier as a percentage of the initial price.",
+     "synonyms": [
+      "KO barrier",
+      "knock-out barrier",
+      "KO level",
+      "KO percentage"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "ki_percentage",
+     "type": "measure",
+     "description": "Knock-in barrier as a percentage of the initial price.",
+     "synonyms": [
+      "KI barrier",
+      "knock-in barrier",
+      "KI level",
+      "KI percentage"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "pos_id",
+     "type": "identifier",
+     "description": "Identifier of one ELI position.",
+     "synonyms": [
+      "position",
+      "position ID",
+      "deal reference"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "wps",
+     "type": "dimension",
+     "description": "Worst-performing stock of the ELI's basket today. Not the same as any stock in the basket.",
+     "synonyms": [
+      "WPS",
+      "worst-performing stock",
+      "worst performer",
+      "weakest underlying",
+      "worst-performing underlying"
+     ],
+     "valueType": "lookup",
+     "enumValues": []
+    },
+    {
+     "name": "deal_status",
+     "type": "status",
+     "description": "Lifecycle status of the deal. Outstanding means LIVE.",
+     "synonyms": [
+      "live",
+      "outstanding",
+      "active"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "LIVE",
+       "meaning": "Live, outstanding deal"
+      }
+     ]
+    },
+    {
+     "name": "days_to_pred_maturity",
+     "type": "measure",
+     "description": "Business days from the data date to the predicted maturity (W1 field).",
+     "synonyms": [
+      "days to maturity",
+      "days until maturity",
+      "days left"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n14",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 14 days (W1 field).",
+     "synonyms": [
+      "next 14 days flag",
+      "N14D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n30",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 30 days (W1 field).",
+     "synonyms": [
+      "next 30 days flag",
+      "N30D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n60",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 60 days (W1 field).",
+     "synonyms": [
+      "next 60 days flag",
+      "N60D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n7",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 7 days (W1 field).",
+     "synonyms": [
+      "next 7 days flag",
+      "N7D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n90",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 90 days (W1 field).",
+     "synonyms": [
+      "next 90 days flag",
+      "N90D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "volume_bu",
+     "type": "measure",
+     "description": "Outstanding notional of a position in HKD equivalent. 'Outstanding' always means SUM(volume_bu) over live deals.",
+     "synonyms": [
+      "outstanding",
+      "outstanding amount",
+      "ELI exposure",
+      "ELI notional",
+      "notional amount",
+      "HKD equivalent"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "wps_mtm",
+     "type": "measure",
+     "description": "Mark-to-market of the worst-performing stock, as a percentage.",
+     "synonyms": [
+      "WPS MTM",
+      "average MTM"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    }
+   ]
+  },
+  {
+   "id": "outstanding-district-wps-n30-all",
+   "datasourceId": "hk_eli_workbook",
+   "name": "ALL_outstanding_District_n30d",
+   "recordId": "outstanding-district-wps-n30-all",
+   "tableauView": "ALL_outstanding_District_n30d",
+   "purpose": "Outstanding ELI by segment and district",
+   "usage": "Intents: district",
+   "grain": "bp_div_type x cust_district x predict_result",
+   "synonyms": [],
+   "enabled": true,
+   "intents": [
+    "district"
+   ],
+   "fields": [
+    {
+     "name": "bp_div_type",
+     "type": "dimension",
+     "description": "Business segment of the customer: Treasures (HK), Treasures Private Client, Private Banking.",
+     "synonyms": [
+      "segment",
+      "business segment",
+      "business division",
+      "TRE",
+      "Treasures",
+      "TPC"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "Treasures(TPC)",
+       "meaning": "Treasures Private Client"
+      },
+      {
+       "value": "Treasures(HK)",
+       "meaning": "Treasures Hong Kong"
+      },
+      {
+       "value": "PB",
+       "meaning": "Private Banking"
+      }
+     ]
+    },
+    {
+     "name": "cust_district",
+     "type": "dimension",
+     "description": "Sales district of the customer. Treasures (HK) only.",
+     "synonyms": [
+      "district",
+      "D1",
+      "D2",
+      "D3"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "TRE-D1",
+       "meaning": ""
+      },
+      {
+       "value": "TRE-D2",
+       "meaning": ""
+      },
+      {
+       "value": "TRE-D3",
+       "meaning": ""
+      }
+     ]
+    },
+    {
+     "name": "predict_result",
+     "type": "dimension",
+     "description": "Model estimate of how the ELI ends: KO, EXP, EXP(Below Strike) or EX. Never a confirmed outcome.",
+     "synonyms": [
+      "predicted result",
+      "expected result",
+      "predicted outcome",
+      "expected outcome",
+      "predicted KO",
+      "predicted expiry"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "EXP(Below Strike)",
+       "meaning": "Expiry below strike predicted, cash settled"
+      },
+      {
+       "value": "KO",
+       "meaning": "Knock-out predicted"
+      },
+      {
+       "value": "EX",
+       "meaning": "Exercise predicted, stock delivered"
+      },
+      {
+       "value": "EXP",
+       "meaning": "Expiry above strike predicted"
+      }
+     ]
+    },
+    {
+     "name": "deal_status",
+     "type": "status",
+     "description": "Lifecycle status of the deal. Outstanding means LIVE.",
+     "synonyms": [
+      "live",
+      "outstanding",
+      "active"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "LIVE",
+       "meaning": "Live, outstanding deal"
+      }
+     ]
+    },
+    {
+     "name": "predict_maturity",
+     "type": "event",
+     "description": "Predicted maturity date: next observation date if KO is predicted, otherwise contractual maturity.",
+     "synonyms": [
+      "predicted maturity",
+      "expected maturity",
+      "estimated maturity",
+      "upcoming maturity",
+      "maturity opportunity",
+      "maturing next X days"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "days_to_pred_maturity",
+     "type": "measure",
+     "description": "Business days from the data date to the predicted maturity (W1 field).",
+     "synonyms": [
+      "days to maturity",
+      "days until maturity",
+      "days left"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n14",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 14 days (W1 field).",
+     "synonyms": [
+      "next 14 days flag",
+      "N14D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n30",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 30 days (W1 field).",
+     "synonyms": [
+      "next 30 days flag",
+      "N30D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n60",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 60 days (W1 field).",
+     "synonyms": [
+      "next 60 days flag",
+      "N60D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n7",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 7 days (W1 field).",
+     "synonyms": [
+      "next 7 days flag",
+      "N7D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n90",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 90 days (W1 field).",
+     "synonyms": [
+      "next 90 days flag",
+      "N90D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "volume_bu",
+     "type": "measure",
+     "description": "Outstanding notional of a position in HKD equivalent. 'Outstanding' always means SUM(volume_bu) over live deals.",
+     "synonyms": [
+      "outstanding",
+      "outstanding amount",
+      "ELI exposure",
+      "ELI notional",
+      "notional amount",
+      "HKD equivalent"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "cif_id",
+     "type": "identifier",
+     "description": "Customer identifier. Customer counts are distinct counts and never add up across groups.",
+     "synonyms": [
+      "CIF",
+      "CIF ID",
+      "customer ID",
+      "client ID",
+      "customer identifier",
+      "customer"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    }
+   ]
+  },
+  {
+   "id": "outstanding-wps-n30-all",
+   "datasourceId": "hk_eli_workbook",
+   "name": "ALL_outstanding_simulation_n30d",
+   "recordId": "outstanding-wps-n30-all",
+   "tableauView": "ALL_outstanding_simulation_n30d",
+   "purpose": "WPS exposure, any segment, any window",
+   "usage": "Intents: wps_exposure",
+   "grain": "wps x predict_result",
+   "synonyms": [],
+   "enabled": true,
+   "intents": [
+    "wps_exposure"
+   ],
+   "fields": [
+    {
+     "name": "wps",
+     "type": "dimension",
+     "description": "Worst-performing stock of the ELI's basket today. Not the same as any stock in the basket.",
+     "synonyms": [
+      "WPS",
+      "worst-performing stock",
+      "worst performer",
+      "weakest underlying",
+      "worst-performing underlying"
+     ],
+     "valueType": "lookup",
+     "enumValues": []
+    },
+    {
+     "name": "predict_result",
+     "type": "dimension",
+     "description": "Model estimate of how the ELI ends: KO, EXP, EXP(Below Strike) or EX. Never a confirmed outcome.",
+     "synonyms": [
+      "predicted result",
+      "expected result",
+      "predicted outcome",
+      "expected outcome",
+      "predicted KO",
+      "predicted expiry"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "EXP(Below Strike)",
+       "meaning": "Expiry below strike predicted, cash settled"
+      },
+      {
+       "value": "KO",
+       "meaning": "Knock-out predicted"
+      },
+      {
+       "value": "EX",
+       "meaning": "Exercise predicted, stock delivered"
+      },
+      {
+       "value": "EXP",
+       "meaning": "Expiry above strike predicted"
+      }
+     ]
+    },
+    {
+     "name": "deal_status",
+     "type": "status",
+     "description": "Lifecycle status of the deal. Outstanding means LIVE.",
+     "synonyms": [
+      "live",
+      "outstanding",
+      "active"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "LIVE",
+       "meaning": "Live, outstanding deal"
+      }
+     ]
+    },
+    {
+     "name": "bp_div_type",
+     "type": "dimension",
+     "description": "Business segment of the customer: Treasures (HK), Treasures Private Client, Private Banking.",
+     "synonyms": [
+      "segment",
+      "business segment",
+      "business division",
+      "TRE",
+      "Treasures",
+      "TPC"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "Treasures(TPC)",
+       "meaning": "Treasures Private Client"
+      },
+      {
+       "value": "Treasures(HK)",
+       "meaning": "Treasures Hong Kong"
+      },
+      {
+       "value": "PB",
+       "meaning": "Private Banking"
+      }
+     ]
+    },
+    {
+     "name": "predict_maturity",
+     "type": "event",
+     "description": "Predicted maturity date: next observation date if KO is predicted, otherwise contractual maturity.",
+     "synonyms": [
+      "predicted maturity",
+      "expected maturity",
+      "estimated maturity",
+      "upcoming maturity",
+      "maturity opportunity",
+      "maturing next X days"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "days_to_pred_maturity",
+     "type": "measure",
+     "description": "Business days from the data date to the predicted maturity (W1 field).",
+     "synonyms": [
+      "days to maturity",
+      "days until maturity",
+      "days left"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n14",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 14 days (W1 field).",
+     "synonyms": [
+      "next 14 days flag",
+      "N14D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n30",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 30 days (W1 field).",
+     "synonyms": [
+      "next 30 days flag",
+      "N30D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n60",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 60 days (W1 field).",
+     "synonyms": [
+      "next 60 days flag",
+      "N60D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n7",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 7 days (W1 field).",
+     "synonyms": [
+      "next 7 days flag",
+      "N7D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n90",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 90 days (W1 field).",
+     "synonyms": [
+      "next 90 days flag",
+      "N90D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "volume_bu",
+     "type": "measure",
+     "description": "Outstanding notional of a position in HKD equivalent. 'Outstanding' always means SUM(volume_bu) over live deals.",
+     "synonyms": [
+      "outstanding",
+      "outstanding amount",
+      "ELI exposure",
+      "ELI notional",
+      "notional amount",
+      "HKD equivalent"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "market_spot",
+     "type": "parameter",
+     "description": "Scenario multiplier on market prices used by the simulation views.",
+     "synonyms": [
+      "market spot",
+      "market scenario multiplier",
+      "price shock multiplier",
+      "simulate market at 95%"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    }
+   ]
+  },
+  {
+   "id": "outstanding-wps-n30-tre",
+   "datasourceId": "hk_eli_workbook",
+   "name": "TRE_outstanding_simulation_n30d",
+   "recordId": "outstanding-wps-n30-tre",
+   "tableauView": "TRE_outstanding_simulation_n30d",
+   "purpose": "TRE WPS exposure",
+   "usage": "Intents: wps_exposure",
+   "grain": "wps x predict_result",
+   "synonyms": [],
+   "enabled": true,
+   "intents": [
+    "wps_exposure"
+   ],
+   "fields": [
+    {
+     "name": "wps",
+     "type": "dimension",
+     "description": "Worst-performing stock of the ELI's basket today. Not the same as any stock in the basket.",
+     "synonyms": [
+      "WPS",
+      "worst-performing stock",
+      "worst performer",
+      "weakest underlying",
+      "worst-performing underlying"
+     ],
+     "valueType": "lookup",
+     "enumValues": []
+    },
+    {
+     "name": "predict_result",
+     "type": "dimension",
+     "description": "Model estimate of how the ELI ends: KO, EXP, EXP(Below Strike) or EX. Never a confirmed outcome.",
+     "synonyms": [
+      "predicted result",
+      "expected result",
+      "predicted outcome",
+      "expected outcome",
+      "predicted KO",
+      "predicted expiry"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "EXP(Below Strike)",
+       "meaning": "Expiry below strike predicted, cash settled"
+      },
+      {
+       "value": "KO",
+       "meaning": "Knock-out predicted"
+      },
+      {
+       "value": "EX",
+       "meaning": "Exercise predicted, stock delivered"
+      },
+      {
+       "value": "EXP",
+       "meaning": "Expiry above strike predicted"
+      }
+     ]
+    },
+    {
+     "name": "predict_maturity",
+     "type": "event",
+     "description": "Predicted maturity date: next observation date if KO is predicted, otherwise contractual maturity.",
+     "synonyms": [
+      "predicted maturity",
+      "expected maturity",
+      "estimated maturity",
+      "upcoming maturity",
+      "maturity opportunity",
+      "maturing next X days"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "cust_district",
+     "type": "dimension",
+     "description": "Sales district of the customer. Treasures (HK) only.",
+     "synonyms": [
+      "district",
+      "D1",
+      "D2",
+      "D3"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "TRE-D1",
+       "meaning": ""
+      },
+      {
+       "value": "TRE-D2",
+       "meaning": ""
+      },
+      {
+       "value": "TRE-D3",
+       "meaning": ""
+      }
+     ]
+    },
+    {
+     "name": "cust_branch",
+     "type": "dimension",
+     "description": "Servicing branch of the customer. Treasures (HK) only.",
+     "synonyms": [
+      "branch",
+      "customer branch",
+      "servicing branch",
+      "branches"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "Central",
+       "meaning": ""
+      },
+      {
+       "value": "Admiralty",
+       "meaning": ""
+      },
+      {
+       "value": "Wan Chai",
+       "meaning": ""
+      },
+      {
+       "value": "Causeway Bay",
+       "meaning": ""
+      },
+      {
+       "value": "Tsim Sha Tsui",
+       "meaning": ""
+      },
+      {
+       "value": "Mong Kok",
+       "meaning": ""
+      },
+      {
+       "value": "Kowloon Bay",
+       "meaning": ""
+      },
+      {
+       "value": "Kwun Tong",
+       "meaning": ""
+      },
+      {
+       "value": "Sha Tin",
+       "meaning": ""
+      },
+      {
+       "value": "Tsuen Wan",
+       "meaning": ""
+      },
+      {
+       "value": "Tuen Mun",
+       "meaning": ""
+      },
+      {
+       "value": "Yuen Long",
+       "meaning": ""
+      }
+     ]
+    },
+    {
+     "name": "days_to_pred_maturity",
+     "type": "measure",
+     "description": "Business days from the data date to the predicted maturity (W1 field).",
+     "synonyms": [
+      "days to maturity",
+      "days until maturity",
+      "days left"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n14",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 14 days (W1 field).",
+     "synonyms": [
+      "next 14 days flag",
+      "N14D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n30",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 30 days (W1 field).",
+     "synonyms": [
+      "next 30 days flag",
+      "N30D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n60",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 60 days (W1 field).",
+     "synonyms": [
+      "next 60 days flag",
+      "N60D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n7",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 7 days (W1 field).",
+     "synonyms": [
+      "next 7 days flag",
+      "N7D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n90",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 90 days (W1 field).",
+     "synonyms": [
+      "next 90 days flag",
+      "N90D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "volume_bu",
+     "type": "measure",
+     "description": "Outstanding notional of a position in HKD equivalent. 'Outstanding' always means SUM(volume_bu) over live deals.",
+     "synonyms": [
+      "outstanding",
+      "outstanding amount",
+      "ELI exposure",
+      "ELI notional",
+      "notional amount",
+      "HKD equivalent"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "market_spot",
+     "type": "parameter",
+     "description": "Scenario multiplier on market prices used by the simulation views.",
+     "synonyms": [
+      "market spot",
+      "market scenario multiplier",
+      "price shock multiplier",
+      "simulate market at 95%"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    }
+   ]
+  },
+  {
+   "id": "outstanding-distribution-wps-n30-all",
+   "datasourceId": "hk_eli_workbook",
+   "name": "ALL_outstanding_distribution_n30d",
+   "recordId": "outstanding-distribution-wps-n30-all",
+   "tableauView": "ALL_outstanding_distribution_n30d",
+   "purpose": "MTM distribution by WPS",
+   "usage": "Intents: mtm_distribution",
+   "grain": "mtm_bin x wps x predict_result",
+   "synonyms": [],
+   "enabled": true,
+   "intents": [
+    "mtm_distribution"
+   ],
+   "fields": [
+    {
+     "name": "mtm_bin",
+     "type": "dimension",
+     "description": "Mark-to-market of the worst-performing stock, in 10% bins.",
+     "synonyms": [
+      "MTM",
+      "mark to market",
+      "MTM distribution",
+      "distribution",
+      "MTM bin"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "wps",
+     "type": "dimension",
+     "description": "Worst-performing stock of the ELI's basket today. Not the same as any stock in the basket.",
+     "synonyms": [
+      "WPS",
+      "worst-performing stock",
+      "worst performer",
+      "weakest underlying",
+      "worst-performing underlying"
+     ],
+     "valueType": "lookup",
+     "enumValues": []
+    },
+    {
+     "name": "predict_result",
+     "type": "dimension",
+     "description": "Model estimate of how the ELI ends: KO, EXP, EXP(Below Strike) or EX. Never a confirmed outcome.",
+     "synonyms": [
+      "predicted result",
+      "expected result",
+      "predicted outcome",
+      "expected outcome",
+      "predicted KO",
+      "predicted expiry"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "EXP(Below Strike)",
+       "meaning": "Expiry below strike predicted, cash settled"
+      },
+      {
+       "value": "KO",
+       "meaning": "Knock-out predicted"
+      },
+      {
+       "value": "EX",
+       "meaning": "Exercise predicted, stock delivered"
+      },
+      {
+       "value": "EXP",
+       "meaning": "Expiry above strike predicted"
+      }
+     ]
+    },
+    {
+     "name": "deal_status",
+     "type": "status",
+     "description": "Lifecycle status of the deal. Outstanding means LIVE.",
+     "synonyms": [
+      "live",
+      "outstanding",
+      "active"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "LIVE",
+       "meaning": "Live, outstanding deal"
+      }
+     ]
+    },
+    {
+     "name": "predict_maturity",
+     "type": "event",
+     "description": "Predicted maturity date: next observation date if KO is predicted, otherwise contractual maturity.",
+     "synonyms": [
+      "predicted maturity",
+      "expected maturity",
+      "estimated maturity",
+      "upcoming maturity",
+      "maturity opportunity",
+      "maturing next X days"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "bp_div_type",
+     "type": "dimension",
+     "description": "Business segment of the customer: Treasures (HK), Treasures Private Client, Private Banking.",
+     "synonyms": [
+      "segment",
+      "business segment",
+      "business division",
+      "TRE",
+      "Treasures",
+      "TPC"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "Treasures(TPC)",
+       "meaning": "Treasures Private Client"
+      },
+      {
+       "value": "Treasures(HK)",
+       "meaning": "Treasures Hong Kong"
+      },
+      {
+       "value": "PB",
+       "meaning": "Private Banking"
+      }
+     ]
+    },
+    {
+     "name": "cust_district",
+     "type": "dimension",
+     "description": "Sales district of the customer. Treasures (HK) only.",
+     "synonyms": [
+      "district",
+      "D1",
+      "D2",
+      "D3"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "TRE-D1",
+       "meaning": ""
+      },
+      {
+       "value": "TRE-D2",
+       "meaning": ""
+      },
+      {
+       "value": "TRE-D3",
+       "meaning": ""
+      }
+     ]
+    },
+    {
+     "name": "cust_branch",
+     "type": "dimension",
+     "description": "Servicing branch of the customer. Treasures (HK) only.",
+     "synonyms": [
+      "branch",
+      "customer branch",
+      "servicing branch",
+      "branches"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "Central",
+       "meaning": ""
+      },
+      {
+       "value": "Admiralty",
+       "meaning": ""
+      },
+      {
+       "value": "Wan Chai",
+       "meaning": ""
+      },
+      {
+       "value": "Causeway Bay",
+       "meaning": ""
+      },
+      {
+       "value": "Tsim Sha Tsui",
+       "meaning": ""
+      },
+      {
+       "value": "Mong Kok",
+       "meaning": ""
+      },
+      {
+       "value": "Kowloon Bay",
+       "meaning": ""
+      },
+      {
+       "value": "Kwun Tong",
+       "meaning": ""
+      },
+      {
+       "value": "Sha Tin",
+       "meaning": ""
+      },
+      {
+       "value": "Tsuen Wan",
+       "meaning": ""
+      },
+      {
+       "value": "Tuen Mun",
+       "meaning": ""
+      },
+      {
+       "value": "Yuen Long",
+       "meaning": ""
+      }
+     ]
+    },
+    {
+     "name": "days_to_pred_maturity",
+     "type": "measure",
+     "description": "Business days from the data date to the predicted maturity (W1 field).",
+     "synonyms": [
+      "days to maturity",
+      "days until maturity",
+      "days left"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n14",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 14 days (W1 field).",
+     "synonyms": [
+      "next 14 days flag",
+      "N14D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n30",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 30 days (W1 field).",
+     "synonyms": [
+      "next 30 days flag",
+      "N30D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n60",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 60 days (W1 field).",
+     "synonyms": [
+      "next 60 days flag",
+      "N60D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n7",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 7 days (W1 field).",
+     "synonyms": [
+      "next 7 days flag",
+      "N7D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "in_n90",
+     "type": "flag",
+     "description": "Published flag: predicted maturity falls in the next 90 days (W1 field).",
+     "synonyms": [
+      "next 90 days flag",
+      "N90D"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "deal_count",
+     "type": "measure",
+     "description": "Number of positions in the group.",
+     "synonyms": [
+      "number of deals",
+      "deal count",
+      "count of deals"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "volume_bu",
+     "type": "measure",
+     "description": "Outstanding notional of a position in HKD equivalent. 'Outstanding' always means SUM(volume_bu) over live deals.",
+     "synonyms": [
+      "outstanding",
+      "outstanding amount",
+      "ELI exposure",
+      "ELI notional",
+      "notional amount",
+      "HKD equivalent"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    }
+   ]
+  },
+  {
+   "id": "max-trade-date",
+   "datasourceId": "hk_eli_workbook",
+   "name": "#max_trade_date",
+   "recordId": "max-trade-date",
+   "tableauView": "#max_trade_date",
+   "purpose": "Latest trade date",
+   "usage": "Intents: data_recency",
+   "grain": "single figure",
+   "synonyms": [],
+   "enabled": true,
+   "intents": [
+    "data_recency"
+   ],
+   "fields": [
+    {
+     "name": "bp_div_type",
+     "type": "dimension",
+     "description": "Business segment of the customer: Treasures (HK), Treasures Private Client, Private Banking.",
+     "synonyms": [
+      "segment",
+      "business segment",
+      "business division",
+      "TRE",
+      "Treasures",
+      "TPC"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "Treasures(TPC)",
+       "meaning": "Treasures Private Client"
+      },
+      {
+       "value": "Treasures(HK)",
+       "meaning": "Treasures Hong Kong"
+      },
+      {
+       "value": "PB",
+       "meaning": "Private Banking"
+      }
+     ]
+    },
+    {
+     "name": "trade_date",
+     "type": "event",
+     "description": "Date the ELI was traded.",
+     "synonyms": [
+      "trade date",
+      "latest trade"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    }
+   ]
+  },
+  {
+   "id": "data-as-of",
+   "datasourceId": "hk_eli_workbook",
+   "name": "#data_as_of",
+   "recordId": "data-as-of",
+   "tableauView": "#data_as_of",
+   "purpose": "Data as of (business date and last refresh)",
+   "usage": "Intents: data_as_of",
+   "grain": "single figure",
+   "synonyms": [],
+   "enabled": true,
+   "intents": [
+    "data_as_of"
+   ],
+   "fields": [
+    {
+     "name": "business_date",
+     "type": "event",
+     "description": "Close of business date the data describes (W2 view).",
+     "synonyms": [
+      "data date",
+      "as of date",
+      "business date"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "last_refresh",
+     "type": "event",
+     "description": "When the extract last refreshed (W2 view).",
+     "synonyms": [
+      "last refresh",
+      "refresh time",
+      "last updated"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    }
+   ]
+  }
+ ],
+ "relationships": [],
+ "glossary": [
+  {
+   "id": "ko",
+   "term": "KO",
+   "aliases": [
+    "KO'd",
+    "KOd",
+    "knocked out",
+    "knock out"
+   ],
+   "meaning": "knock-out",
+   "mapsTo": "predict_result"
+  },
+  {
+   "id": "ki",
+   "term": "KI",
+   "aliases": [
+    "knocked in",
+    "knock in"
+   ],
+   "meaning": "knock-in",
+   "mapsTo": "ki_percentage"
+  },
+  {
+   "id": "rm",
+   "term": "RM",
+   "aliases": [
+    "RMs"
+   ],
+   "meaning": "relationship manager",
+   "mapsTo": "rm_name"
+  },
+  {
+   "id": "wps",
+   "term": "WPS",
+   "aliases": [
+    "worst performer"
+   ],
+   "meaning": "worst-performing stock",
+   "mapsTo": "wps"
+  },
+  {
+   "id": "tre",
+   "term": "TRE",
+   "aliases": [
+    "Treasures HK"
+   ],
+   "meaning": "Treasures (HK) segment",
+   "mapsTo": "bp_div_type"
+  },
+  {
+   "id": "tpc",
+   "term": "TPC",
+   "aliases": [],
+   "meaning": "Treasures Private Client segment",
+   "mapsTo": "bp_div_type"
+  },
+  {
+   "id": "pb",
+   "term": "PB",
+   "aliases": [
+    "private bank"
+   ],
+   "meaning": "Private Banking segment",
+   "mapsTo": "bp_div_type"
+  },
+  {
+   "id": "cif",
+   "term": "CIF",
+   "aliases": [],
+   "meaning": "customer",
+   "mapsTo": "cif_id"
+  },
+  {
+   "id": "mtm",
+   "term": "MTM",
+   "aliases": [
+    "mark-to-market"
+   ],
+   "meaning": "mark to market",
+   "mapsTo": "mtm_bin"
+  },
+  {
+   "id": "eli",
+   "term": "ELI",
+   "aliases": [
+    "ELIs",
+    "equity linked investment"
+   ],
+   "meaning": "equity-linked investment",
+   "mapsTo": "volume_bu"
+  },
+  {
+   "id": "n30d",
+   "term": "N30D",
+   "aliases": [
+    "next 30 days"
+   ],
+   "meaning": "predicted maturity in the next 30 days",
+   "mapsTo": "in_n30"
+  }
+ ],
+ "metrics": [
+  {
+   "id": "outstanding",
+   "name": "Outstanding notional",
+   "formula": "sum(volume_bu)",
+   "conditions": "deal_status = 'LIVE'",
+   "description": "Total outstanding ELI in HKD equivalent.",
+   "synonyms": [
+    "outstanding",
+    "total outstanding",
+    "exposure",
+    "notional"
+   ]
+  },
+  {
+   "id": "share_of_outstanding",
+   "name": "Share of outstanding",
+   "formula": "sum(volume_bu) / total(sum(volume_bu))",
+   "conditions": "deal_status = 'LIVE'",
+   "description": "A group's percentage of total outstanding.",
+   "synonyms": [
+    "share",
+    "percentage",
+    "proportion",
+    "percent of total"
+   ]
+  },
+  {
+   "id": "distinct_customers",
+   "name": "Distinct customers",
+   "formula": "count_distinct(cif_id)",
+   "conditions": "deal_status = 'LIVE'",
+   "description": "Number of distinct customers. Not additive across groups.",
+   "synonyms": [
+    "customers",
+    "clients",
+    "number of customers",
+    "customer count",
+    "how many customers"
+   ]
+  }
+ ],
+ "concepts": [
+  {
+   "id": "volume_bu",
+   "kind": "measure",
+   "label": "HKD-equivalent notional",
+   "aliases": [
+    "outstanding",
+    "outstanding amount",
+    "ELI exposure",
+    "ELI notional",
+    "notional amount",
+    "HKD equivalent",
+    "HKD outstanding"
+   ],
+   "description": "Outstanding notional of a position in HKD equivalent. 'Outstanding' always means SUM(volume_bu) over live deals."
+  },
+  {
+   "id": "deal_status",
+   "kind": "status",
+   "label": "Deal status",
+   "aliases": [
+    "live",
+    "outstanding",
+    "active"
+   ],
+   "description": "Lifecycle status of the deal. Outstanding means LIVE.",
+   "values": [
+    {
+     "value": "LIVE",
+     "meaning": "Live, outstanding deal"
+    }
+   ],
+   "valueType": "enum"
+  },
+  {
+   "id": "bp_div_type",
+   "kind": "dimension",
+   "label": "Business segment",
+   "aliases": [
+    "segment",
+    "business segment",
+    "business division",
+    "TRE",
+    "Treasures",
+    "TPC",
+    "Private Client",
+    "PB",
+    "Private Banking"
+   ],
+   "description": "Business segment of the customer: Treasures (HK), Treasures Private Client, Private Banking.",
+   "values": [
+    {
+     "value": "Treasures(TPC)",
+     "meaning": "Treasures Private Client",
+     "short": "TPC"
+    },
+    {
+     "value": "Treasures(HK)",
+     "meaning": "Treasures Hong Kong",
+     "short": "TRE"
+    },
+    {
+     "value": "PB",
+     "meaning": "Private Banking"
+    }
+   ],
+   "valueType": "enum"
+  },
+  {
+   "id": "cif_id",
+   "kind": "identifier",
+   "label": "Customer",
+   "aliases": [
+    "CIF",
+    "CIF ID",
+    "customer ID",
+    "client ID",
+    "customer identifier",
+    "customer",
+    "customers",
+    "client",
+    "clients"
+   ],
+   "description": "Customer identifier. Customer counts are distinct counts and never add up across groups."
+  },
+  {
+   "id": "cust_district",
+   "kind": "dimension",
+   "label": "Customer district",
+   "aliases": [
+    "district",
+    "D1",
+    "D2",
+    "D3"
+   ],
+   "description": "Sales district of the customer. Treasures (HK) only.",
+   "values": [
+    {
+     "value": "TRE-D1",
+     "meaning": "",
+     "short": "D1"
+    },
+    {
+     "value": "TRE-D2",
+     "meaning": "",
+     "short": "D2"
+    },
+    {
+     "value": "TRE-D3",
+     "meaning": "",
+     "short": "D3"
+    }
+   ],
+   "valueType": "enum"
+  },
+  {
+   "id": "cust_branch",
+   "kind": "dimension",
+   "label": "Customer branch",
+   "aliases": [
+    "branch",
+    "customer branch",
+    "servicing branch",
+    "branches"
+   ],
+   "description": "Servicing branch of the customer. Treasures (HK) only.",
+   "values": [
+    {
+     "value": "Central",
+     "meaning": "",
+     "district": "TRE-D1"
+    },
+    {
+     "value": "Admiralty",
+     "meaning": "",
+     "district": "TRE-D1"
+    },
+    {
+     "value": "Wan Chai",
+     "meaning": "",
+     "district": "TRE-D1"
+    },
+    {
+     "value": "Causeway Bay",
+     "meaning": "",
+     "district": "TRE-D1"
+    },
+    {
+     "value": "Tsim Sha Tsui",
+     "meaning": "",
+     "district": "TRE-D2"
+    },
+    {
+     "value": "Mong Kok",
+     "meaning": "",
+     "district": "TRE-D2"
+    },
+    {
+     "value": "Kowloon Bay",
+     "meaning": "",
+     "district": "TRE-D2"
+    },
+    {
+     "value": "Kwun Tong",
+     "meaning": "",
+     "district": "TRE-D2"
+    },
+    {
+     "value": "Sha Tin",
+     "meaning": "",
+     "district": "TRE-D3"
+    },
+    {
+     "value": "Tsuen Wan",
+     "meaning": "",
+     "district": "TRE-D3"
+    },
+    {
+     "value": "Tuen Mun",
+     "meaning": "",
+     "district": "TRE-D3"
+    },
+    {
+     "value": "Yuen Long",
+     "meaning": "",
+     "district": "TRE-D3"
+    }
+   ],
+   "valueType": "enum"
+  },
+  {
+   "id": "reg_mgr_onebank_id",
+   "kind": "dimension",
+   "label": "Team lead",
+   "aliases": [
+    "team lead",
+    "team leader"
+   ],
+   "description": "Team lead above the relationship manager.",
+   "valueType": "lookup"
+  },
+  {
+   "id": "rm_name",
+   "kind": "dimension",
+   "label": "Relationship manager",
+   "aliases": [
+    "RM",
+    "RM name",
+    "relationship manager"
+   ],
+   "description": "Relationship manager who serves the customer.",
+   "valueType": "lookup"
+  },
+  {
+   "id": "wps",
+   "kind": "dimension",
+   "label": "Worst-performing stock",
+   "aliases": [
+    "WPS",
+    "worst-performing stock",
+    "worst performer",
+    "weakest underlying",
+    "worst-performing underlying"
+   ],
+   "description": "Worst-performing stock of the ELI's basket today. Not the same as any stock in the basket.",
+   "valueType": "lookup",
+   "valueAliases": {
+    "alibaba": "9988 HK",
+    "baba": "9988 HK",
+    "tencent": "700 HK",
+    "meituan": "3690 HK",
+    "xiaomi": "1810 HK",
+    "byd": "1211 HK",
+    "nvidia": "NVDA UW",
+    "nvda": "NVDA UW",
+    "intel": "INTC UW",
+    "intc": "INTC UW",
+    "tesla": "TSLA UW",
+    "tsla": "TSLA UW",
+    "apple": "AAPL UW",
+    "aapl": "AAPL UW",
+    "amd": "AMD UW"
+   }
+  },
+  {
+   "id": "predict_result",
+   "kind": "dimension",
+   "label": "Predicted result",
+   "aliases": [
+    "predicted result",
+    "expected result",
+    "predicted outcome",
+    "expected outcome",
+    "predicted KO",
+    "predicted expiry"
+   ],
+   "description": "Model estimate of how the ELI ends: KO, EXP, EXP(Below Strike) or EX. Never a confirmed outcome.",
+   "values": [
+    {
+     "value": "EXP(Below Strike)",
+     "meaning": "Expiry below strike predicted, cash settled"
+    },
+    {
+     "value": "KO",
+     "meaning": "Knock-out predicted"
+    },
+    {
+     "value": "EX",
+     "meaning": "Exercise predicted, stock delivered"
+    },
+    {
+     "value": "EXP",
+     "meaning": "Expiry above strike predicted"
+    }
+   ],
+   "valueType": "enum"
+  },
+  {
+   "id": "predict_maturity",
+   "kind": "event",
+   "label": "Predicted maturity",
+   "aliases": [
+    "predicted maturity",
+    "expected maturity",
+    "estimated maturity",
+    "upcoming maturity",
+    "maturity opportunity",
+    "maturing next X days",
+    "maturity",
+    "maturing",
+    "mature",
+    "matures",
+    "maturity calendar"
+   ],
+   "description": "Predicted maturity date: next observation date if KO is predicted, otherwise contractual maturity."
+  },
+  {
+   "id": "maturity_date",
+   "kind": "event",
+   "label": "Contractual maturity",
+   "aliases": [
+    "contractual maturity",
+    "scheduled maturity",
+    "original maturity",
+    "legal maturity"
+   ],
+   "description": "Contractual (scheduled) maturity date of the ELI.",
+   "supported": false,
+   "userText": "No published view gives contractual maturity yet. I can show predicted maturity for Treasures (HK) instead."
+  },
+  {
+   "id": "basket_membership",
+   "kind": "dimension",
+   "label": "Any underlying in the basket",
+   "aliases": [
+    "containing",
+    "with exposure to",
+    "linked to",
+    "basket includes"
+   ],
+   "description": "Whether a stock is any underlying of the ELI's basket, not just the worst performer.",
+   "supported": false,
+   "userText": "I can only see the worst-performing stock of each ELI, not every stock in its basket, so I can't list all ELI that contain a stock. I can show ELI where it is the worst-performing stock."
+  },
+  {
+   "id": "market_spot",
+   "kind": "parameter",
+   "label": "Market spot scenario",
+   "aliases": [
+    "market spot",
+    "market scenario multiplier",
+    "price shock multiplier",
+    "simulate market at 95%"
+   ],
+   "description": "Scenario multiplier on market prices used by the simulation views.",
+   "supported": false,
+   "userText": "Market scenarios (market spot) are not available in this version. I can show today's predicted results instead."
+  },
+  {
+   "id": "trade_date",
+   "kind": "event",
+   "label": "Trade date",
+   "aliases": [
+    "trade date",
+    "latest trade"
+   ],
+   "description": "Date the ELI was traded."
+  },
+  {
+   "id": "pos_id",
+   "kind": "identifier",
+   "label": "Position",
+   "aliases": [
+    "position",
+    "position ID",
+    "deal reference"
+   ],
+   "description": "Identifier of one ELI position."
+  },
+  {
+   "id": "trade_currency",
+   "kind": "dimension",
+   "label": "Trade currency",
+   "aliases": [
+    "currency",
+    "trade currency",
+    "deal currency"
+   ],
+   "description": "Currency the ELI was traded in."
+  },
+  {
+   "id": "volume",
+   "kind": "measure",
+   "label": "Notional in trade currency",
+   "aliases": [
+    "notional in trade currency",
+    "original notional"
+   ],
+   "description": "Notional of the position in its trade currency."
+  },
+  {
+   "id": "asset_tks",
+   "kind": "dimension",
+   "label": "Underlying 1",
+   "aliases": [
+    "underlying 1",
+    "first underlying",
+    "stock 1"
+   ],
+   "description": "Ticker of the first underlying stock."
+  },
+  {
+   "id": "asset_tks_2",
+   "kind": "dimension",
+   "label": "Underlying 2",
+   "aliases": [
+    "underlying 2",
+    "second underlying",
+    "stock 2"
+   ],
+   "description": "Ticker of the second underlying stock."
+  },
+  {
+   "id": "strike_percentage",
+   "kind": "measure",
+   "label": "Strike %",
+   "aliases": [
+    "strike",
+    "strike level",
+    "strike percentage"
+   ],
+   "description": "Strike level as a percentage of the initial price."
+  },
+  {
+   "id": "ko_percentage",
+   "kind": "measure",
+   "label": "KO barrier %",
+   "aliases": [
+    "KO barrier",
+    "knock-out barrier",
+    "KO level",
+    "KO percentage"
+   ],
+   "description": "Knock-out barrier as a percentage of the initial price."
+  },
+  {
+   "id": "ki_percentage",
+   "kind": "measure",
+   "label": "KI barrier %",
+   "aliases": [
+    "KI barrier",
+    "knock-in barrier",
+    "KI level",
+    "KI percentage"
+   ],
+   "description": "Knock-in barrier as a percentage of the initial price."
+  },
+  {
+   "id": "days_to_pred_maturity",
+   "kind": "measure",
+   "label": "Days to predicted maturity",
+   "aliases": [
+    "days to maturity",
+    "days until maturity",
+    "days left"
+   ],
+   "description": "Business days from the data date to the predicted maturity (W1 field)."
+  },
+  {
+   "id": "mtm_bin",
+   "kind": "dimension",
+   "label": "MTM % bin",
+   "aliases": [
+    "MTM",
+    "mark to market",
+    "MTM distribution",
+    "distribution",
+    "MTM bin"
+   ],
+   "description": "Mark-to-market of the worst-performing stock, in 10% bins."
+  },
+  {
+   "id": "wps_mtm",
+   "kind": "measure",
+   "label": "WPS MTM %",
+   "aliases": [
+    "WPS MTM",
+    "average MTM"
+   ],
+   "description": "Mark-to-market of the worst-performing stock, as a percentage."
+  },
+  {
+   "id": "deal_count",
+   "kind": "measure",
+   "label": "Deal count",
+   "aliases": [
+    "number of deals",
+    "deal count",
+    "count of deals"
+   ],
+   "description": "Number of positions in the group."
+  },
+  {
+   "id": "business_date",
+   "kind": "event",
+   "label": "Business date",
+   "aliases": [
+    "data date",
+    "as of date",
+    "business date"
+   ],
+   "description": "Close of business date the data describes (W2 view)."
+  },
+  {
+   "id": "last_refresh",
+   "kind": "event",
+   "label": "Last refresh",
+   "aliases": [
+    "last refresh",
+    "refresh time",
+    "last updated"
+   ],
+   "description": "When the extract last refreshed (W2 view)."
+  },
+  {
+   "id": "in_n7",
+   "kind": "flag",
+   "label": "Predicted maturity within 7 days",
+   "aliases": [
+    "next 7 days flag",
+    "N7D"
+   ],
+   "description": "Published flag: predicted maturity falls in the next 7 days (W1 field)."
+  },
+  {
+   "id": "in_n14",
+   "kind": "flag",
+   "label": "Predicted maturity within 14 days",
+   "aliases": [
+    "next 14 days flag",
+    "N14D"
+   ],
+   "description": "Published flag: predicted maturity falls in the next 14 days (W1 field)."
+  },
+  {
+   "id": "in_n30",
+   "kind": "flag",
+   "label": "Predicted maturity within 30 days",
+   "aliases": [
+    "next 30 days flag",
+    "N30D"
+   ],
+   "description": "Published flag: predicted maturity falls in the next 30 days (W1 field)."
+  },
+  {
+   "id": "in_n60",
+   "kind": "flag",
+   "label": "Predicted maturity within 60 days",
+   "aliases": [
+    "next 60 days flag",
+    "N60D"
+   ],
+   "description": "Published flag: predicted maturity falls in the next 60 days (W1 field)."
+  },
+  {
+   "id": "in_n90",
+   "kind": "flag",
+   "label": "Predicted maturity within 90 days",
+   "aliases": [
+    "next 90 days flag",
+    "N90D"
+   ],
+   "description": "Published flag: predicted maturity falls in the next 90 days (W1 field)."
+  },
+  {
+   "id": "announcement_date",
+   "kind": "event",
+   "label": "Result announcement date",
+   "aliases": [
+    "announcement date",
+    "result announcement date",
+    "final result announcement date",
+    "outcome announcement date",
+    "result publication date"
+   ],
+   "description": "Expected date on which the issuer publishes the final fixing or maturity result.",
+   "inViews": false
+  },
+  {
+   "id": "asset_geo_exchange",
+   "kind": "dimension",
+   "label": "Underlying exchange country",
+   "aliases": [
+    "asset 1 exchange geography",
+    "underlying 1 exchange country",
+    "primary listing market country",
+    "stock exchange geography 1",
+    "listing venue country 1",
+    "exchange country"
+   ],
+   "description": "Country of the exchange where underlying 1 is primarily listed.",
+   "inViews": false
+  },
+  {
+   "id": "coupon",
+   "kind": "measure",
+   "label": "Coupon",
+   "aliases": [
+    "coupon",
+    "coupon rate",
+    "yield",
+    "annualised coupon"
+   ],
+   "description": "Coupon (yield) the ELI pays.",
+   "inViews": false
+  },
+  {
+   "id": "tenor",
+   "kind": "measure",
+   "label": "Tenor",
+   "aliases": [
+    "tenor",
+    "tenure",
+    "deal length",
+    "duration of the deal"
+   ],
+   "description": "Length of the ELI from trade to contractual maturity.",
+   "inViews": false
+  },
+  {
+   "id": "issuer",
+   "kind": "dimension",
+   "label": "Issuer",
+   "aliases": [
+    "issuer",
+    "issuing bank",
+    "counterparty"
+   ],
+   "description": "Issuer of the ELI.",
+   "inViews": false
+  }
+ ]
+}

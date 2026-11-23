@@ -44,6 +44,7 @@ The internal deck's quote-count and district rollover figures are single example
 | Look | A dark Digimarkets-style widget, following the Digimarkets style guide, not the NPA or Inter look | Product lead, 3 Nov |
 | Standalone screens | Screens work on their own. Widget-linking features (link icon, send to linked widgets) stay on screen but switched off. | Product lead, 3 Nov |
 | Repository | All new code goes to this repo, github.com/repos-3sds/hk-eli. Never push to colleague repos (they are reference only). | Product lead, 3 Nov |
+| logical-query-mcp | Adopt its ideas now, inside the agent: the catalog shape, concept matching (glossary, whole-word, honest "not found") and filter-value translation, re-implemented and tested in `poc/` (`hkeli_poc/catalog/`, `stork/concepts.py`, `stork/values.py`). Figures still come only from the Tableau views. Calling logical-query-mcp itself over MCP is a later step, only if the bank has a SQL copy of the ELI data (office checks C5, C6). | Product lead, 23 Nov |
 
 ## Quality bar (the product lead's standing rule)
 

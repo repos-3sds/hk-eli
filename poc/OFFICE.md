@@ -71,10 +71,23 @@ agent renders, named by `TABLEAU_SECRET_ID_FILE`, `TABLEAU_SECRET_VALUE_FILE`, `
 ## 6. Prove it
 
 ```bash
-.venv/bin/python -m pytest -q -p no:cacheprovider     # expected: 86 passed
+.venv/bin/python -m pytest -q -p no:cacheprovider     # expected: 111 passed
 .venv/bin/python office/smoke_test.py                 # expected: SMOKE PASS
 .venv/bin/python office/run_eval.py                   # expected: eval 20 of 20 pass (mock, model off)
+.venv/bin/python office/compare_matcher.py            # expected: eval 20/20 both ways; concepts 10 -> 15 of 15, broken: none
 ```
+
+## 6a. Merge the real semantic catalog (stays in the office)
+
+```bash
+.venv/bin/python office/import_catalog.py --office /path/to/TABLEAU_SEMANTIC_CATALOG_JSON.json
+# prints counts only; writes var/catalog-office.json
+echo "CATALOG_PATH=var/catalog-office.json" >> .env
+.venv/bin/python office/compare_matcher.py            # counts and case numbers only
+```
+
+The merged file is in `var/`, which is never zipped or committed. If the import fails validation, send back
+the FAILED line; nothing else changes and the packaged catalog stays in use.
 
 ## 7. Run
 
@@ -93,8 +106,8 @@ what to send back.
 ## 9. What to send back
 
 Only these lines: the sha256 match (yes/no), each preflight's last line and any FAIL lines, the pip check
-line, the test count, `SMOKE PASS` or its FAIL lines, the eval count line, and each office check's result
-line. Never file contents, data, screenshots of data, host names or user names.
+line, the test count, `SMOKE PASS` or its FAIL lines, the eval count line, the `import_catalog.py` counts,
+the `compare_matcher.py` lines, and each office check's result line. Never file contents, data, screenshots of data, host names or user names.
 
 ## 10. Roll back
 
