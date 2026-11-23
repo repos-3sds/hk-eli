@@ -46,7 +46,7 @@ const CL = 58;
   imports: [MatIconModule, MatSliderModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './scenario-card.html',
-  styleUrl: './scenario-card.scss',
+  styleUrls: ['./scenario-card.scss', './scenario-ladder.scss'],
 })
 export class ScenarioCard {
   readonly spec = input.required<ScenarioSpec>();
@@ -81,7 +81,7 @@ export class ScenarioCard {
   });
   protected readonly presets = computed(() => {
     const s = this.spec();
-    const want = new Set([0, 5, 10, 20, 30, Math.round(Math.abs(s.move) * 100)]);
+    const want = new Set([0, 5, 10, 20, 30, 50, 75, 100, Math.round(Math.abs(s.move) * 100)]);
     return s.moves
       .map((m, i) => ({ i, m, label: i === 0 ? 'Today' : levelLabel(s, m), asked: i === s.asked_index }))
       .filter((p) => want.has(Math.round(Math.abs(p.m) * 100)));
@@ -91,7 +91,7 @@ export class ScenarioCard {
   protected readonly tabs = computed(() => {
     const st = this.step();
     const out: { id: ScenarioTab; label: string; count: number | null }[] = [
-      { id: 'summary', label: 'Summary', count: null },
+      { id: 'summary', label: 'Chart', count: null },
       { id: 'changes', label: 'What changes', count: st.changed.positions },
       { id: 'positions', label: 'Positions vs barriers', count: this.spec().ladder.length || null },
     ];
@@ -131,7 +131,7 @@ export class ScenarioCard {
     const max = Math.max(...s.grid.map((g) => STATUS_ORDER.reduce((a, k) => a + g.statuses[k].hkd, 0)), 1);
     const n = s.grid.length;
     const slot = (CW - CL - 4) / n;
-    const bw = Math.max(4, slot - 3);
+    const bw = Math.max(1.5, slot - (n > 40 ? 1 : 3));
     const plotH = CH - 30;
     const bars = s.grid.map((g, i) => {
       let y = CH - 22;
@@ -145,7 +145,7 @@ export class ScenarioCard {
     });
     const ticks = s.moves
       .map((m, i) => ({ i, m }))
-      .filter(({ m }) => Math.round(Math.abs(m) * 100) % 5 === 0)
+      .filter(({ m }) => Math.round(Math.abs(m) * 100) % (n > 40 ? 10 : 5) === 0)
       .map(({ m, i }) => ({ x: CL + i * slot + slot / 2, label: levelLabel(s, m) }));
     const grid = [0, 0.5, 1].map((f) => ({ y: CH - 22 - plotH * f, label: money(max * f).replace('HKD ', '') }));
     return { bars, ticks, grid };
@@ -164,7 +164,7 @@ export class ScenarioCard {
   protected readonly ladder = computed(() => {
     const s = this.spec();
     const i = this.index();
-    const lo = 40;
+    const lo = 0;
     const hi = 140;
     const x = (v: number) => Math.max(0, Math.min(100, ((v - lo) / (hi - lo)) * 100));
     return s.ladder.map((r) => {
@@ -178,12 +178,36 @@ export class ScenarioCard {
       };
     });
   });
-  protected readonly ladderTicks = [50, 75, 100, 125].map((v) => ({ v, x: ((v - 40) / 100) * 100 }));
+  protected readonly ladderTicks = [0, 25, 50, 75, 100, 125].map((v) => ({ v, x: (v / 140) * 100 }));
 
   protected select(i: number): void {
     const n = Math.max(0, Math.min(this.last(), i));
     this.index.set(n);
     this.level.emit(this.spec().moves[n]);
+  }
+
+  /** Direction of the grid: -1 for falls (and market spot below 100%), +1 for rises. */
+  protected readonly dir = computed(() => (this.spec().moves[this.last()] < 0 ? -1 : 1));
+  protected readonly typedValue = computed(() => {
+    const pct = Math.round(this.move() * 100);
+    return this.spec().control.unit === 'spot' ? 100 + pct : pct;
+  });
+  protected readonly typedMin = computed(() => (this.spec().control.unit === 'spot' ? (this.dir() < 0 ? 0 : 100) : this.dir() < 0 ? -100 : 0));
+  protected readonly typedMax = computed(() => (this.spec().control.unit === 'spot' ? (this.dir() < 0 ? 100 : 200) : this.dir() < 0 ? 0 : 100));
+
+  /** A typed level goes to the nearest step; "10" for a fall means -10%. */
+  protected onTyped(el: HTMLInputElement): void {
+    const raw = Number(String(el.value).replace(/[−–]/g, '-'));
+    if (!Number.isFinite(raw)) {
+      el.value = String(this.typedValue());
+      return;
+    }
+    const s = this.spec();
+    let move = s.control.unit === 'spot' ? raw / 100 - 1 : raw / 100;
+    if (s.control.unit !== 'spot' && this.dir() < 0 && move > 0) move = -move;
+    const i = s.moves.reduce((best, m, k) => (Math.abs(m - move) < Math.abs(s.moves[best] - move) ? k : best), 0);
+    this.select(i);
+    el.value = String(this.typedValue());
   }
 
   protected onSlider(v: number): void {

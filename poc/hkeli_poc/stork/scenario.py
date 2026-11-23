@@ -107,8 +107,8 @@ class Shock:
 
 
 def grid_moves(shock: Shock) -> list[float]:
-    """Slider steps, 1 point apart, from 0 to at least 30% in the asked direction (to the asked move if larger)."""
-    span = max(30, min(60, round(abs(shock.move) * 100)))
+    """Slider steps, 1 point apart: a fall runs to -100% (market spot 0%), a rise to +100%."""
+    span = 100
     sign = -1 if shock.move <= 0 else 1
     return [round(sign * k / 100, 2) for k in range(0, span + 1)]
 

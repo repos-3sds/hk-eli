@@ -1,0 +1,25 @@
+/* The barrier ladder of the what-if card (split out to keep each stylesheet small). */
+:host { --r-ko: #3d8bfd; }
+.ladder { gap: var(--eli-space-4); }
+.lscale, .ltrack { position: relative; margin-left: 210px; margin-right: 150px; }
+.lscale { height: 14px; span { position: absolute; transform: translateX(-50%); color: var(--eli-text-muted); font-size: 10px; } }
+.lrow { display: grid; grid-template-columns: 200px minmax(0, 1fr) 140px; align-items: center; gap: var(--eli-space-5); min-height: 30px;
+  .ltrack { margin: 0; } &.moved .lname { color: var(--eli-text-strong); } }
+.lmeta { display: flex; flex-direction: column; min-width: 0; }
+.lname, .lsub { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.lname { color: var(--eli-text-primary); font-size: var(--eli-font-size-s); } .lsub { color: var(--eli-text-muted); font-size: var(--eli-font-size-xs); }
+.ltrack { height: 18px; border-radius: 2px; background: linear-gradient(var(--eli-bg-row), var(--eli-bg-row)) center / 100% 2px no-repeat; }
+.zone { position: absolute; top: 4px; height: 10px; background: rgb(239 107 74 / 14%); }
+.bar { position: absolute; top: 1px; width: 2px; height: 16px; margin-left: -1px;
+  &.ki { background: #ff6b6b; } &.strike { background: var(--eli-accent-orange); } &.ko { background: var(--r-ko); } }
+.path { position: absolute; top: 8px; height: 2px; background: var(--eli-text-muted-2); }
+.dot { position: absolute; top: 4px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%;
+  &.now { background: transparent !important; border: 2px solid var(--eli-text-muted-2); box-sizing: border-box; }
+  &.at { box-shadow: 0 0 0 2px var(--eli-bg-dock); transition: left var(--eli-motion-fast); } }
+.lstat { display: flex; align-items: center; gap: var(--eli-space-2); mat-icon { width: 12px; height: 12px; color: var(--eli-text-muted); } }
+.mk { width: 10px; height: 10px; &.ki { width: 2px; background: #ff6b6b; } &.strike { width: 2px; background: var(--eli-accent-orange); } &.ko { width: 2px; background: var(--r-ko); }
+  &.ring { border: 2px solid var(--eli-text-muted-2); border-radius: 50% !important; box-sizing: border-box; } &.fill { background: var(--eli-accent-link); border-radius: 50% !important; } }
+@media (max-width: 720px) {
+  .lscale { margin-left: 0; margin-right: 0; }
+  .lrow { grid-template-columns: minmax(0, 1fr); } .lstat { justify-content: flex-start; }
+}

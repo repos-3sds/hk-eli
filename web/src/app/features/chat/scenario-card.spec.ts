@@ -561,7 +561,7 @@ describe('ScenarioCard', () => {
     const f = await render();
     const el: HTMLElement = f.nativeElement;
     const tabs = () => [...el.querySelectorAll<HTMLButtonElement>('[role=tab]')].map((t) => t.textContent?.trim());
-    expect(tabs()).toEqual(['Summary', 'What changes30', 'Positions vs barriers3']);
+    expect(tabs()).toEqual(['Chart', 'What changes30', 'Positions vs barriers3']);
     const visible = () => [...el.querySelectorAll<HTMLElement>('[role=tabpanel]')].filter((p) => !p.hidden).map((p) => p.id.split('-panel-')[1]);
     expect(visible()).toEqual(['summary']);
     f.componentRef.setInput('viewCount', 3);
@@ -570,5 +570,20 @@ describe('ScenarioCard', () => {
     el.querySelectorAll<HTMLButtonElement>('[role=tab]')[1].click();
     await f.whenStable();
     expect(visible()).toEqual(['changes']);
+  });
+
+  it('goes to the nearest step for a typed level, and reads "20" as a 20% fall', async () => {
+    const f = await render();
+    const levels: number[] = [];
+    f.componentInstance.level.subscribe((v) => levels.push(v));
+    const el: HTMLElement = f.nativeElement;
+    const box = el.querySelector<HTMLInputElement>('.cin')!;
+    expect(box.value).toBe('-10');
+    box.value = '20';
+    box.dispatchEvent(new Event('change'));
+    await f.whenStable();
+    expect(levels).toEqual([-0.2]);
+    expect(box.value).toBe('-20');
+    expect(el.querySelector('.title')?.textContent).toContain('NVDA UW −20%');
   });
 });

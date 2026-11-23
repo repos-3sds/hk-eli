@@ -28,9 +28,10 @@ let seq = 0;
 export class MockVizDriver implements VizDriver {
   private readonly pending = new Map<string, { ok: () => void; fail: (e: Error) => void }>();
   private readonly onMessage = (ev: MessageEvent) => {
-    const d = ev.data as { source?: string; event?: string; id?: string; message?: string } | null;
+    const d = ev.data as { source?: string; event?: string; id?: string; message?: string; height?: number } | null;
     if (ev.origin !== this.origin || ev.source !== this.frame.contentWindow || d?.source !== 'hkeli-viz') return;
     if (d.event === 'firstinteractive') this.events.firstInteractive();
+    if (d.event === 'size' && typeof d.height === 'number') this.events.size?.(d.height);
     const p = d.id ? this.pending.get(d.id) : undefined;
     if (!p) return;
     this.pending.delete(d.id!);
@@ -41,7 +42,7 @@ export class MockVizDriver implements VizDriver {
   constructor(
     private readonly frame: HTMLIFrameElement,
     private readonly origin: string,
-    private readonly events: { firstInteractive: () => void },
+    private readonly events: { firstInteractive: () => void; size?: (height: number) => void },
     private readonly win: Window = window,
   ) {
     win.addEventListener('message', this.onMessage);
@@ -118,7 +119,7 @@ function loadTableauScript(src: string): Promise<void> {
   selector: 'eli-tableau-viz',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="frame" [style.height.px]="height()" [attr.aria-busy]="state() !== 'ready' && state() !== 'error'">
+    <div class="frame" [style.height.px]="fitHeight() ?? height()" [attr.aria-busy]="state() !== 'ready' && state() !== 'error'">
       @if (frameUrl(); as u) {
         <iframe #frame [src]="u" [title]="'Tableau view ' + embed().view" loading="lazy" (load)="onFrameLoad()"></iframe>
       }
@@ -162,6 +163,8 @@ export class TableauViz {
   private readonly host = viewChild.required<ElementRef<HTMLDivElement>>('host');
 
   protected readonly state = signal<VizState>('loading');
+  /** The mock page's own height, so the whole chart or table shows with no inner scroll. */
+  protected readonly fitHeight = signal<number | null>(null);
   protected readonly error = signal('');
   private readonly nonce = signal(0);
   private driver: VizDriver | null = null;
@@ -193,7 +196,7 @@ export class TableauViz {
       const f = this.frame()?.nativeElement;
       this.frameUrl();
       if (f && !this.driver) {
-        untracked(() => (this.driver = new MockVizDriver(f, window.location.origin, { firstInteractive: () => this.ready() })));
+        untracked(() => (this.driver = new MockVizDriver(f, window.location.origin, { firstInteractive: () => this.ready(), size: (h) => this.fitHeight.set(Math.min(Math.max(h, 160), 2400)) })));
       }
     });
   }

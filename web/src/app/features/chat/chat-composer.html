@@ -1,11 +1,10 @@
 <form (submit)="submit($event)" aria-label="Ask the HK ELI Chatbot">
   <div class="box">
+    <span class="ctx" title="Answers come from the HK_ELI Tableau views"><mat-icon svgIcon="chart-column" aria-hidden="true" />HK_ELI</span>
     <label class="eli-visually-hidden" for="chat-ask">Ask a question</label>
     <textarea #input id="chat-ask" name="ask" rows="1" class="input" placeholder="Ask about the ELI book: outstanding, maturities, branches, WPS, MTM" maxlength="500"
-      [ngModel]="store.draft()" (ngModelChange)="store.draft.set($event)" (keydown)="onKeydown($event)"></textarea>
+      [ngModel]="store.draft()" (ngModelChange)="store.draft.set($event)" (keydown)="onKeydown($event)" (input)="fit()"></textarea>
     <div class="box-foot">
-      <span class="ctx"><mat-icon svgIcon="chart-column" aria-hidden="true" />HK_ELI Tableau views</span>
-      <span class="spacer"></span>
       @if (store.busy()) {
         <button type="submit" class="send stop" aria-label="Stop the answer" matTooltip="Stop (Esc)"><span class="stop-mark" aria-hidden="true"></span></button>
       } @else {

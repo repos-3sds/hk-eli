@@ -1,6 +1,7 @@
 @let s = spec();
 @let st = step();
 <section class="sc" aria-label="What-if simulation">
+  <div class="overview" role="group" aria-label="Overview">
   <header class="head">
     <mat-icon svgIcon="sliders" aria-hidden="true" />
     <span class="eyebrow">What-if</span>
@@ -17,7 +18,10 @@
       <input matSliderThumb [id]="uid" [value]="index()" (valueChange)="onSlider($event)"
         [attr.aria-valuetext]="title()" [attr.aria-label]="s.control.caption" />
     </mat-slider>
-    <output class="cval" [attr.for]="uid">{{ levelText(index()) }}</output>
+    <label class="cval" [title]="s.control.unit === 'spot' ? 'Type a market spot, 0 to 100' : 'Type a move, 0 to ' + (dir() < 0 ? '−' : '+') + '100'">
+      <input type="number" class="cin" inputmode="numeric" step="1" [min]="typedMin()" [max]="typedMax()" [value]="typedValue()"
+        [attr.aria-label]="s.control.caption + ' in percent'" (change)="onTyped($any($event.target))" (keydown.enter)="onTyped($any($event.target))" /><span>%</span>
+    </label>
   </div>
   <div class="presets" role="group" aria-label="Jump to a level">
     @for (p of presets(); track p.i) {
@@ -31,16 +35,6 @@
     @for (w of words(); track $index) {@if (w.num) {<b>{{ w.t }}</b>} @else {{{ w.t }}}}
   </p>
 
-  <div class="tabs" role="tablist" aria-label="What-if sections" (keydown)="onTabKey($event)">
-    @for (t of tabs(); track t.id) {
-      <button type="button" role="tab" class="tab" [id]="uid + '-tab-' + t.id" [attr.aria-controls]="uid + '-panel-' + t.id"
-        [attr.aria-selected]="tab() === t.id" [attr.tabindex]="tab() === t.id ? 0 : -1" [class.on]="tab() === t.id" (click)="tab.set(t.id)">
-        {{ t.label }}@if (t.count !== null) {<span class="tcount">{{ t.count }}</span>}
-      </button>
-    }
-  </div>
-
-  <div class="panel-wrap" role="tabpanel" [id]="uid + '-panel-summary'" [attr.aria-labelledby]="uid + '-tab-summary'" [hidden]="tab() !== 'summary'">
   <div class="tiles">
     @for (t of tiles(); track t.label) {
       <div class="tile" [class.warn]="t.warn">
@@ -51,6 +45,19 @@
     }
   </div>
 
+  </div>
+
+  <div class="explore">
+  <div class="tabs" role="tablist" aria-label="What-if sections" (keydown)="onTabKey($event)">
+    @for (t of tabs(); track t.id) {
+      <button type="button" role="tab" class="tab" [id]="uid + '-tab-' + t.id" [attr.aria-controls]="uid + '-panel-' + t.id"
+        [attr.aria-selected]="tab() === t.id" [attr.tabindex]="tab() === t.id ? 0 : -1" [class.on]="tab() === t.id" (click)="tab.set(t.id)">
+        {{ t.label }}@if (t.count !== null) {<span class="tcount">{{ t.count }}</span>}
+      </button>
+    }
+  </div>
+
+  <div class="panel-wrap" role="tabpanel" [id]="uid + '-panel-summary'" [attr.aria-labelledby]="uid + '-tab-summary'" [hidden]="tab() !== 'summary'">
   <figure class="fig">
     <figcaption>Exposed notional by predicted result, today to {{ levelText(last()) }}</figcaption>
     @let c = columns();
@@ -166,6 +173,8 @@
   </div>
   <div class="panel-wrap" role="tabpanel" [id]="uid + '-panel-details'" [attr.aria-labelledby]="uid + '-tab-details'" [hidden]="tab() !== 'details'">
     <ng-content select="[scDetails]" />
+  </div>
+
   </div>
 
   <p class="source"><mat-icon svgIcon="info" aria-hidden="true" />Every step worked out by code from {{ s.source }}; the slider only picks a step.

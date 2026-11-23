@@ -23,12 +23,12 @@ export class AnswerNotices {
   readonly block = input.required<NoticesBlock>();
 }
 
-/** Sources and proofs, then how the answer was produced (Ask MIRA's layout). Open by default (Hawk: don't collapse). */
+/** Sources and proofs, then how the answer was produced (Ask MIRA's layout). Collapsed by default (Hawk, 2026-11-23); the summary line still shows the counts. */
 @Component({
   selector: 'eli-answer-evidence',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <details open>
+    <details>
       @if (figures().length || block().views.length) {
         <summary>Sources and proofs · {{ figures().length }} {{ figures().length === 1 ? 'figure' : 'figures' }} · {{ block().views.length }} {{ block().views.length === 1 ? 'source' : 'sources' }}</summary>
       } @else {
@@ -59,7 +59,7 @@ export class AnswerNotices {
       @if (block().assumptions.length) {<p class="muted assume">Assumed: {{ block().assumptions.join(' ') }}</p>}
     </details>
     @if (block().steps.length) {
-      <details open>
+      <details>
         <summary>How this was produced{{ model() ? ' · ' + model() : '' }} · {{ seconds() }}</summary>
         <ol class="steps">
           @for (s of block().steps; track s.n) {
