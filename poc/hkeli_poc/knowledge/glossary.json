@@ -237,7 +237,14 @@
         "tsla": "TSLA UW",
         "apple": "AAPL UW",
         "aapl": "AAPL UW",
-        "amd": "AMD UW"
+        "amd": "AMD UW",
+        "google": "GOOGL UW",
+        "alphabet": "GOOGL UW",
+        "googl": "GOOGL UW",
+        "applovin": "APP UW",
+        "sandisk": "SNDK UW",
+        "sndk": "SNDK UW",
+        "app uw": "APP UW"
       }
     },
     {

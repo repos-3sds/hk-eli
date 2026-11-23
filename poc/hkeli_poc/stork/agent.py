@@ -173,6 +173,7 @@ def merge_intent(base: Intent, raw: dict, kb: KB.Knowledge, today: date) -> tupl
     it.district = h.get("district") or raw.get("district") or None
     it.branch = h.get("branch") or raw.get("branch") or None
     it.wps = h.get("wps") or wps or None
+    it.wps_list = list(h.get("wps_list") or [])   # several stocks: read by code, never by the model
     it.result = h.get("result") or raw.get("result") or None
     it.window_days = h.get("window_days") or wd
     it.on_date = h.get("on_date") or od or None
