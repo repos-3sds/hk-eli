@@ -29,7 +29,11 @@ export class AnswerNotices {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <details open>
-      <summary>Sources and proofs · {{ figures().length }} {{ figures().length === 1 ? 'figure' : 'figures' }} · {{ block().views.length }} {{ block().views.length === 1 ? 'source' : 'sources' }}</summary>
+      @if (figures().length || block().views.length) {
+        <summary>Sources and proofs · {{ figures().length }} {{ figures().length === 1 ? 'figure' : 'figures' }} · {{ block().views.length }} {{ block().views.length === 1 ? 'source' : 'sources' }}</summary>
+      } @else {
+        <summary>Assumptions · no Tableau view was queried</summary>
+      }
       @if (figures().length) {
         <table class="proofs">
           <thead><tr><th scope="col">Figure</th><th scope="col">What it is</th><th scope="col">Read from</th></tr></thead>

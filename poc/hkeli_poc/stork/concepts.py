@@ -64,6 +64,7 @@ class Hit:
 @dataclass
 class Resolution:
     hits: list[Hit]
+    shorts: dict = field(default_factory=dict)    # (concept, value) -> short display name, e.g. TRE-D1 -> D1
 
     def ids(self) -> list[str]:
         return list(dict.fromkeys(h.concept for h in self.hits))
@@ -75,14 +76,16 @@ class Resolution:
         return [h for h in self.hits if not h.supported]
 
     def summary(self) -> list[dict]:
-        return [{"concept": h.concept, "value": h.value, "via": h.text, "in_views": len(h.views),
-                 **({"gap": h.reason} if not h.supported else {})} for h in self.hits]
+        return [{"concept": h.concept, "label": h.label, "value": h.value, "short": self.shorts.get((h.concept, h.value)),
+                 "via": h.text, "in_views": len(h.views), **({"gap": h.reason} if not h.supported else {})}
+                for h in self.hits]
 
 
 class Matcher:
     def __init__(self, cat: Catalog):
         self.cat = cat
         self.forms: list[tuple[tuple[str, ...], dict]] = []
+        self.shorts = {(c["id"], v["value"]): v["short"] for c in cat.concepts for v in c.get("values", []) if v.get("short")}
         for c in cat.concepts:
             views = cat.views_for(c["id"])
             supported = c.get("supported", True) is not False and bool(views or c["kind"] == "parameter")
@@ -169,7 +172,7 @@ class Matcher:
         # a concept named both as itself and through one of its values: keep the value hit
         hits = list(found.values())
         with_value = {h.concept for h in hits if h.value}
-        return Resolution([h for h in hits if h.value or h.concept not in with_value])
+        return Resolution([h for h in hits if h.value or h.concept not in with_value], self.shorts)
 
     # ------------------------------------------------------------- explicit concepts
     def _words(self, c: dict) -> set[str]:

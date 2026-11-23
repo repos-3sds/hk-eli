@@ -133,7 +133,8 @@ def _catalog_hints(q: str, s: str, cat, hints: dict) -> None:
     or unknown. Every value still comes from the catalog's lists.
     """
     res = CON.matcher(cat).resolve(q)
-    hints["concepts"] = res.summary()
+    hints["concepts"] = [dict(c, flag=True) if cat.has(c["concept"]) and cat.concept(c["concept"])["kind"] == "flag" else c
+                         for c in res.summary()]
     seg = [v for v in res.values("bp_div_type") if v not in hints["segments"]]
     if not hints["segments"] and seg:
         hints["segments"] = seg

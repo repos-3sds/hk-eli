@@ -40,6 +40,9 @@ export interface StorkAnswer {
   readonly conversation_id?: string;
   readonly latency_ms?: number;
   readonly meta?: { readonly understanding?: string; readonly insight?: string; readonly model?: string | null; readonly provider?: string };
+  /** Concept matcher (catalog): a value to pick, and the terms the question was read as. */
+  readonly clarify?: { readonly code: string; readonly label: string; readonly text: string; readonly options: readonly { readonly label: string; readonly question: string }[] } | null;
+  readonly concepts?: readonly { readonly concept: string; readonly label: string; readonly value?: string | null; readonly gap?: boolean }[];
 }
 
 /** Statuses where the pipeline could not answer from data and only says what it can answer. */
@@ -60,6 +63,7 @@ const CAVEAT_LABELS: Record<string, string> = {
   SCOPE_MISMATCH: 'Chart scope',
   MEASURE_NOT_PUBLISHED: 'No customer count',
   TRE_ONLY: 'Treasures only',
+  CONCEPT_NOT_SUPPORTED: 'Not in any view',
 };
 
 const NUMERIC = /^(HKD |-)?[\d,.]+(m|bn|k|%)?$/;
@@ -83,7 +87,8 @@ export function toChatAnswer(a: StorkAnswer, id: string): ChatAnswer {
       rows: a.table.rows,
     });
   }
-  const notices = (a.caveats ?? []).filter((c) => c.text !== a.headline);
+  // a caveat that only repeats the headline (e.g. why it can't answer) is noise under it
+  const notices = (a.caveats ?? []).filter((c) => c.text !== a.headline && !a.headline.includes(c.text));
   if (notices.length) {
     blocks.push({ kind: 'notices', items: notices.map((c) => ({ level: c.level, label: CAVEAT_LABELS[c.code] ?? c.code, text: c.text })) });
   }
@@ -124,7 +129,27 @@ export function toChatAnswer(a: StorkAnswer, id: string): ChatAnswer {
     intent: intentOf(a),
     figures: (a.numbers ?? []).map((n) => ({ display: n.display, measure: n.measure, source: n.source })),
     model: a.meta?.model && a.meta.model !== 'off' ? a.meta.model : undefined,
+    clarify: a.clarify?.options.length
+      ? { kind: a.clarify.code === 'VALUE_AMBIGUOUS' ? 'ambiguous' : 'not_found', label: a.clarify.label, options: a.clarify.options }
+      : undefined,
+    understood: understood(a.concepts),
   };
+}
+
+/** The catalog terms, once each, in plain words: "District D1", "Predicted maturity", "Coupon" (gap). */
+function understood(cs: StorkAnswer['concepts']): ChatAnswer['understood'] {
+  if (!cs?.length) return undefined;
+  const seen = new Set<string>();
+  const out: { label: string; value?: string; gap: boolean }[] = [];
+  for (const c of cs) {
+    const key = `${c.concept}|${c.value ?? ''}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ label: c.label, value: c.value ?? undefined, gap: !!c.gap });
+  }
+  // gaps first (they explain the answer), then named values (TRE, D1), then plain concepts
+  const rank = (u: { value?: string; gap: boolean }) => (u.gap ? 0 : u.value ? 1 : 2);
+  return out.sort((x, y) => rank(x) - rank(y));
 }
 
 /** Who read the question and who wrote the words, so users can see when Gemini answered and when rules did. */

@@ -23,6 +23,16 @@ import { AnswerText } from './answer-text';
           }
         </div>
       }
+      @if (answer().understood?.length) {
+        <div class="read-as" role="group" aria-label="Read as">
+          <span class="read-label">Read as</span>
+          @for (u of answer().understood; track $index) {
+            <span class="term" [class.gap]="u.gap" [attr.title]="u.gap ? 'In the catalog, but no published view carries it' : null">
+              {{ u.label }}@if (u.value) {<b>{{ u.value }}</b>}@if (u.gap) {<em>not in any view</em>}
+            </span>
+          }
+        </div>
+      }
       @for (b of answer().blocks; track $index) {
         @switch (b.kind) {
           @case ('text') {
@@ -30,6 +40,14 @@ import { AnswerText } from './answer-text';
               <eli-answer-text [text]="b.text" [figures]="answer().figures!" />
             } @else {
               <p class="text">{{ b.text }}</p>
+            }
+            @if ($first && answer().clarify; as c) {
+              <div class="pick" role="group" [attr.aria-label]="'Pick a ' + c.label">
+                <span class="pick-label">{{ c.kind === 'ambiguous' ? 'Pick a ' + c.label : c.label === 'district' ? 'Districts' : 'Options' }}</span>
+                @for (o of c.options; track o.label) {
+                  <button type="button" class="pick-btn" [disabled]="!showFollowUps()" [attr.title]="o.question" (click)="followUp.emit(o.question)">{{ o.label }}</button>
+                }
+              </div>
             }
           }
           @case ('table') {
@@ -77,7 +95,7 @@ import { AnswerText } from './answer-text';
       } @else if (!answer().fallback && answer().sources.length) {
         <p class="asof"><mat-icon svgIcon="info" aria-hidden="true" />Data as of {{ answer().businessDate }} · {{ answer().sources.join(', ') }} · Figures from Tableau, checked before writing · Internal use only</p>
       }
-      @if (showFollowUps() && answer().followUps.length) {
+      @if (showFollowUps() && answer().followUps.length && !answer().clarify) {
         <div class="follow" role="group" aria-label="Ask next">
           <span class="follow-label">Ask next</span>
           @for (q of answer().followUps; track q) {
@@ -111,6 +129,16 @@ import { AnswerText } from './answer-text';
     .table tr.flag td { color: var(--eli-text-strong); }
     .table-note { display: flex; align-items: center; gap: var(--eli-space-3); margin: 0; color: var(--eli-text-muted); font-size: var(--eli-font-size-s); }
     .flag-mark { width: 3px; height: 12px; background: var(--eli-accent-orange); }
+    .read-as { display: flex; flex-wrap: wrap; align-items: center; gap: var(--eli-space-3); margin-top: calc(-1 * var(--eli-space-3)); }
+    .read-label { margin-right: var(--eli-space-2); color: var(--eli-text-muted); font-size: var(--eli-font-size-xs); }
+    .term { display: inline-flex; align-items: baseline; gap: var(--eli-space-2); padding: 1px var(--eli-space-4); border: 1px solid var(--eli-separator); border-radius: var(--eli-radius-s); color: var(--eli-text-muted-2); font-size: var(--eli-font-size-xs);
+      b { color: var(--eli-text-strong); font-weight: var(--eli-weight-semibold); }
+      em { color: var(--eli-accent-orange); font-style: normal; }
+      &.gap { border-color: rgb(255 147 46 / 45%); } }
+    .pick { display: flex; flex-wrap: wrap; align-items: center; gap: var(--eli-space-4); }
+    .pick-label { margin-right: var(--eli-space-2); color: var(--eli-text-muted); font-size: var(--eli-font-size-s); }
+    .pick-btn { height: 32px; padding: 0 var(--eli-space-7); border: 1px solid var(--eli-accent-link); border-radius: var(--eli-radius-s); background: rgb(99 171 255 / 10%); color: var(--eli-text-strong); font: inherit; font-size: var(--eli-font-size-s); font-weight: var(--eli-weight-semibold); cursor: pointer;
+      &:hover:not(:disabled) { background: rgb(99 171 255 / 20%); } &:focus-visible { outline: 2px solid var(--eli-accent-link); outline-offset: 2px; } &:disabled { opacity: 0.55; cursor: default; } }
     .follow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--eli-space-4); padding-top: var(--eli-space-6); border-top: 1px solid var(--eli-separator); }
     .follow-label { margin-right: var(--eli-space-2); color: var(--eli-text-muted); font-size: var(--eli-font-size-s); }
     .chip { display: inline-flex; align-items: center; gap: var(--eli-space-3); height: 28px; padding: 0 var(--eli-space-6); border: 1px solid var(--eli-border); border-radius: 14px; background: var(--eli-bg-dock); color: var(--eli-text-primary); font: inherit; font-size: var(--eli-font-size-s); cursor: pointer; &:hover { border-color: var(--eli-accent-link); color: var(--eli-text-strong); } mat-icon { width: 13px; height: 13px; color: var(--eli-accent-link); } }

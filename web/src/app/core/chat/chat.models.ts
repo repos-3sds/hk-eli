@@ -124,4 +124,13 @@ export interface ChatAnswer {
   /** Pipeline answers: every figure the code computed, with the view it was read from. Shown as verified chips. */
   readonly figures?: readonly { readonly display: string; readonly measure: string; readonly source: string }[];
   readonly model?: string;
+  /** Pipeline answers: a value the user named fits several stored values, or none. The options are real values to pick from. */
+  readonly clarify?: {
+    readonly kind: 'ambiguous' | 'not_found';
+    /** What the value is, in plain words: "branch", "district". */
+    readonly label: string;
+    readonly options: readonly { readonly label: string; readonly question: string }[];
+  };
+  /** Pipeline answers: the catalog terms the question was read as. `gap` marks a term no published view carries. */
+  readonly understood?: readonly { readonly label: string; readonly value?: string; readonly gap: boolean }[];
 }

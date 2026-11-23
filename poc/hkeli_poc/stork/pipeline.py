@@ -87,6 +87,9 @@ def answer(question: str, http, site: str, scenario: str | None = None, user: st
     out["intent"] = it.intent
     tr.add("Pre-parse", {k: v for k, v in it.hints.items() if v and k not in ("concepts", "gaps", "clarify")})
     if cfg.concept_matcher:
+        out["concepts"] = [{"concept": c["concept"], "label": c.get("label") or c["concept"],
+                            "value": c.get("short") or c.get("value"), "gap": bool(c.get("gap"))}
+                           for c in it.concepts if not c["concept"].startswith("metric:") and not c.get("flag")]
         tr.add("Concepts", {"found": [c["concept"] + (f"={c['value']}" if c["value"] else "") for c in it.concepts
                                       if not c.get("gap")],
                             "not_in_views": [c["concept"] for c in it.concepts if c.get("gap")],
@@ -115,6 +118,8 @@ def answer(question: str, http, site: str, scenario: str | None = None, user: st
                     f"The {label}s I know are {', '.join(shown)}. Which one do you mean?")
         out.update(status="NEEDS_CLARIFICATION", reasons=[c["code"]], headline=head)
         out["followups"] = [_swap(question, c["text"], o) for o in shown[:3]]
+        out["clarify"] = {"code": c["code"], "concept": c["concept"], "label": label, "text": c["text"],
+                          "options": [{"label": o, "question": _swap(question, c["text"], o)} for o in shown[:6]]}
         tr.add("Route", {"view": None, "reason": f"{c['code'].lower()} {label}"})
         return out
     if it.intent == "unknown":

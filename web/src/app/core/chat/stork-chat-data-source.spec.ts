@@ -33,4 +33,19 @@ describe('toChatAnswer', () => {
     expect(a.fallback).toBe(true);
     expect(a.blocks).toEqual([{ kind: 'text', text: 'I can answer…' }]);
   });
+
+  it('turns a value to pick into option buttons and lists the catalog terms it read', () => {
+    const a = toChatAnswer({
+      question: 'How much TRE ELI matures in Bay branch in the next 30 days?', status: 'NEEDS_CLARIFICATION',
+      headline: "'Bay' fits more than one branch: Causeway Bay, Kowloon Bay. Which one do you mean?",
+      clarify: { code: 'VALUE_AMBIGUOUS', label: 'branch', text: 'bay', options: [
+        { label: 'Causeway Bay', question: 'How much TRE ELI matures in Causeway Bay branch in the next 30 days?' },
+        { label: 'Kowloon Bay', question: 'How much TRE ELI matures in Kowloon Bay branch in the next 30 days?' }] },
+      concepts: [{ concept: 'bp_div_type', label: 'Business segment', value: 'TRE' }, { concept: 'predict_maturity', label: 'Predicted maturity' },
+                 { concept: 'predict_maturity', label: 'Predicted maturity' }, { concept: 'coupon', label: 'Coupon', gap: true }],
+    }, 's-3');
+    expect(a.clarify?.kind).toBe('ambiguous');
+    expect(a.clarify?.options.map((o) => o.label)).toEqual(['Causeway Bay', 'Kowloon Bay']);
+    expect(a.understood).toEqual([{ label: 'Coupon', value: undefined, gap: true }, { label: 'Business segment', value: 'TRE', gap: false }, { label: 'Predicted maturity', value: undefined, gap: false }]);
+  });
 });
