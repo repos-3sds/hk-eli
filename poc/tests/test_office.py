@@ -148,7 +148,6 @@ def test_broken_glossary_is_refused(tmp_path):
 @pytest.mark.parametrize("q,concept", [
     ("What is the contractual maturity of TRE ELI next month?", "CONCEPT_NOT_SUPPORTED"),
     ("Show all ELI containing 9988 HK", "CONCEPT_NOT_SUPPORTED"),
-    ("Simulate market spot at 95% for TRE", "CONCEPT_NOT_SUPPORTED"),
 ])
 def test_unsupported_concepts_are_refused_not_misread(q, concept):
     a = client.post("/api/v1/ask", json={"question": q}).json()

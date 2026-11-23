@@ -30,7 +30,13 @@ CAPTION = {
     "strike_percentage": "Strike Percentage", "ko_percentage": "Ko Percentage",
     "ki_percentage": "Ki Percentage", "deal_status": "Deal Status",
     "days_to_pred_maturity": "Days To Pred Maturity", "mtm_bin": "MTM% (bin)",
+    "predictive_result": "Predictive Result", "asset_id": "Asset Id", "asset_tks_mtm": "Asset Tks Mtm",
+    "asset_tks_2_mtm": "Asset Tks 2 Mtm", "wps_mtm": "Wps Mtm", "has_knocked_in": "Has Knocked In",
+    "sim_wps": "Sim Wps", "sim_wps_mtm": "Sim Wps Mtm", "in_shock_basket": "In Shock Basket",
+    "market_spot": "Market Spot", "shock_ticker": "Shock Ticker", "shock_pct": "Shock %",
 }
+# Tableau parameters the simulation sheets expose. Values arrive on the same query string as filters.
+PARAMETERS = {"market_spot": 1.0, "shock_ticker": "", "shock_pct": 0.0}
 FLAG_WINDOWS = (7, 14, 30, 60, 90)
 W1_FIELDS = {"days_to_pred_maturity", *(f"in_n{d}" for d in FLAG_WINDOWS)}
 
@@ -102,15 +108,15 @@ def _views(site: str) -> list[dict]:
              include_matured=not p, exclude_segments=["Treasures(TPC)"],
              hidden_rule_documented=p, live_context=p, intents=["district"]),
         dict(no=9, record_id="outstanding-wps-n30-all", name="ALL_outstanding_simulation_n30d",
-             title="WPS exposure, any segment, any window", kind="bar",
-             dims=["wps", "predict_result"], measures=["sum"],
+             title="WPS exposure, any segment, any window (Market Spot simulation)", kind="bar",
+             dims=["wps", "predict_result", "predictive_result"], measures=["sum"],
              filters=(["deal_status"] if p else []) + ["bp_div_type", "predict_maturity"] + (sorted(W1_FIELDS) if p else []),
              missing=no_w1 | (set() if p else {"deal_status"}),
              include_matured=not p, parameters=["market_spot"], live_context=p,
              intents=["wps_exposure"]),
         dict(no=10, record_id="outstanding-wps-n30-tre", name="TRE_outstanding_simulation_n30d",
-             title="TRE WPS exposure", kind="bar",
-             dims=["wps", "predict_result"], measures=["sum"],
+             title="TRE WPS exposure (Market Spot simulation)", kind="bar",
+             dims=["wps", "predict_result", "predictive_result"], measures=["sum"],
              filters=["predict_maturity", "cust_district", "cust_branch"] + (sorted(W1_FIELDS) if p else []),
              missing=no_w1, tre_lock=True, window=None if p else 30, parameters=["market_spot"],
              live_context=True, intents=["wps_exposure"]),
@@ -131,6 +137,21 @@ def _views(site: str) -> list[dict]:
                           title="Data as of (business date and last refresh)", kind="kpi", dims=[],
                           measures=["business_date", "last_refresh"], filters=[], missing=set(),
                           include_matured=True, intents=["data_as_of"], new=True))
+    if p:
+        # W8 (new ask): one position-level sheet across all segments with every basket stock's level,
+        # the barriers and the knock-in flag, plus two parameters for a single-stock shock. It lets the
+        # what-if engine and the embedded view move one stock, not only the whole market.
+        views.append(dict(no=14, record_id="position-scenario-all", name="ALL_position_scenario",
+                          title="Position scenario: every basket stock against strike, KI and KO", kind="table",
+                          dims=["pos_id", "asset_id", "cif_id", "bp_div_type", "cust_district", "cust_branch", "rm_name",
+                                "asset_tks", "asset_tks_2", "asset_tks_mtm", "asset_tks_2_mtm", "wps", "wps_mtm",
+                                "strike_percentage", "ko_percentage", "ki_percentage", "has_knocked_in",
+                                "predict_result", "predict_maturity", "sim_wps", "sim_wps_mtm", "predictive_result"],
+                          measures=["sum"],
+                          filters=["deal_status", "bp_div_type", "cust_district", "cust_branch", "in_shock_basket", "wps",
+                                   "predict_result"],
+                          missing=set(W1_FIELDS), live_context=True, parameters=["market_spot", "shock_ticker", "shock_pct"],
+                          intents=["scenario_analysis"], new=True))
     for v in views:
         v.setdefault("tre_lock", False)
         v.setdefault("window", None)
@@ -198,6 +219,45 @@ def _fmt_num(x: float) -> str:
     return f"{x:.2f}".rstrip("0").rstrip(".")
 
 
+def _param(params: dict, name: str):
+    raw = (params.get(name) or [None])[0]
+    if raw in (None, ""):
+        return PARAMETERS[name]
+    if name == "shock_ticker":
+        return raw
+    x = float(str(raw).rstrip("%"))
+    if name == "market_spot" and x > 3:      # "80" or "80%" means 0.80, as the Tableau parameter box shows it
+        x = x / 100
+    if name == "shock_pct" and abs(x) >= 1:  # "-10" means -10%
+        x = x / 100
+    return x
+
+
+def _simulate(rows: list[dict], view: dict, params: dict, info: dict) -> list[dict]:
+    """The simulation sheets' calculated fields: Predictive Result after Market Spot (and, W8, a single-stock shock).
+
+    Same rules as the what-if engine (stork/scenario.py), so the embedded view and the answer agree.
+    """
+    from .stork.scenario import simulate
+    spot = _param(params, "market_spot")
+    ticker = _param(params, "shock_ticker") if "shock_ticker" in view["parameters"] else ""
+    shock = _param(params, "shock_pct") if "shock_pct" in view["parameters"] else 0.0
+    info["parameters"] = {"market_spot": spot, **({"shock_ticker": ticker, "shock_pct": shock} if ticker else {})}
+    out = []
+    for r in rows:
+        p = {"tks1": r["asset_tks"], "tks2": r["asset_tks_2"], "m1": r["asset_tks_mtm"],
+             "m2": r["asset_tks_2_mtm"], "strike": r["strike_percentage"], "ko": r["ko_percentage"],
+             "ki": r["ki_percentage"], "knocked_in": r["has_knocked_in"]}
+        if ticker and shock:   # W8: move one stock first, then apply Market Spot to every stock
+            p["m1"] = p["m1"] * (1 + shock) if p["tks1"] == ticker else p["m1"]
+            if p["m2"] is not None and p["tks2"] == ticker:
+                p["m2"] = p["m2"] * (1 + shock)
+        s = simulate(p, "market", None, spot - 1)
+        out.append(dict(r, predictive_result=s["status"], sim_wps=s["wps"], sim_wps_mtm=s["sim"],
+                        in_shock_basket="TRUE" if ticker and ticker in (r["asset_tks"], r["asset_tks_2"]) else "FALSE"))
+    return out
+
+
 def query_view(site: str, view: dict, vf: dict[str, list[str]], stale: bool = False):
     """Return (columns, rows, info). rows are lists of strings, like the CSV."""
     ds = dataset(stale)
@@ -208,11 +268,15 @@ def query_view(site: str, view: dict, vf: dict[str, list[str]], stale: bool = Fa
         cols = ["Business Date", "Last Refresh"]
         return cols, [[bd.isoformat(), ds.last_refresh.isoformat(timespec="minutes")]], info
 
+    vf = dict(vf)
+    params = {k: vf.pop(k) for k in list(vf) if k in PARAMETERS}
     pop = _population(view, ds)
+    if view["parameters"]:
+        pop = _simulate(pop, view, params, info)
     fixed_total = sum(r["volume_bu"] for r in pop)  # FIXED LOD: before dimension filters
     rows = pop
     for field, values in vf.items():
-        if field in view["missing"]:
+        if field in view["missing"] or (field == "in_shock_basket" and field not in view["filters"]):
             info["ignored_filters"].append(field)
             continue
         wanted = set(values)

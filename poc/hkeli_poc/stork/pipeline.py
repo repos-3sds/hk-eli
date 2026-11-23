@@ -19,6 +19,7 @@ from urllib.parse import quote
 from ..svg import money
 from ..workbook import CAPTION
 from . import plan as P
+from . import scenario as SC
 from .tableau_client import TableauClient, TableauError
 from . import agent
 from .. import config, knowledge as KB, prompts as PR
@@ -170,6 +171,9 @@ def answer(question: str, http, site: str, scenario: str | None = None, user: st
         tr.add("Route", {"view": None, "reason": "no data-as-of view"})
         return out
 
+    if it.intent == "scenario_analysis":
+        return _scenario(it, reg, client, out, tr, site, scenario, anchor, anchor_known)
+
     # 4-6 route, plan, compile
     pl = P.build(it, reg, anchor, anchor_known)
     tr.add("Route", {"view": pl.view["view_name"] if pl.view else None, "record_id": pl.view["record_id"] if pl.view else None})
@@ -212,8 +216,10 @@ def answer(question: str, http, site: str, scenario: str | None = None, user: st
         out["meta"]["insight"] = agent.word(out, llm, lib, kb, calls)
     tr.add("Write answer", {"mode": out["meta"]["insight"], "numbers": len(out["numbers"])})
     if pl.view and out["status"] not in ("UNSUPPORTED", "VALIDATION_FAILED", "SYSTEM_ERROR"):
-        out["embed"] = _embed(site, pl, scenario)
-    tr.add("Compose", {"embed": bool(out["embed"]), "followups": len(out["followups"])})
+        out["embeds"] = _embeds(site, it, reg, pl, anchor, anchor_known, scenario)
+        out["embed"] = out["embeds"][0]
+    tr.add("Compose", {"embed": bool(out["embed"]), "views": len(out.get("embeds") or []),
+                       "followups": len(out["followups"])})
     return _finish(out)
 
 
@@ -578,16 +584,274 @@ def _d(iso: str) -> str:
         return iso
 
 
-def _embed(site, pl, scenario):
+PARAM_META = {
+    "market_spot": {"caption": "Market Spot", "kind": "percent", "min": 0.5, "max": 1.2, "step": 0.01},
+    "shock_ticker": {"caption": "Shock Ticker", "kind": "text"},
+    "shock_pct": {"caption": "Shock %", "kind": "percent", "min": -0.6, "max": 0.5, "step": 0.01},
+}
+
+
+def _param_values(view: dict, shock: dict | None, move: float | None) -> dict:
+    """Parameter values for one view at one slider level. A view that can't express the move keeps its default."""
+    vals = {}
+    if not view.get("parameters"):
+        return vals
+    m = 0.0 if move is None else move
+    if shock and shock.get("kind") == "single":
+        if "shock_ticker" in view["parameters"]:
+            vals.update(shock_ticker=shock["ticker"], shock_pct=round(m, 4), market_spot=1.0)
+        else:
+            vals["market_spot"] = 1.0
+    elif shock and shock.get("kind") == "market":
+        vals["market_spot"] = round(1 + m, 4)
+        if "shock_ticker" in view["parameters"]:
+            vals.update(shock_ticker="", shock_pct=0.0)
+    else:
+        vals["market_spot"] = 1.0
+    return vals
+
+
+def _embed(site, pl, scenario, *, role="primary", shock=None, move=None, why_not=None):
     from urllib.parse import urlencode
-    params = {k: ",".join(v) for k, v in pl.embed_filters.items()}
+    v = pl.view
+    params = {k: ",".join(x) for k, x in pl.embed_filters.items()}
+    pvals = _param_values(v, shock, move)
+    params.update({k: str(x) for k, x in pvals.items()})
     if pl.embed_highlight:
         params[":highlight"] = ",".join(pl.embed_highlight)
     if scenario:
         params["scenario"] = scenario
     q = urlencode(params, safe=",():")
-    return {"view": pl.view["view_name"], "record_id": pl.view["record_id"],
-            "url": f"/tableau/{site}/views/{quote(pl.view['view_name'])}" + (f"?{q}" if q else ""),
+    # Which parameter the screen's slider drives on this view (None: the view can't show the move)
+    bind = None
+    if shock and shock.get("kind") == "single" and "shock_pct" in v.get("parameters", []):
+        bind = "shock_pct"
+    elif shock and shock.get("kind") == "market" and "market_spot" in v.get("parameters", []):
+        bind = "market_spot"
+    notes = [c["text"] for c in pl.caveats if c["code"] in ("WPS_ONLY",)]
+    if shock and v.get("parameters") and not bind:
+        notes.append("This view's only parameter is Market Spot, which moves every stock at once, so it stays at 100% "
+                     "for a single-stock what-if.")
+    return {"view": v["view_name"], "record_id": v["record_id"], "title": v.get("title") or v["view_name"],
+            "role": role, "kind": v.get("kind"),
+            "url": f"/tableau/{site}/views/{quote(v['view_name'])}" + (f"?{q}" if q else ""),
             "filters": pl.embed_filters, "highlight": pl.embed_highlight,
             "highlight_field": pl.embed_highlight_field,
+            "parameters": [{"name": k, "value": x, **PARAM_META[k]} for k, x in pvals.items()],
+            "bind": bind, "notes": notes,
             "cannot_apply": pl.embed_ignored, "scope_equivalent": not pl.embed_ignored}
+
+
+def _embeds(site, it, reg, pl, anchor, anchor_known, scenario, shock=None, move=None) -> list[dict]:
+    """Every view of the topic, the same filter spec compiled for each (one plan per view)."""
+    out = []
+    for n, (v, vp) in enumerate(P.bundle(it, reg, pl, anchor, anchor_known)):
+        if vp.status != "OK":
+            out.append({"view": v["view_name"], "record_id": v["record_id"], "title": v.get("title") or v["view_name"],
+                        "role": "related", "skipped": True,
+                        "why_not": _blocked_text(it, vp) if vp.caveats else
+                        "This view can't show the same scope as the answer, so it is left out."})
+            continue
+        out.append(_embed(site, vp, scenario, role="primary" if n == 0 else "related", shock=shock, move=move))
+    return out
+
+
+# ---------------------------------------------------------------- what-if (scenario_analysis)
+def _pct(m: float) -> str:
+    return f"{abs(round(m * 100))}%"
+
+
+def _scenario(it, reg, client, out, tr, site, scen, anchor, anchor_known):
+    """Move one stock (or the market) and show which ELI change predicted status. Figures from code over view rows."""
+    sh = it.shock or {}
+    out["caveats"].append({"code": "SIMULATED", "level": "info",
+                           "text": "Simulated, not a valuation or a forecast: an instant move from today's level with "
+                                   "everything else unchanged (no time decay, no path, no correlation). KO here means at "
+                                   "or above the KO level, not a confirmed call date; daily memory KO and observation "
+                                   "dates are not in the views."})
+    if sh.get("kind") == "single" and not sh.get("ticker"):
+        out.update(status="NEEDS_CLARIFICATION", reasons=["SCENARIO_TARGET_MISSING"],
+                   headline="Which stock should move, or the whole market? For example: 'What if NVDA falls 10%?' "
+                            "or 'What if the market spot is 90%?'")
+        opts = ["What if NVDA falls 10%?", "What if 9988 HK falls 10%?", "What if the market spot is 90%?"]
+        out["followups"] = opts
+        out["clarify"] = {"code": "SCENARIO_TARGET_MISSING", "concept": "scenario", "label": "scenario", "text": "",
+                          "options": [{"label": o.replace("What if ", "").rstrip("?"), "question": o} for o in opts]}
+        tr.add("Route", {"view": None, "reason": "what-if without a stock or market"})
+        return out
+    if sh.get("move") is None:
+        who = sh.get("ticker") or "the market"
+        out.update(status="NEEDS_CLARIFICATION", reasons=["SCENARIO_SIZE_MISSING"],
+                   headline=f"How big a move should I apply to {who}? I won't pick a scenario size for you.")
+        if sh.get("kind") == "market":
+            opts = [f"What if the market spot is {x}%?" for x in (95, 90, 80)]
+        else:
+            opts = [f"What if {who} falls {x}%?" for x in (5, 10, 20)]
+        out["followups"] = opts
+        out["clarify"] = {"code": "SCENARIO_SIZE_MISSING", "concept": "scenario", "label": "move", "text": "",
+                          "options": [{"label": o.split()[-1].rstrip("?") if sh.get("kind") != "market" else
+                                       o.split()[-1].rstrip("?"), "question": o} for o in opts]}
+        tr.add("Route", {"view": None, "reason": "what-if without a size"})
+        return out
+
+    shock = SC.Shock(kind=sh["kind"], ticker=sh.get("ticker"), move=sh["move"], assumption=sh.get("assumption"))
+    if not reg.has("position-scenario-all"):
+        return _scenario_aggregate(it, reg, client, out, tr, site, scen, anchor, anchor_known, shock)
+
+    view = reg.views["position-scenario-all"]
+    pl = P.build(it, reg, anchor, anchor_known, force_view=view)
+    tr.add("Route", {"view": view["view_name"], "record_id": view["record_id"], "shock": shock.label()})
+    pvals = _param_values(view, sh, shock.move)
+    vfq = P.vf_query(pl) + "".join(f"&vf_{k}={quote(str(x), safe='')}" for k, x in pvals.items())
+    tr.add("Plan check", {"asserted": pl.asserted, "parameters": pvals, "status": "pass"})
+    tr.add("Compile", {"vf": pl.vf, "parameters": pvals, "embed_filters": list(pl.embed_filters)})
+    try:
+        d = client.view_data(view["luid"], vfq)
+    except TableauError as e:
+        out.update(status="SYSTEM_ERROR", reasons=[e.code], headline="The Tableau query failed, so I have no figures to show.")
+        return _finish(out)
+    cols, rows = d["columns"], d["rows"]
+    out["evidence"].append({"step": 1, "view": view["view_name"], "record_id": view["record_id"], "luid": view["luid"],
+                            "content_url": view.get("content_url"), "request": d["url"], "row_count": len(rows),
+                            "columns": cols, "asserted": pl.asserted, "window": None})
+    tr.add("Fetch", {"rows": len(rows), "bytes": d["bytes"], "ms": d["ms"]})
+    try:
+        positions = SC.positions_from_rows(cols, rows)
+    except (KeyError, ValueError) as e:
+        out.update(status="VALIDATION_FAILED", reasons=["SCENARIO_COLUMNS_MISSING"],
+                   headline=f"The scenario view is missing a column the what-if needs ({e}), so I won't guess.")
+        return _finish(out)
+    res = SC.run(positions, shock)
+    if not res.universe["positions"]:
+        who = shock.ticker or "this scope"
+        out.update(status="NO_DATA", reasons=["EMPTY_RESULT"],
+                   headline=f"No live ELI has {who} in its basket ({it.scope_line().split(' · what-if')[0]}), "
+                            "so this move changes nothing.")
+        out["followups"] = ["What if the market spot is 90%?", "Which worst-performing stocks carry the most outstanding ELI?"]
+        tr.add("Validate", {"checks": ["exposed positions: 0 -> NO_DATA"]})
+        return _finish(out)
+
+    # 8 validate: the sheet's own Predictive Result at the asked level must match the engine (same rules, two places)
+    asked = res.grid[res.asked_index]
+    checks = [f"exposed positions: {res.universe['positions']}"]
+    pi, vi = cols.index("Predictive Result"), cols.index("Volume Bu")
+    by_view = defaultdict(float)
+    exposed_ids = None
+    if shock.kind == "single":
+        exposed_ids = {p["pos_id"] for p in positions if shock.ticker in (p["tks1"], p["tks2"])}
+    idi = cols.index("Pos Id")
+    for r in rows:
+        if exposed_ids is None or r[idi] in exposed_ids:
+            by_view[r[pi]] += float(r[vi] or 0)
+    diffs = [s for s in SC.STATUSES if abs(by_view.get(s, 0.0) - asked["statuses"][s]["hkd"]) > 1.0]
+    if diffs:
+        out.update(status="VALIDATION_FAILED", reasons=["SCENARIO_RECONCILE_FAILED"],
+                   headline="The Tableau sheet and the what-if engine disagree on the simulated results "
+                            f"({', '.join(diffs)}), so I won't show either.")
+        checks.append("sheet vs engine at the asked level: fail")
+        tr.add("Validate", {"checks": checks})
+        return _finish(out)
+    checks.append("sheet Predictive Result = engine, at the asked level: pass")
+    bad = [g["move"] for g in res.grid if not g["narrative_checked"]]
+    checks.append("narrative figures = step figures, every step: " + ("pass" if not bad else f"fail at {bad}"))
+    for g in res.grid:
+        if not g["narrative_checked"]:   # gate on the serial path: drop words that fail, keep the figures
+            g["narrative"] = f"{g['label']}: see the figures below."
+    tr.add("Validate", {"checks": checks})
+
+    # 9 write: the words for the asked level are the same template the slider shows at that level
+    src = view["view_name"] + " + what-if engine"
+    c = asked["changed"]
+    _num(out, c["positions"], str(c["positions"]), "positions", src)
+    _num(out, c["hkd"], money(c["hkd"]), "hkd", src)
+    _num(out, c["customers"], str(c["customers"]), "customers", src)
+    _num(out, res.universe["positions"], str(res.universe["positions"]), "positions", src)
+    _num(out, res.universe["hkd"], money(res.universe["hkd"]), "hkd", src)
+    out["headline"] = asked["narrative"]
+    if shock.assumption:
+        out["bullets"].append(shock.assumption)
+    if shock.kind == "single":
+        out["bullets"].append(f"{shock.ticker} is in the basket of {res.universe['positions']} live positions "
+                              f"({money(res.universe['hkd'])}); it is the worst performer today in {res.universe['as_wps']} of them.")
+    else:
+        out["bullets"].append("Market spot moves every underlying by the same factor: simulated level = worst-of level x market spot.")
+    out["bullets"].append("Move the slider to see every level from today to "
+                          f"{'-' if res.moves[-1] < 0 else '+'}{_pct(res.moves[-1])}; the words and charts follow the slider.")
+    if asked["transitions"]:
+        out["table"] = {"columns": ["From", "To", "Positions", "HKD"],
+                        "rows": [[t["from"], t["to"], str(t["positions"]), money(t["hkd"])] for t in asked["transitions"]]}
+    out["scenario"] = {
+        "kind": shock.kind, "ticker": shock.ticker, "label": shock.label(), "move": shock.move,
+        "assumption": shock.assumption, "near_ki_points": SC.NEAR_KI,
+        "control": ({"name": "shock_pct", "caption": f"{shock.ticker} move", "unit": "move"} if shock.kind == "single"
+                    else {"name": "market_spot", "caption": "Market spot", "unit": "spot"}),
+        "moves": res.moves, "asked_index": res.asked_index, "universe": res.universe,
+        "grid": res.grid, "ladder": res.ladder, "statuses": SC.STATUSES,
+        "source": src, "checked": not bad,
+    }
+    ticker = shock.ticker
+    out["followups"] = ([f"What if {ticker} falls {_pct(min(-0.2, shock.move * 2))}?", "What if the market spot is 90%?"]
+                        if shock.kind == "single" else
+                        [f"What if the market spot is {round((1 + shock.move) * 100) - 10}%?",
+                         "What if NVDA falls 10%?"])
+    out["followups"].append("Which worst-performing stocks carry the most outstanding ELI?")
+    _finish(out)
+    tr.add("Write answer", {"mode": "template (every slider step)", "steps": len(res.grid), "numbers": len(out["numbers"])})
+    out["embeds"] = _embeds(site, it, reg, pl, anchor, anchor_known, scen, shock=sh, move=shock.move)
+    out["embed"] = out["embeds"][0]
+    tr.add("Compose", {"views": len(out["embeds"]), "slider_steps": len(res.moves)})
+    return out
+
+
+def _scenario_aggregate(it, reg, client, out, tr, site, scen, anchor, anchor_known, shock):
+    """Today's workbook: only Market Spot on the WPS simulation sheet. No single stock, no counts."""
+    if shock.kind == "single":
+        out.update(status="UNSUPPORTED", reasons=["SCENARIO_VIEW_MISSING"],
+                   headline=f"I can't move {shock.ticker} on its own with today's workbook. The views only carry each "
+                            "ELI's worst-performing stock, not every basket stock's level or the knock-in flag, and the "
+                            "only scenario control is Market Spot, which moves every stock at once. Worksheet ask W8 "
+                            "adds a position-level scenario sheet.")
+        out["caveats"].append({"code": "SCENARIO_VIEW_MISSING", "level": "block", "text": out["headline"]})
+        out["followups"] = [f"What if the market spot is {round((1 + shock.move) * 100)}%?",
+                            f"Which worst-performing stocks carry the most outstanding ELI?"]
+        tr.add("Route", {"view": None, "reason": "single-stock what-if needs W8"})
+        return _finish(out)
+    rid = "outstanding-wps-n30-all"
+    if not reg.has(rid):
+        out.update(status="UNSUPPORTED", reasons=["NO_ELIGIBLE_VIEW"], headline="No published view can run a market scenario.")
+        return _finish(out)
+    view = reg.views[rid]
+    pl = P.build(it, reg, anchor, anchor_known, force_view=view)
+    tr.add("Route", {"view": view["view_name"], "record_id": rid, "shock": shock.label()})
+    vfq = P.vf_query(pl) + f"&vf_market_spot={shock.spot}"
+    d = client.view_data(view["luid"], vfq)
+    cols, rows = d["columns"], d["rows"]
+    out["evidence"].append({"step": 1, "view": view["view_name"], "record_id": rid, "luid": view["luid"],
+                            "request": d["url"], "row_count": len(rows), "columns": cols, "asserted": pl.asserted})
+    tr.add("Fetch", {"rows": len(rows), "bytes": d["bytes"], "ms": d["ms"]})
+    if "Predictive Result" not in cols:
+        out.update(status="UNSUPPORTED", reasons=["SCENARIO_COLUMNS_MISSING"],
+                   headline="The simulation view did not return Predictive Result, so I can't show the scenario.")
+        return _finish(out)
+    ri, pi, vi = cols.index("Predict Result"), cols.index("Predictive Result"), cols.index("Volume Bu")
+    moved = defaultdict(float)
+    total = 0.0
+    for r in rows:
+        x = float(r[vi] or 0)
+        total += x
+        if r[ri] != r[pi]:
+            moved[(r[ri], r[pi])] += x
+    ch = sum(moved.values())
+    src = view["view_name"]
+    out["headline"] = (f"At market spot {round(shock.spot * 100)}%, {_num(out, ch, money(ch), 'hkd', src)} of "
+                       f"{_num(out, total, money(total), 'hkd', src)} outstanding ELI changes predicted result "
+                       f"(the sheet's Predictive Result). Position and customer counts need worksheet ask W8.")
+    out["table"] = {"columns": ["From", "To", "HKD"],
+                    "rows": [[a, b, money(x)] for (a, b), x in sorted(moved.items(), key=lambda kv: -kv[1])]}
+    out["caveats"].append({"code": "SCENARIO_AGGREGATE", "level": "warning",
+                           "text": "Today's workbook gives notional only. Counts, the slider and the barrier view need W8."})
+    tr.add("Validate", {"checks": ["Predictive Result column present: pass"]})
+    _finish(out)
+    out["embeds"] = _embeds(site, it, reg, pl, anchor, anchor_known, scen, shock=it.shock, move=shock.move)
+    out["embed"] = out["embeds"][0]
+    return out

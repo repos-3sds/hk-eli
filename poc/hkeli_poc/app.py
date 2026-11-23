@@ -197,16 +197,20 @@ class Ask(BaseModel):
 
 
 def _real_embed(a: dict) -> dict:
-    """Add what <tableau-viz> needs: the view URL and filters keyed by caption."""
+    """Add what <tableau-viz> needs to every view of the topic: the view URL, filters and parameters by caption."""
     s = TR.settings()
-    e = a.get("embed")
-    if not s or not e:
+    if not s or not a.get("embed"):
         return a
-    ev = next((x for x in a.get("evidence", []) if x.get("view") == e["view"]), {})
-    e["mode"] = "real"
-    e["src"] = TR.embed_src(s, e["view"], ev.get("content_url"))
-    e["filters_by_caption"] = {TR.caption(k): v for k, v in e["filters"].items()}
-    e["highlight_caption"] = TR.caption(e["highlight_field"]) if e.get("highlight_field") else None
+    for e in [a["embed"], *(a.get("embeds") or [])]:
+        if e.get("skipped") or e.get("mode") == "real":
+            continue
+        ev = next((x for x in a.get("evidence", []) if x.get("view") == e["view"]), {})
+        e["mode"] = "real"
+        e["src"] = TR.embed_src(s, e["view"], ev.get("content_url"))
+        e["filters_by_caption"] = {TR.caption(k): v for k, v in e["filters"].items()}
+        e["highlight_caption"] = TR.caption(e["highlight_field"]) if e.get("highlight_field") else None
+        for p in e.get("parameters") or []:
+            p["tableau_name"] = p["caption"]    # changeParameterValueAsync takes the parameter's name as shown
     return a
 
 
@@ -220,9 +224,11 @@ def run(question: str, site: str, scenario: str | None, user: str = "demo.user",
         a = answer(question, tableau_http(), site, scenario=scenario, **kw)
     mode = config.get().tableau_embed
     if a.get("embed"):
-        a["embed"]["presentation"] = mode    # embed | link | off: the UI shows the live view, a link, or nothing
+        for e in [a["embed"], *(a.get("embeds") or [])]:
+            e["presentation"] = mode    # embed | link | off: the UI shows the live view, a link, or nothing
         if mode == "off":
             a["embed"] = None
+            a["embeds"] = []
     return a
 
 

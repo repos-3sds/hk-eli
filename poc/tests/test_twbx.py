@@ -15,9 +15,9 @@ AGG = {"Sum": "SUM", "Avg": "AVG", "CountD": "CNTD"}
 
 def test_every_sheet_matches_contract():
     root = ET.fromstring(B.twb().split("\n", 1)[1])
-    cap = {c.get("name").strip("[]"): c.get("caption") for c in root.find("datasources/datasource").findall("column")}
+    cap = {c.get("name").strip("[]"): c.get("caption") for c in root.find("datasources/datasource[@name='federated.hkeli']").findall("column")}
     sheets = list(root.iter("worksheet"))
-    assert len(sheets) == 13
+    assert len(sheets) == 14
     for ws in sheets:
         v = next(x for x in VIEWS["proposed"] if x["name"].lstrip("#") == ws.get("name"))
         inst = {ci.get("name"): (ci.get("column").strip("[]"), ci.get("derivation")) for ci in ws.iter("column-instance")}
@@ -29,5 +29,5 @@ def test_every_sheet_matches_contract():
                for u in used]
         expected, _, _ = query_view("proposed", v, {})
         assert [c for c in expected if c not in out] == [], ws.get("name")
-        filtered = {inst[f.get("column").split(".")[-1]][0] for f in ws.iter("filter")}
+        filtered = {inst[f.get("column").split(".")[-1]][0].replace("calc_", "") for f in ws.iter("filter")}
         assert [f for f in v["filters"] if f not in filtered] == [], ws.get("name")

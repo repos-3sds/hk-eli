@@ -16,6 +16,7 @@
     {"id": "mtm_distribution", "grain": "mtm_bin", "example": "Show me the MTM distribution on 9988 HK"},
     {"id": "data_recency", "grain": "kpi", "example": "What is the latest trade date?"},
     {"id": "data_as_of", "grain": "kpi", "example": "How fresh is the data?"},
+    {"id": "scenario_analysis", "grain": "position", "example": "If NVDA falls 10%, how many portfolios change status?"},
     {"id": "unknown", "grain": "", "example": "Anything outside the list above"}
   ]
 }

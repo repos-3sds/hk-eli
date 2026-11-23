@@ -28,6 +28,25 @@ ROUTES = {
     "data_recency": ["max-trade-date"],
     "data_as_of": ["data-as-of"],
 }
+# Topic bundles: every published view about the question's topic, primary first. Each one gets the same
+# filter spec compiled for it (a filter it doesn't publish is shown as "can't apply", never dropped silently).
+TOPICS = {
+    "outstanding": ["outstanding-total-all", "outstanding-segment", "outstanding-segment-result",
+                    "outstanding-segment-customers"],
+    "maturity": ["maturity-calendar-n30-tre", "maturity-branch-n30-tre", "maturity-details-n30-tre"],
+    "district": ["outstanding-district-wps-n30-all", "maturity-branch-n30-tre"],
+    "wps": ["outstanding-wps-n30-all", "outstanding-wps-n30-tre", "outstanding-distribution-wps-n30-all"],
+    "scenario": ["position-scenario-all", "outstanding-wps-n30-all", "outstanding-distribution-wps-n30-all"],
+    "data": ["data-as-of", "max-trade-date"],
+}
+INTENT_TOPIC = {
+    "outstanding_total": "outstanding", "segment_share": "outstanding", "segment_result_share": "outstanding",
+    "customer_count": "outstanding", "maturity_calendar": "maturity", "maturity_branch": "maturity",
+    "maturity_detail": "maturity", "customer_count_maturity": "maturity", "district": "district",
+    "wps_exposure": "wps", "mtm_distribution": "wps", "scenario_analysis": "scenario",
+    "data_as_of": "data", "data_recency": "data",
+}
+
 REQUIRED_MEASURE = {"customer_count": "countd", "customer_count_maturity": "countd_excl"}
 TRE_ONLY = {"maturity_calendar", "maturity_branch", "maturity_detail", "customer_count_maturity"}
 
@@ -150,9 +169,17 @@ def _window(intent: Intent, plan: Plan, anchor: date, anchor_known: bool) -> Non
              "does not publish its data date, so it may not line up with the sheet's own window."))
 
 
-def build(intent: Intent, reg: Registry, anchor: date, anchor_known: bool) -> Plan:
+def build(intent: Intent, reg: Registry, anchor: date, anchor_known: bool, force_view: dict | None = None) -> Plan:
+    """force_view: compile the same question for a companion view of the topic bundle (no routing)."""
     plan = Plan()
-    route(intent, reg, plan)
+    if force_view:
+        if intent.intent in TRE_ONLY and any(s != "Treasures(HK)" for s in intent.segments) and force_view.get("tre_lock"):
+            plan.status = "UNSUPPORTED"
+            plan.reasons.append("SEGMENT_NOT_SUPPORTED")
+            return plan
+        plan.view = force_view
+    else:
+        route(intent, reg, plan)
     if plan.status != "OK":
         return plan
     v = plan.view
@@ -188,8 +215,18 @@ def build(intent: Intent, reg: Registry, anchor: date, anchor_known: bool) -> Pl
         plan.embed_highlight, plan.embed_highlight_field = [intent.district], "cust_district"
     if intent.branch:
         plan.vf["cust_branch"] = [intent.branch]
-    if intent.wps and intent.intent in ("maturity_detail", "mtm_distribution"):
+    if intent.wps and (intent.intent in ("maturity_detail", "mtm_distribution") or
+                       (force_view and "wps" in v["filters"] and intent.intent == "wps_exposure")):
         plan.vf["wps"] = [intent.wps]
+    sh = intent.shock or {}
+    if intent.intent == "scenario_analysis" and sh.get("ticker"):
+        if "in_shock_basket" in v["filters"]:
+            plan.vf["in_shock_basket"] = ["TRUE"]
+        elif "wps" in v["filters"] and v["kind"] == "bubble":
+            plan.vf["wps"] = [sh["ticker"]]
+            plan.caveats.append({"code": "WPS_ONLY", "level": "info",
+                                 "text": f"This view filters by worst-performing stock, so it shows ELI where {sh['ticker']} "
+                                         "is the worst performer today, not every ELI that holds it."})
 
     if intent.result and intent.intent in ("customer_count", "maturity_detail", "district"):
         plan.vf["predict_result"] = [intent.result]
@@ -211,6 +248,31 @@ def build(intent: Intent, reg: Registry, anchor: date, anchor_known: bool) -> Pl
         else:
             plan.embed_ignored.append(f)
     return plan
+
+
+def bundle(intent: Intent, reg: Registry, primary: Plan, anchor: date, anchor_known: bool) -> list[tuple[dict, Plan]]:
+    """The topic's views with the question compiled for each: [(view, plan)], primary first.
+
+    A view that can't take the question (a fixed window too short, TRE-only for a PB question) comes back with
+    its plan's status set, so the screen can say why it is not shown instead of showing a wrong scope.
+    """
+    topic = INTENT_TOPIC.get(intent.intent)
+    out: list[tuple[dict, Plan]] = []
+    if primary.view is not None:
+        out.append((primary.view, primary))
+    seen = {primary.view["record_id"]} if primary.view else set()
+    for rid in TOPICS.get(topic, []):
+        if rid in seen or not reg.has(rid):
+            continue
+        v = reg.views[rid]
+        # TRE and all-segment variants of the same sheet: keep the one that fits the question's segments
+        if rid == "outstanding-wps-n30-tre" and "outstanding-wps-n30-all" in seen:
+            continue
+        if rid == "outstanding-wps-n30-all" and "outstanding-wps-n30-tre" in seen:
+            continue
+        seen.add(rid)
+        out.append((v, build(intent, reg, anchor, anchor_known, force_view=v)))
+    return out
 
 
 def vf_query(plan: Plan) -> str:

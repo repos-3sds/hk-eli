@@ -59,6 +59,7 @@ class Intent:
     unsupported: list[dict] = field(default_factory=list)   # glossary concepts this build can't answer
     source: str = "rules"                                   # rules | gateway | gateway->rules
     concepts: list[dict] = field(default_factory=list)      # catalog concepts the question names (concept matcher)
+    shock: dict | None = None                               # what-if: {kind, ticker, move, assumption}
     clarify: dict | None = None                             # a value the user named that is ambiguous or unknown
 
     def scope_line(self) -> str:
@@ -72,6 +73,14 @@ class Intent:
             bits.append(f"WPS {self.wps}")
         if self.result:
             bits.append(f"predicted {self.result}")
+        if self.shock:
+            sh = self.shock
+            if sh.get("move") is None:
+                bits.append("what-if (move not given)")
+            elif sh["kind"] == "market":
+                bits.append(f"what-if: market spot {round((1 + sh['move']) * 100)}%")
+            else:
+                bits.append(f"what-if: {sh['ticker']} {'-' if sh['move'] < 0 else '+'}{abs(round(sh['move'] * 100))}%")
         if self.on_date:
             bits.append(f"predicted maturity on {self.on_date}")
         elif self.window_days:
@@ -168,6 +177,58 @@ def _catalog_hints(q: str, s: str, cat, hints: dict) -> None:
                 break
 
 
+WHATIF = re.compile(r"what\s*if|\bif\b.*\b(fall|falls|fell|drop|drops|decline|declines|crash|crashes|"
+                    r"rise|rises|rally|rallies|gain|gains|jump|jumps|move|moves|goes|go)\b|simulat|scenario|stress|shock|"
+                    r"market\s*spot|spot\s+(at|to|of)\b", re.I)
+DOWN = r"(?:fall|falls|fell|falling|drop|drops|dropped|declines?|crash(?:es)?|down|lower|slides?|sinks?|tumbles?)"
+UP = r"(?:rise|rises|rising|rally|rallies|gains?|jumps?|up|higher|climbs?)"
+
+
+def parse_shock(q: str, ticker: str | None) -> dict | None:
+    """What-if wording -> {kind, ticker, move, assumption}. move is None when no size was given (ask, never guess).
+
+    "NVDA falls 10%", "if Nvidia drops by 10 %", "NVDA -10%", "NVDA falls below 10%" (read as a 10% drop, and
+    said so), "market spot 80%", "market at 0.8", "market falls 20%" (= spot 80%).
+    """
+    s = q.lower()
+    if not WHATIF.search(s):
+        return None
+    assumption = None
+    m = re.search(r"market\s*spot\s*(?:is|at|to|of|=|becomes|goes to)?\s*(\d+(?:\.\d+)?)\s*(%?)", s) or \
+        re.search(r"spot\s+(?:at|to|of)\s+(\d+(?:\.\d+)?)\s*(%?)", s)
+    if m:
+        x = float(m.group(1))
+        spot = x / 100 if (m.group(2) or x > 3) else x
+        if not 0.3 <= spot <= 1.6:
+            return {"kind": "market", "ticker": None, "move": None, "assumption": None}
+        return {"kind": "market", "ticker": None, "move": round(spot - 1, 4), "assumption": None}
+    market = bool(re.search(r"\b(market|everything|all (stocks|underlyings)|whole book|across the board)\b", s)) and not ticker
+    num = r"(\d+(?:\.\d+)?)\s*(?:%|percent|pc\b)"
+    move = None
+    m = re.search(rf"{DOWN}\s+(?:by\s+)?(below\s+|under\s+)?(?:about\s+|another\s+)?{num}", s)
+    if m:
+        move = -float(m.group(2)) / 100
+        if m.group(1):
+            assumption = (f"Read '{m.group(0).strip()}' as a {m.group(2)}% drop from today's level, "
+                          f"not a fall to {m.group(2)}% of the initial price.")
+    else:
+        m = re.search(rf"{UP}\s+(?:by\s+)?(?:about\s+)?{num}", s)
+        if m:
+            move = float(m.group(1)) / 100
+        else:
+            m = re.search(r"(?<![\w.])([-+−])\s*(\d+(?:\.\d+)?)\s*%", s)
+            if m:
+                move = (-1 if m.group(1) in "-−" else 1) * float(m.group(2)) / 100
+    if move is not None and not -0.6 <= move <= 0.5:
+        move = None
+    if not ticker and not market:
+        if move is None and not re.search(r"market|spot", s):
+            return {"kind": "single", "ticker": None, "move": None, "assumption": None}
+        market = True
+    return {"kind": "market" if market else "single", "ticker": None if market else ticker,
+            "move": None if move is None else round(move, 4), "assumption": assumption}
+
+
 def understand(q: str, today: date) -> Intent:
     h = preparse(q, today)
     s = q.lower()
@@ -185,7 +246,17 @@ def understand(q: str, today: date) -> Intent:
     maturity = bool(re.search(r"matur|calendar|roll|coming due", s))
     customers = bool(re.search(r"how many\b[^?]*?\b(customers|clients)|number of (customers|clients)|customer count|distinct customers", s))
 
-    if re.search(r"as of|how fresh|data date|refresh|up to date|how old", s):
+    shock = parse_shock(q, it.wps)
+    if shock:
+        it.intent, it.grain, it.shock = "scenario_analysis", "position", shock
+        it.wps = None   # the named stock is the shocked underlying (any place in the basket), not a WPS filter
+        if shock.get("assumption"):
+            it.assumptions.append(shock["assumption"])
+        if shock["kind"] == "single" and shock.get("ticker"):
+            it.assumptions.append(f"Counts every live ELI with {shock['ticker']} anywhere in the basket, "
+                              f"not only where it is the worst performer.")
+        it.assumptions.append("A 'portfolio' is counted as one customer (CIF).")
+    elif re.search(r"as of|how fresh|data date|refresh|up to date|how old", s):
         it.intent, it.grain = "data_as_of", "kpi"
     elif "trade date" in s:
         it.intent, it.grain = "data_recency", "kpi"
@@ -217,7 +288,7 @@ def understand(q: str, today: date) -> Intent:
 GRAIN = {"outstanding_total": "kpi", "segment_share": "segment", "segment_result_share": "segment_result",
          "customer_count": "segment_result", "mtm_distribution": "mtm_bin", "maturity_detail": "position",
          "wps_exposure": "wps", "maturity_branch": "branch", "district": "district", "maturity_calendar": "date",
-         "data_recency": "kpi", "data_as_of": "kpi", "unknown": ""}
+         "data_recency": "kpi", "data_as_of": "kpi", "scenario_analysis": "position", "unknown": ""}
 
 
 def grain_for(it: Intent) -> str:

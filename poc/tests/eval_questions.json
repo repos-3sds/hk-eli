@@ -20,6 +20,10 @@
     {"q": "Which PB clients are maturing in the next 30 days?", "intent": "maturity_detail", "status": "UNSUPPORTED", "view": null},
     {"q": "What is the contractual maturity profile next month?", "intent": "maturity_calendar", "status": "UNSUPPORTED", "view": null},
     {"q": "Show all ELI containing Tencent", "intent": "*", "status": "UNSUPPORTED", "view": null},
+    {"q": "If NVDA falls below 10%, how many portfolios will change status?", "intent": "scenario_analysis", "status": "OK", "view": "position-scenario-all"},
+    {"q": "What if the market spot is 80%?", "intent": "scenario_analysis", "status": "OK", "view": "position-scenario-all"},
+    {"q": "What if Alibaba drops 20%?", "intent": "scenario_analysis", "status": "OK", "view": "position-scenario-all"},
+    {"q": "What happens if Tesla falls?", "intent": "scenario_analysis", "status": "NEEDS_CLARIFICATION", "view": null},
     {"q": "Tell me a joke", "intent": "unknown", "status": "NEEDS_CLARIFICATION", "view": null}
   ]
 }

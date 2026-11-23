@@ -34,7 +34,7 @@ def test_committed_catalog_matches_the_builder():
 
 
 def test_catalog_has_every_view_and_concept_is_valid(cat):
-    assert len(cat.entities) == 13          # 12 views + W2 data-as-of
+    assert len(cat.entities) == 14          # 12 views + W2 data-as-of + W8 position scenario
     assert CAT.validate(cat.data) == []
     assert "maturity-calendar-n30-tre" in cat.views_for("predict_maturity")
     assert cat.views_for("coupon") == []    # known concept, no view carries it

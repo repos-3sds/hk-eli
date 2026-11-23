@@ -16,7 +16,8 @@ COLS = ["pos_id", "asset_id", "deal_status", "bp_div_type", "cust_district", "cu
         "cif_id", "trade_date", "maturity_date", "predict_maturity", "predict_result", "trade_currency", "volume",
         "volume_bu", "asset_tks", "asset_tks_2", "strike_percentage", "ko_percentage", "ki_percentage", "wps",
         "wps_mtm", "business_date", "last_refresh", "days_to_pred_maturity",
-        "in_n7", "in_n14", "in_n30", "in_n60", "in_n90"]
+        "in_n7", "in_n14", "in_n30", "in_n60", "in_n90",
+        "asset_tks_mtm", "asset_tks_2_mtm", "has_knocked_in"]
 
 
 def main(out: Path):

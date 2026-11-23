@@ -22,9 +22,9 @@ def codes(a):
     return {c["code"] for c in a["caveats"]}
 
 
-def test_twelve_views_today_thirteen_with_w2():
+def test_twelve_views_today_fourteen_with_w2_and_w8():
     assert len(VIEWS["current"]) == 12
-    assert len(VIEWS["proposed"]) == 13
+    assert len(VIEWS["proposed"]) == 14
 
 
 def test_vf_is_exact_match_and_unknown_field_is_ignored():
