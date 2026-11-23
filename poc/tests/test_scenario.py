@@ -188,3 +188,21 @@ def test_what_if_survives_the_model_reading():
     assert problems == []
     assert it.shock == base.shock and it.shock["move"] == -0.10
     assert it.wps is None and it.intent == "scenario_analysis" and it.grain == "position"
+
+
+@pytest.mark.parametrize("level,status", [(102.3, "KO"), (92.5, "EXP"), (75.0, "EXP(Below Strike)"), (72.1, "EXP(Below Strike)"), (69.9, "EX")])
+def test_rules_match_the_documentation_extract(level, status):
+    """Worked examples from the HK ELI documentation extract (KO 100%, strike 85%, KI 70%, not knocked in)."""
+    assert SC.classify(level, 85.0, 100.0, 70.0, False)[0] == status
+
+
+def test_every_slider_step_fits_the_tableau_parameter_ranges():
+    """Real Tableau refuses changeParameterValueAsync outside a parameter's range, so the slider must stay inside it."""
+    from hkeli_poc.stork.pipeline import PARAM_META
+    for q in (Q_NVDA, "What if market spot goes from 100% to 80%?"):
+        sc = answer(q, InProcessMock(), "proposed")["scenario"]
+        for m in sc["moves"]:
+            if sc["kind"] == "market":
+                assert PARAM_META["market_spot"]["min"] <= round(1 + m, 2) <= PARAM_META["market_spot"]["max"]
+            else:
+                assert PARAM_META["shock_pct"]["min"] <= m <= PARAM_META["shock_pct"]["max"]

@@ -256,7 +256,9 @@
         {
           "value": "EXP(Below Strike)",
           "patterns": [
-            "below strike"
+            "below strike",
+            "exp_below_strike",
+            "airbag intact"
           ]
         },
         {
