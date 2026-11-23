@@ -93,7 +93,7 @@ body{margin:0;background:#11161f;color:#c9d1dc;font:13px/1.45 Inter,system-ui,-a
 .chart{width:100%;max-width:720px;height:auto;display:block}
 .kpis{display:flex;gap:16px;flex-wrap:wrap}.kpi{background:#161d29;border:1px solid #253041;border-radius:6px;padding:14px 18px;min-width:180px}
 .kpi-label{color:#8a96a8;font-size:11px;text-transform:uppercase;letter-spacing:.04em}.kpi-value{font-size:24px;color:#e8edf4;margin-top:4px}
-.tablewrap{overflow:auto;max-height:360px;border:1px solid #253041;border-radius:6px}
+.tablewrap{overflow-x:auto;border:1px solid #253041;border-radius:6px}
 table.vt{border-collapse:collapse;font-size:11px;white-space:nowrap}table.vt th{position:sticky;top:0;background:#1a2230;text-align:left;padding:5px 8px;color:#9fb0c6;font-weight:600}
 table.vt td{padding:4px 8px;border-top:1px solid #1d2633}
 .rowcount{font-size:12px;color:#8a96a8;margin:0 0 8px}.rowcount b{color:#e8edf4;font-size:15px}
@@ -126,7 +126,13 @@ EMBED_JS = """
     else return;
     render(d.id);
   });
+  // Full height, no inner scroll: tell the host page how tall the view is, now and whenever it changes.
+  var last=0;
+  if(parent!==window) document.body.style.overflowY='hidden';
+  function size(){ var h=Math.ceil(root.getBoundingClientRect().height); if(h!==last){ last=h; post({event:'resize',height:h}); } }
+  if(window.ResizeObserver) new ResizeObserver(size).observe(root);
   post({event:'firstinteractive'});
+  size();
 })();
 """
 

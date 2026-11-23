@@ -75,7 +75,7 @@ def test_no_move_changes_nothing_and_matches_todays_results():
 
 def test_single_stock_moves_only_its_baskets_and_falls_are_monotone():
     res = SC.run(_positions(), SC.Shock("single", "NVDA UW", -0.10))
-    assert res.universe["positions"] > 0 and len(res.moves) == 31 and res.moves[res.asked_index] == -0.10
+    assert res.universe["positions"] > 0 and len(res.moves) == 101 and res.moves[-1] == -1.0 and res.moves[res.asked_index] == -0.10
     counts = [g["changed"]["positions"] for g in res.grid]
     assert counts[0] == 0 and counts == sorted(counts)      # a lower level never improves a predicted result
     assert all(g["changed"]["better"] == 0 for g in res.grid)
