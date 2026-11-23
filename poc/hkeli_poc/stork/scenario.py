@@ -37,6 +37,25 @@ COLUMNS = {
     "wps": "Wps", "wps_mtm": "Wps Mtm", "strike": "Strike Percentage", "ko": "Ko Percentage",
     "ki": "Ki Percentage", "knocked_in": "Has Knocked In", "status": "Predict Result", "hkd": "Volume Bu",
 }
+# Extra basket legs, read only when the view has them. HK_ELI carries two today; the documentation extract describes
+# worst-of baskets of up to four (underlying_1..4), so the engine takes any number the office's W8 sheet sends.
+EXTRA_LEGS = [("Asset Tks 3", "Asset Tks 3 Mtm"), ("Asset Tks 4", "Asset Tks 4 Mtm")]
+_NULL = ("", "Null", None)
+
+
+def legs(p: dict) -> list[tuple[str, float]]:
+    """A position's basket as (ticker, level % of initial) pairs, in basket order."""
+    if p.get("legs") is not None:
+        return list(p["legs"])
+    out = [(p["tks1"], p["m1"])]
+    if p.get("tks2") and p.get("m2") is not None:
+        out.append((p["tks2"], p["m2"]))
+    return out
+
+
+def basket(p: dict) -> list[str]:
+    """The tickers in a position's basket."""
+    return [t for t, _ in legs(p)]
 
 
 def classify(sim: float, strike: float, ko: float, ki: float, knocked_in: bool) -> tuple[str, bool]:
@@ -53,13 +72,9 @@ def classify(sim: float, strike: float, ko: float, ki: float, knocked_in: bool) 
 
 def simulate(p: dict, kind: str, ticker: str | None, move: float) -> dict:
     """One position under one move. p uses the engine's short keys (see COLUMNS)."""
-    if kind == "market":
-        legs = [(p["tks1"], p["m1"] * (1 + move))] + ([(p["tks2"], p["m2"] * (1 + move))] if p.get("tks2") else [])
-    else:
-        legs = [(p["tks1"], p["m1"] * (1 + move) if p["tks1"] == ticker else p["m1"])]
-        if p.get("tks2"):
-            legs.append((p["tks2"], p["m2"] * (1 + move) if p["tks2"] == ticker else p["m2"]))
-    wps, sim = min(legs, key=lambda x: x[1])
+    # Every basket stock moves (market), or only the named one (single); then the worst of them is picked again.
+    moved = [(t, m * (1 + move) if kind == "market" or t == ticker else m) for t, m in legs(p)]
+    wps, sim = min(moved, key=lambda x: x[1])
     status, kin = classify(sim, p["strike"], p["ko"], p["ki"], p["knocked_in"])   # on the exact level, as Tableau does
     return {"wps": wps, "sim": round(sim, 1), "status": status, "knocked_in": kin,
             "near_ki": (not kin) and p["ki"] <= sim < p["ki"] + NEAR_KI}
@@ -69,10 +84,15 @@ def positions_from_rows(cols: list[str], rows: list[list[str]]) -> list[dict]:
     """Rows of the position scenario view -> engine positions. Missing columns raise KeyError (caught upstream)."""
     i = {c: n for n, c in enumerate(cols)}
     idx = {k: i[c] for k, c in COLUMNS.items()}
+    extra = [(i[t], i[m]) for t, m in EXTRA_LEGS if t in i and m in i]
     out = []
     for r in rows:
         g = lambda k: r[idx[k]]  # noqa: E731
         m2 = g("m2")
+        basket_legs = [(g("tks1"), float(g("m1")))]
+        if g("tks2") not in _NULL and m2 not in _NULL:
+            basket_legs.append((g("tks2"), float(m2)))
+        basket_legs += [(r[ti], float(r[mi])) for ti, mi in extra if r[ti] not in _NULL and r[mi] not in _NULL]
         out.append({
             "pos_id": g("pos_id"), "asset_id": g("asset_id"), "cif_id": g("cif_id"), "segment": g("segment"),
             "district": "" if g("district") in ("", "Null") else g("district"),
@@ -81,7 +101,7 @@ def positions_from_rows(cols: list[str], rows: list[list[str]]) -> list[dict]:
             "m1": float(g("m1")), "m2": float(m2) if m2 not in ("", "Null") else None,
             "wps": g("wps"), "wps_mtm": float(g("wps_mtm")), "strike": float(g("strike")), "ko": float(g("ko")),
             "ki": float(g("ki")), "knocked_in": g("knocked_in") in ("True", "TRUE", "true", "1"),
-            "status": g("status"), "hkd": float(g("hkd") or 0),
+            "status": g("status"), "hkd": float(g("hkd") or 0), "legs": basket_legs,
         })
     return out
 
@@ -233,7 +253,7 @@ def ladder(positions: list[dict], shock: Shock, moves: list[float], asked: float
         path = [simulate(p, shock.kind, shock.ticker, m) for m in moves]
         out.append({
             "pos_id": p["pos_id"], "cif_id": p["cif_id"], "segment": SHORT_SEG.get(p["segment"], p["segment"]),
-            "branch": p["branch"], "hkd": p["hkd"], "basket": [x for x in (p["tks1"], p["tks2"]) if x],
+            "branch": p["branch"], "hkd": p["hkd"], "basket": basket(p),
             "strike": p["strike"], "ki": p["ki"], "ko": p["ko"], "knocked_in": p["knocked_in"],
             "now": {"wps": p["wps"], "mtm": p["wps_mtm"], "status": p["status"]},
             "path": [[x["sim"], x["status"], x["wps"]] for x in path],
@@ -253,7 +273,7 @@ class Result:
 
 def run(positions: list[dict], shock: Shock) -> Result:
     if shock.kind == "single":
-        exposed = [p for p in positions if shock.ticker in (p["tks1"], p["tks2"])]
+        exposed = [p for p in positions if shock.ticker in basket(p)]
     else:
         exposed = list(positions)
     moves = grid_moves(shock)

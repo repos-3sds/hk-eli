@@ -1226,7 +1226,9 @@
      "synonyms": [
       "underlying 1",
       "first underlying",
-      "stock 1"
+      "stock 1",
+      "underlying_1",
+      "asset_1"
      ],
      "valueType": "free",
      "enumValues": []
@@ -1238,7 +1240,9 @@
      "synonyms": [
       "underlying 2",
       "second underlying",
-      "stock 2"
+      "stock 2",
+      "underlying_2",
+      "asset_2"
      ],
      "valueType": "free",
      "enumValues": []
@@ -1250,7 +1254,10 @@
      "synonyms": [
       "strike",
       "strike level",
-      "strike percentage"
+      "strike percentage",
+      "strike_pct",
+      "strike pct",
+      "exercise price"
      ],
      "valueType": "free",
      "enumValues": []
@@ -1263,7 +1270,9 @@
       "KO barrier",
       "knock-out barrier",
       "KO level",
-      "KO percentage"
+      "KO percentage",
+      "ko_pct",
+      "ko pct"
      ],
      "valueType": "free",
      "enumValues": []
@@ -1276,7 +1285,9 @@
       "KI barrier",
       "knock-in barrier",
       "KI level",
-      "KI percentage"
+      "KI percentage",
+      "ki_pct",
+      "ki pct"
      ],
      "valueType": "free",
      "enumValues": []
@@ -1412,7 +1423,11 @@
      "description": "Mark-to-market of the worst-performing stock, as a percentage.",
      "synonyms": [
       "WPS MTM",
-      "average MTM"
+      "average MTM",
+      "mtm_pct",
+      "mtm pct",
+      "wps mtm pct",
+      "current spot pct"
      ],
      "valueType": "free",
      "enumValues": []
@@ -2608,7 +2623,8 @@
      "synonyms": [
       "deal id",
       "asset id",
-      "ELI id"
+      "ELI id",
+      "deal_id"
      ],
      "valueType": "free",
      "enumValues": []
@@ -2763,7 +2779,9 @@
      "synonyms": [
       "underlying 1",
       "first underlying",
-      "stock 1"
+      "stock 1",
+      "underlying_1",
+      "asset_1"
      ],
      "valueType": "free",
      "enumValues": []
@@ -2775,7 +2793,9 @@
      "synonyms": [
       "underlying 2",
       "second underlying",
-      "stock 2"
+      "stock 2",
+      "underlying_2",
+      "asset_2"
      ],
      "valueType": "free",
      "enumValues": []
@@ -2822,7 +2842,11 @@
      "description": "Mark-to-market of the worst-performing stock, as a percentage.",
      "synonyms": [
       "WPS MTM",
-      "average MTM"
+      "average MTM",
+      "mtm_pct",
+      "mtm pct",
+      "wps mtm pct",
+      "current spot pct"
      ],
      "valueType": "free",
      "enumValues": []
@@ -2834,7 +2858,10 @@
      "synonyms": [
       "strike",
       "strike level",
-      "strike percentage"
+      "strike percentage",
+      "strike_pct",
+      "strike pct",
+      "exercise price"
      ],
      "valueType": "free",
      "enumValues": []
@@ -2847,7 +2874,9 @@
       "KO barrier",
       "knock-out barrier",
       "KO level",
-      "KO percentage"
+      "KO percentage",
+      "ko_pct",
+      "ko pct"
      ],
      "valueType": "free",
      "enumValues": []
@@ -2860,7 +2889,9 @@
       "KI barrier",
       "knock-in barrier",
       "KI level",
-      "KI percentage"
+      "KI percentage",
+      "ki_pct",
+      "ki pct"
      ],
      "valueType": "free",
      "enumValues": []
@@ -3177,7 +3208,9 @@
     "clients",
     "number of customers",
     "customer count",
-    "how many customers"
+    "how many customers",
+    "client_count",
+    "client count"
    ]
   }
  ],
@@ -3193,7 +3226,9 @@
     "ELI notional",
     "notional amount",
     "HKD equivalent",
-    "HKD outstanding"
+    "HKD outstanding",
+    "notional_hkd",
+    "notional hkd"
    ],
    "description": "Outstanding notional of a position in HKD equivalent. 'Outstanding' always means SUM(volume_bu) over live deals."
   },
@@ -3638,7 +3673,9 @@
    "aliases": [
     "underlying 1",
     "first underlying",
-    "stock 1"
+    "stock 1",
+    "underlying_1",
+    "asset_1"
    ],
    "description": "Ticker of the first underlying stock."
   },
@@ -3649,7 +3686,9 @@
    "aliases": [
     "underlying 2",
     "second underlying",
-    "stock 2"
+    "stock 2",
+    "underlying_2",
+    "asset_2"
    ],
    "description": "Ticker of the second underlying stock."
   },
@@ -3660,7 +3699,10 @@
    "aliases": [
     "strike",
     "strike level",
-    "strike percentage"
+    "strike percentage",
+    "strike_pct",
+    "strike pct",
+    "exercise price"
    ],
    "description": "Strike level as a percentage of the initial price."
   },
@@ -3672,7 +3714,11 @@
     "KO barrier",
     "knock-out barrier",
     "KO level",
-    "KO percentage"
+    "KO percentage",
+    "ko_pct",
+    "ko pct",
+    "ko_price",
+    "call price"
    ],
    "description": "Knock-out barrier as a percentage of the initial price."
   },
@@ -3684,7 +3730,11 @@
     "KI barrier",
     "knock-in barrier",
     "KI level",
-    "KI percentage"
+    "KI percentage",
+    "ki_pct",
+    "ki pct",
+    "ki_price",
+    "knock-in price"
    ],
    "description": "Knock-in barrier as a percentage of the initial price."
   },
@@ -3718,7 +3768,11 @@
    "label": "WPS MTM %",
    "aliases": [
     "WPS MTM",
-    "average MTM"
+    "average MTM",
+    "mtm_pct",
+    "mtm pct",
+    "wps mtm pct",
+    "current spot pct"
    ],
    "description": "Mark-to-market of the worst-performing stock, as a percentage."
   },
@@ -3762,7 +3816,8 @@
    "aliases": [
     "deal id",
     "asset id",
-    "ELI id"
+    "ELI id",
+    "deal_id"
    ],
    "description": "Identifier of one ELI deal; several positions can share it."
   },

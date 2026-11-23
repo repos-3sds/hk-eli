@@ -759,7 +759,7 @@ def _scenario(it, reg, client, out, tr, site, scen, anchor, anchor_known):
     by_view = defaultdict(float)
     exposed_ids = None
     if shock.kind == "single":
-        exposed_ids = {p["pos_id"] for p in positions if shock.ticker in (p["tks1"], p["tks2"])}
+        exposed_ids = {p["pos_id"] for p in positions if shock.ticker in SC.basket(p)}
     idi = cols.index("Pos Id")
     for r in rows:
         if exposed_ids is None or r[idi] in exposed_ids:

@@ -83,7 +83,26 @@ the same order (KO ≥ KO%, EXP ≥ strike%, Below Strike if ≥ KI% and not kno
 worked examples. Its Market Spot (`wps_mtm/100 × (0.95 + RAND×0.1)`) is a random test fixture, so it is not
 used: our figures must repeat and match Tableau. Its spelling `EXP_BELOW_STRIKE` is accepted as a synonym.
 Still open, and asked of the office with W8: per-stock memory KO flags, `ko_start_date`, KO observation
-frequency, KI observation type (daily or at maturity), simulated predicted maturity, and 3–4 stock baskets.
+frequency, KI observation type (daily or at maturity), and simulated predicted maturity.
+
+**Field names.** The extract's names land on our fields as catalog synonyms (`scripts/build_catalog.py`,
+`DOC_ALIASES`): `strike_pct` → strike_percentage, `ko_pct`/`ko_price`/call price → ko_percentage,
+`ki_pct`/`ki_price` → ki_percentage, `deal_id` → asset_id, `mtm_pct` → wps_mtm, `notional_hkd` → volume_bu,
+`underlying_1`/`underlying_2` → asset_tks/asset_tks_2, `client_count` → distinct customers. TRE, TPC and PB
+already resolve to the three segments.
+
+**Baskets of 3 or 4 stocks.** The engine (`stork/scenario.py`: `legs()`, `simulate()`, `positions_from_rows()`)
+takes any number of basket stocks and reads `Asset Tks 3 / Asset Tks 3 Mtm` and `Asset Tks 4 / Asset Tks 4 Mtm`
+when the W8 sheet has them; the worst of all legs is picked after the move. The mock workbook stays at two
+legs, as HK_ELI is today. **Conditional on the office:** if 3–4 stock baskets exist, add to W8 the columns
+`asset_tks_3, asset_tks_3_mtm, asset_tks_4, asset_tks_4_mtm` (captions as above) and extend the calcs:
+
+```
+Leg 3 = [asset_tks_3_mtm] * IIF([asset_tks_3] = [Shock Ticker], 1 + [Shock %], 1) * [Market Spot]
+Leg 4 = [asset_tks_4_mtm] * IIF([asset_tks_4] = [Shock Ticker], 1 + [Shock %], 1) * [Market Spot]
+Sim   = MIN(MIN(Leg 1, IFNULL(Leg 2, Leg 1)), MIN(IFNULL(Leg 3, Leg 1), IFNULL(Leg 4, Leg 1)))   -- Tableau's row-level MIN takes two arguments
+In Shock Basket also checks asset_tks_3 and asset_tks_4.
+```
 
 ## Not modelled (said on every answer)
 

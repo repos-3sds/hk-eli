@@ -233,3 +233,22 @@ def test_office_alias_on_a_no_view_concept_cannot_block_an_answer(tmp_path, monk
     assert a["status"].startswith("OK")
     b = _ask("Show the underlying 1 country for TRE positions")
     assert b["status"] == "UNSUPPORTED" and "views carries" in b["headline"]
+
+
+@pytest.mark.parametrize("name,cid", [
+    ("strike_pct", "strike_percentage"), ("ko_pct", "ko_percentage"), ("ki_pct", "ki_percentage"),
+    ("deal_id", "asset_id"), ("mtm_pct", "wps_mtm"), ("notional_hkd", "volume_bu"), ("underlying_2", "asset_tks_2"),
+    ("client count", "distinct_customers"),
+])
+def test_documentation_extract_field_names_land_on_our_fields(cat, m, name, cid):
+    """The colleague's extract (eli-extract.md) names the same fields differently; both spellings resolve."""
+    if cid == "distinct_customers":
+        assert any(name in mt["synonyms"] for mt in cat.data["metrics"] if mt["id"] == cid)
+        return
+    found = m.search([name])["concepts"][0]
+    assert found["status"] == "found" and found["fields"][0]["id"] == cid, found
+
+
+def test_short_segment_names_still_resolve(m):
+    for short, value in [("TRE", "Treasures(HK)"), ("TPC", "Treasures(TPC)"), ("PB", "PB")]:
+        assert value in m.resolve(f"How much {short} ELI is outstanding?").values("bp_div_type"), short
