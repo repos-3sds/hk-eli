@@ -31,6 +31,16 @@
     @for (w of words(); track $index) {@if (w.num) {<b>{{ w.t }}</b>} @else {{{ w.t }}}}
   </p>
 
+  <div class="tabs" role="tablist" aria-label="What-if sections" (keydown)="onTabKey($event)">
+    @for (t of tabs(); track t.id) {
+      <button type="button" role="tab" class="tab" [id]="uid + '-tab-' + t.id" [attr.aria-controls]="uid + '-panel-' + t.id"
+        [attr.aria-selected]="tab() === t.id" [attr.tabindex]="tab() === t.id ? 0 : -1" [class.on]="tab() === t.id" (click)="tab.set(t.id)">
+        {{ t.label }}@if (t.count !== null) {<span class="tcount">{{ t.count }}</span>}
+      </button>
+    }
+  </div>
+
+  <div class="panel-wrap" role="tabpanel" [id]="uid + '-panel-summary'" [attr.aria-labelledby]="uid + '-tab-summary'" [hidden]="tab() !== 'summary'">
   <div class="tiles">
     @for (t of tiles(); track t.label) {
       <div class="tile" [class.warn]="t.warn">
@@ -66,7 +76,9 @@
       <span class="hint">Click a column or use the slider</span>
     </div>
   </figure>
+  </div>
 
+  <div class="panel-wrap" role="tabpanel" [id]="uid + '-panel-changes'" [attr.aria-labelledby]="uid + '-tab-changes'" [hidden]="tab() !== 'changes'">
   <div class="two">
     <section class="panel" aria-label="What changes">
       <h5>What changes at {{ levelText(index()) }}</h5>
@@ -111,7 +123,9 @@
       }
     </section>
   </div>
+  </div>
 
+  <div class="panel-wrap" role="tabpanel" [id]="uid + '-panel-positions'" [attr.aria-labelledby]="uid + '-tab-positions'" [hidden]="tab() !== 'positions'">
   @if (ladder().length) {
     <section class="panel ladder" aria-label="Largest positions against their barriers">
       <h5>Largest positions against their barriers <small>worst-of level, % of initial</small></h5>
@@ -142,7 +156,17 @@
         <span><i class="mk ring"></i>Today</span><span><i class="mk fill"></i>At {{ levelText(index()) }}</span>
       </div>
     </section>
+  } @else {
+    <p class="empty">No positions to show.</p>
   }
+  </div>
+
+  <div class="panel-wrap" role="tabpanel" [id]="uid + '-panel-views'" [attr.aria-labelledby]="uid + '-tab-views'" [hidden]="tab() !== 'views'">
+    <ng-content select="[scViews]" />
+  </div>
+  <div class="panel-wrap" role="tabpanel" [id]="uid + '-panel-details'" [attr.aria-labelledby]="uid + '-tab-details'" [hidden]="tab() !== 'details'">
+    <ng-content select="[scDetails]" />
+  </div>
 
   <p class="source"><mat-icon svgIcon="info" aria-hidden="true" />Every step worked out by code from {{ s.source }}; the slider only picks a step.
     @if (s.checked) {Words checked against each step's figures.}</p>

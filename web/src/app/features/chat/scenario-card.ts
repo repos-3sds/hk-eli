@@ -29,6 +29,7 @@ export function emphasise(text: string): { t: string; num: boolean }[] {
 }
 
 type Breakdown = 'segment' | 'district' | 'branch';
+export type ScenarioTab = 'summary' | 'changes' | 'positions' | 'views' | 'details';
 
 let uidSeq = 0;
 const CW = 600;
@@ -49,12 +50,17 @@ const CL = 58;
 })
 export class ScenarioCard {
   readonly spec = input.required<ScenarioSpec>();
+  /** How many Tableau views are projected into the views tab (0 hides the tab). */
+  readonly viewCount = input(0);
+  /** Whether the answer's sources, notes and numbers are projected into a details tab. */
+  readonly hasDetails = input(false);
   /** The level the user picked (a move such as -0.15), for the Tableau views beside it. */
   readonly level = output<number>();
 
   protected readonly uid = `eli-sc-${++uidSeq}`;
   protected readonly index = signal(0);
   protected readonly breakdown = signal<Breakdown>('segment');
+  protected readonly tab = signal<ScenarioTab>('summary');
   protected readonly statuses = STATUS_ORDER;
   protected readonly cw = CW;
   protected readonly ch = CH;
@@ -80,6 +86,30 @@ export class ScenarioCard {
       .map((m, i) => ({ i, m, label: i === 0 ? 'Today' : levelLabel(s, m), asked: i === s.asked_index }))
       .filter((p) => want.has(Math.round(Math.abs(p.m) * 100)));
   });
+
+  /** Sections as tabs, so the card fits a screen; the words and slider above stay put. */
+  protected readonly tabs = computed(() => {
+    const st = this.step();
+    const out: { id: ScenarioTab; label: string; count: number | null }[] = [
+      { id: 'summary', label: 'Summary', count: null },
+      { id: 'changes', label: 'What changes', count: st.changed.positions },
+      { id: 'positions', label: 'Positions vs barriers', count: this.spec().ladder.length || null },
+    ];
+    if (this.viewCount() > 0) out.push({ id: 'views', label: 'Tableau views', count: this.viewCount() });
+    if (this.hasDetails()) out.push({ id: 'details', label: 'Sources and notes', count: null });
+    return out;
+  });
+
+  protected onTabKey(ev: KeyboardEvent): void {
+    const ids = this.tabs().map((t) => t.id);
+    const i = ids.indexOf(this.tab());
+    const next = ev.key === 'ArrowRight' ? (i + 1) % ids.length : ev.key === 'ArrowLeft' ? (i - 1 + ids.length) % ids.length
+      : ev.key === 'Home' ? 0 : ev.key === 'End' ? ids.length - 1 : -1;
+    if (next < 0) return;
+    ev.preventDefault();
+    this.tab.set(ids[next]);
+    (ev.currentTarget as HTMLElement).querySelector<HTMLElement>(`#${this.uid}-tab-${ids[next]}`)?.focus();
+  }
 
   protected readonly tiles = computed(() => {
     const s = this.spec();

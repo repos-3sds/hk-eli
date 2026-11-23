@@ -28,3 +28,12 @@
   color: var(--eli-text-muted); font-size: var(--eli-font-size-s);
   mat-icon { flex: none; width: 13px; height: 13px; margin-top: 2px; }
   b { color: var(--eli-text-primary); font-weight: var(--eli-weight-semibold); } }
+.views.tabbed { padding-top: 0; border-top: 0; }
+.view[hidden] { display: none; }
+.vtabs { display: flex; flex-wrap: wrap; gap: var(--eli-space-3); }
+.vtab { display: inline-flex; align-items: center; gap: var(--eli-space-3); height: 28px; padding: 0 var(--eli-space-6); border: 1px solid var(--eli-border); border-radius: 14px;
+  background: transparent; color: var(--eli-text-primary); font: inherit; font-size: var(--eli-font-size-s); cursor: pointer;
+  &:hover { border-color: var(--eli-accent-link); }
+  &.on { border-color: var(--eli-accent-link); background: rgb(99 171 255 / 16%); color: var(--eli-text-strong); }
+  &:focus-visible { outline: 2px solid var(--eli-focus-ring); outline-offset: 2px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--eli-accent-link); } }

@@ -556,4 +556,19 @@ describe('ScenarioCard', () => {
     expect(el.querySelector('.tile .tv')?.textContent).toBe('53');
     expect(el.querySelector('.back')?.textContent).toContain('Back to −10%');
   });
+
+  it('shows one section at a time behind tabs, with the views tab only when views are given', async () => {
+    const f = await render();
+    const el: HTMLElement = f.nativeElement;
+    const tabs = () => [...el.querySelectorAll<HTMLButtonElement>('[role=tab]')].map((t) => t.textContent?.trim());
+    expect(tabs()).toEqual(['Summary', 'What changes30', 'Positions vs barriers3']);
+    const visible = () => [...el.querySelectorAll<HTMLElement>('[role=tabpanel]')].filter((p) => !p.hidden).map((p) => p.id.split('-panel-')[1]);
+    expect(visible()).toEqual(['summary']);
+    f.componentRef.setInput('viewCount', 3);
+    await f.whenStable();
+    expect(tabs()).toContain('Tableau views3');
+    el.querySelectorAll<HTMLButtonElement>('[role=tab]')[1].click();
+    await f.whenStable();
+    expect(visible()).toEqual(['changes']);
+  });
 });

@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { ChatAnswer } from '../../core/chat/chat.models';
@@ -11,7 +12,7 @@ import { TableauViews } from './tableau-views';
 /** One answer: typed blocks (text, facts, client rows, bars, ideas, bullets), the trust line and follow-up questions. */
 @Component({
   selector: 'eli-answer-card',
-  imports: [MatButtonModule, MatIconModule, AnswerChart, AnswerNotices, AnswerEvidence, AnswerText, ScenarioCard, TableauViews],
+  imports: [NgTemplateOutlet, MatButtonModule, MatIconModule, AnswerChart, AnswerNotices, AnswerEvidence, AnswerText, ScenarioCard, TableauViews],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <article class="card" [class.fallback]="answer().fallback">
@@ -35,7 +36,7 @@ import { TableauViews } from './tableau-views';
           }
         </div>
       }
-      @for (b of answer().blocks; track $index) {
+      <ng-template #blk let-b let-first="first">
         @switch (b.kind) {
           @case ('text') {
             @if (answer().figures?.length) {
@@ -43,7 +44,7 @@ import { TableauViews } from './tableau-views';
             } @else {
               <p class="text">{{ b.text }}</p>
             }
-            @if ($first && answer().clarify; as c) {
+            @if (first && answer().clarify; as c) {
               <div class="pick" role="group" [attr.aria-label]="'Pick a ' + c.label">
                 <span class="pick-label">{{ c.kind === 'ambiguous' ? 'Pick a ' + c.label : c.label === 'district' ? 'Districts' : 'Options' }}</span>
                 @for (o of c.options; track o.label) {
@@ -74,7 +75,15 @@ import { TableauViews } from './tableau-views';
             <eli-answer-chart [spec]="b.spec" />
           }
           @case ('scenario') {
-            <eli-scenario-card [spec]="b.spec" (level)="move.set($event)" />
+            <!-- A what-if keeps its words and slider on top and puts everything else in tabs, not one long scroll -->
+            <eli-scenario-card [spec]="b.spec" [viewCount]="liveViews()" [hasDetails]="details().length > 0" (level)="move.set($event)">
+              @if (views(); as v) {
+                <eli-tableau-views scViews [embeds]="v.embeds" [move]="scenarioMove()" [ticker]="scenarioTicker()" [tabbed]="true" />
+              }
+              <div scDetails class="details">
+                @for (d of details(); track $index) {<ng-container *ngTemplateOutlet="blk; context: { $implicit: d, first: false }" />}
+              </div>
+            </eli-scenario-card>
           }
           @case ('views') {
             <eli-tableau-views [embeds]="b.embeds" [move]="scenarioMove()" [ticker]="scenarioTicker()" />
@@ -96,6 +105,9 @@ import { TableauViews } from './tableau-views';
             </section>
           }
         }
+      </ng-template>
+      @for (b of shown(); track $index) {
+        <ng-container *ngTemplateOutlet="blk; context: { $implicit: b, first: $first }" />
       }
       @if (answer().writtenBy; as w) {<p class="asof"><mat-icon svgIcon="sparkles" aria-hidden="true" />{{ w }}</p>}
       @if (answer().refreshedAt) {
@@ -126,6 +138,7 @@ import { TableauViews } from './tableau-views';
     .text { margin: 0; color: var(--eli-text-primary); font-size: var(--eli-font-size-m); line-height: 22px; }
     .block { display: flex; flex-direction: column; gap: var(--eli-space-5); padding-top: var(--eli-space-6); border-top: 1px solid var(--eli-separator); }
     .block-title { margin: 0; color: var(--eli-text-muted-2); font-size: var(--eli-font-size-xs); font-weight: var(--eli-weight-semibold); letter-spacing: 0.06em; text-transform: uppercase; }
+    .details { display: flex; flex-direction: column; gap: var(--eli-space-7); }
     .bullets { margin: 0; padding: 0; list-style: none; }
     .bullets { display: flex; flex-direction: column; gap: var(--eli-space-4); padding-left: var(--eli-space-7); list-style: disc; color: var(--eli-text-primary); }
     .table-wrap { overflow-x: auto; }
@@ -170,6 +183,20 @@ export class AnswerCard {
   protected refreshed(): string {
     return (this.answer().refreshedAt ?? '').replace('T', ' ');
   }
+
+  /** A what-if shows only its card at the top level; views and the detail blocks sit in the card's tabs. */
+  private readonly hasScenario = computed(() => this.answer().blocks.some((b) => b.kind === 'scenario'));
+  protected readonly shown = computed(() =>
+    this.hasScenario() ? this.answer().blocks.filter((b) => b.kind === 'scenario') : this.answer().blocks,
+  );
+  protected readonly details = computed(() =>
+    this.hasScenario() ? this.answer().blocks.filter((b) => b.kind !== 'scenario' && b.kind !== 'views') : [],
+  );
+  protected readonly views = computed(() => {
+    const v = this.answer().blocks.find((b) => b.kind === 'views');
+    return v && v.kind === 'views' ? v : null;
+  });
+  protected readonly liveViews = computed(() => this.views()?.embeds.filter((e) => !e.skipped).length ?? 0);
 
   /** The what-if slider's level once the user moves it; until then the views keep the asked level. */
   protected readonly move = signal<number | null>(null);

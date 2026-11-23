@@ -45,7 +45,8 @@ export function filterChips(filters: Readonly<Record<string, readonly string[]>>
   imports: [MatIconModule, TableauViz],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="views" aria-label="Tableau views for this topic">
+    <section class="views" [class.tabbed]="tabbed()" aria-label="Tableau views for this topic">
+      @if (!tabbed()) {
       <header class="vhead">
         <button type="button" class="toggle" [attr.aria-expanded]="open()" (click)="open.set(!open())">
           <mat-icon [svgIcon]="open() ? 'chevron-down' : 'chevron-right'" aria-hidden="true" />
@@ -53,15 +54,26 @@ export function filterChips(filters: Readonly<Record<string, readonly string[]>>
         </button>
         <span class="count">{{ live().length }} {{ live().length === 1 ? 'view' : 'views' }} · same filters{{ bound() ? ' · follow the slider' : '' }}</span>
       </header>
-      @if (open()) {
+      }
+      @if (open() || tabbed()) {
         @if (chips().length) {
           <div class="chips" role="list" aria-label="Filters on every view">
             <span class="chips-label">Filters on every view</span>
             @for (c of chips(); track c.label) {<span class="chip" role="listitem">{{ c.label }} <b>{{ c.value }}</b></span>}
           </div>
         }
+        @if (live().length > 1) {
+          <div class="vtabs" role="tablist" aria-label="Views">
+            @for (e of live(); track e.recordId) {
+              <button type="button" role="tab" class="vtab" [class.on]="current() === e.recordId" [attr.aria-selected]="current() === e.recordId"
+                (click)="pick.set(e.recordId)" [title]="e.title">
+                @if (e.role === 'primary') {<span class="dot" aria-hidden="true"></span>}{{ short(e) }}
+              </button>
+            }
+          </div>
+        }
         @for (e of live(); track e.recordId) {
-          <article class="view">
+          <article class="view" role="tabpanel" [hidden]="live().length > 1 && current() !== e.recordId">
             <div class="vrow">
               <span class="role" [class.main]="e.role === 'primary'">{{ e.role === 'primary' ? 'Answer view' : 'Related' }}</span>
               <span class="vtitle" [title]="e.title">{{ e.title }}</span>
@@ -103,7 +115,17 @@ export class TableauViews {
   readonly move = input<number | null>(null);
   readonly ticker = input<string | null>(null);
 
+  /** Inside a what-if tab: one view at a time behind its own tabs, no collapsible header. */
+  readonly tabbed = input(false);
+
   protected readonly open = signal(true);
+  protected readonly pick = signal<string | null>(null);
+  /** The picked view; hidden views stay loaded so the slider keeps them in step. */
+  protected readonly current = computed(() => {
+    const ids = this.live().map((e) => e.recordId);
+    const p = this.pick();
+    return p && ids.includes(p) ? p : (ids[0] ?? null);
+  });
   protected readonly live = computed(() => this.embeds().filter((e) => !e.skipped));
   protected readonly skipped = computed(() => this.embeds().filter((e) => e.skipped));
   protected readonly bound = computed(() => this.move() !== null && this.live().some((e) => e.bind));
@@ -112,6 +134,11 @@ export class TableauViews {
     const first = this.live()[0];
     return first ? filterChips(first.filters, this.ticker()) : [];
   });
+
+  /** A short tab label from the view title: "WPS exposure, any segment, any window (...)" -> "WPS exposure". */
+  protected short(e: TableauEmbed): string {
+    return e.title.split(/[:,(]/)[0].trim() || e.view;
+  }
 
   protected paramsFor(e: TableauEmbed): Record<string, number | string> | null {
     const m = this.move();
