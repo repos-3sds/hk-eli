@@ -26,8 +26,8 @@ All data in this repo is fictional.
 2. **Simulate every step.** `stork/scenario.py` applies the move to each basket stock, takes the worst of, and
    classifies it with the What is HK ELI 5.2 rules:
    KO if level ≥ KO% · EXP if strike% ≤ level < KO% · EXP(Below Strike) if below strike and not knocked in ·
-   EX if knocked in (already, or the level falls below KI%). It does this for all 31 slider steps
-   (0 to −30% for a stock, 100% to 70% for the market).
+   EX if knocked in (already, or the level falls below KI%). It does this for all 101 slider steps
+   (0 to −100% for a stock, 100% to 0% for the market, 1 point apart).
 3. **Reconcile.** The sheet's own *Predictive Result* (the Tableau calc) must give the same HKD per status as the
    engine at the asked level. If not, the answer stops with `SCENARIO_RECONCILE_FAILED`.
 4. **Words.** Each step's sentence is a code template; every figure in it is checked against that step's
@@ -58,8 +58,8 @@ market move with notional only and says a single-stock move needs W8.
 - Columns: `pos_id, asset_id, cif_id, bp_div_type, cust_district, cust_branch, rm_name, asset_tks, asset_tks_2,
   asset_tks_mtm, asset_tks_2_mtm, wps, wps_mtm, strike_percentage, ko_percentage, ki_percentage,
   has_knocked_in, predict_result, predict_maturity`, plus the calcs below. Text: `SUM(volume_bu)`.
-- Parameters: **Market Spot** (real, default 1.0, 0.5–1.2, the existing one), **Shock Ticker** (string, default
-  empty), **Shock %** (real, default 0, −0.6 to 0.5).
+- Parameters: **Market Spot** (real, default 1.0, 0–2.0; the existing one is 0.5–1.2, so widen it), **Shock Ticker** (string, default
+  empty), **Shock %** (real, default 0, −1.0 to 1.0).
 - Filters (shown): Deal Status, Bp Div Type, Cust District, Cust Branch, In Shock Basket, Wps, Predict Result.
 - Calcs (exact text in `scripts/build_twbx.py`):
 
@@ -75,6 +75,15 @@ In Shock Basket = IIF([asset_tks] = [Shock Ticker] OR [asset_tks_2] = [Shock Tic
 
 With no stock shock, Sim = `wps_mtm × Market Spot`, the same as views 9 and 10 today. The mock workbook
 (`tableau/HK_ELI.twbx`, 14 sheets) already has it, so the owners can open it and copy it.
+
+## Checked against the HK ELI documentation extract (2026-11-23)
+
+The colleague's reconstructed extract (`eli-extract.md`, synthetic) uses the same predictive result rules in
+the same order (KO ≥ KO%, EXP ≥ strike%, Below Strike if ≥ KI% and not knocked in, else EX); a test walks its
+worked examples. Its Market Spot (`wps_mtm/100 × (0.95 + RAND×0.1)`) is a random test fixture, so it is not
+used: our figures must repeat and match Tableau. Its spelling `EXP_BELOW_STRIKE` is accepted as a synonym.
+Still open, and asked of the office with W8: per-stock memory KO flags, `ko_start_date`, KO observation
+frequency, KI observation type (daily or at maturity), simulated predicted maturity, and 3–4 stock baskets.
 
 ## Not modelled (said on every answer)
 

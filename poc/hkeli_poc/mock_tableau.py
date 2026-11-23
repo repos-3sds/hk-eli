@@ -93,6 +93,7 @@ body{margin:0;background:#11161f;color:#c9d1dc;font:13px/1.45 Inter,system-ui,-a
 .chart{width:100%;max-width:720px;height:auto;display:block}
 .kpis{display:flex;gap:16px;flex-wrap:wrap}.kpi{background:#161d29;border:1px solid #253041;border-radius:6px;padding:14px 18px;min-width:180px}
 .kpi-label{color:#8a96a8;font-size:11px;text-transform:uppercase;letter-spacing:.04em}.kpi-value{font-size:24px;color:#e8edf4;margin-top:4px}
+.hk-tip{position:fixed;z-index:9;display:none;pointer-events:none;max-width:300px;padding:7px 9px;border:1px solid #33405a;border-radius:6px;background:#141b29;color:#fff;font:12px/17px system-ui,sans-serif;box-shadow:0 6px 18px rgba(0,0,0,.45)}
 .tablewrap{overflow-x:auto;border:1px solid #253041;border-radius:6px}
 table.vt{border-collapse:collapse;font-size:11px;white-space:nowrap}table.vt th{position:sticky;top:0;background:#1a2230;text-align:left;padding:5px 8px;color:#9fb0c6;font-weight:600}
 table.vt td{padding:4px 8px;border-top:1px solid #1d2633}
@@ -131,6 +132,23 @@ EMBED_JS = """
   if(parent!==window) document.body.style.overflowY='hidden';
   function size(){ var h=Math.ceil(root.getBoundingClientRect().height); if(h!==last){ last=h; post({event:'resize',height:h}); } }
   if(window.ResizeObserver) new ResizeObserver(size).observe(root);
+  // Hover info like Tableau's tooltips: each mark's <title> becomes an instant tip that follows the pointer.
+  var tip=document.createElement('div'); tip.className='hk-tip'; tip.setAttribute('role','tooltip'); document.body.appendChild(tip);
+  function tips(){ Array.prototype.forEach.call(root.querySelectorAll('title'),function(t){
+    if(t.parentNode&&t.parentNode.setAttribute){ t.parentNode.setAttribute('data-tip',t.textContent); } t.remove(); }); }
+  root.addEventListener('pointermove',function(e){
+    var m=e.target.closest&&e.target.closest('[data-tip]');
+    if(!m){ tip.style.display='none'; return; }
+    var parts=m.getAttribute('data-tip').split(' · ');
+    tip.innerHTML=''; parts.forEach(function(p,i){ var d=document.createElement('div'); d.textContent=p; if(!i) d.style.fontWeight='600'; tip.appendChild(d); });
+    tip.style.display='block';
+    var r=tip.getBoundingClientRect(), x=e.clientX+14, y=e.clientY+14;
+    if(x+r.width>innerWidth) x=e.clientX-14-r.width; if(y+r.height>innerHeight) y=e.clientY-14-r.height;
+    tip.style.left=Math.max(4,x)+'px'; tip.style.top=Math.max(4,y)+'px';
+  });
+  root.addEventListener('pointerleave',function(){ tip.style.display='none'; });
+  tips();
+  new MutationObserver(tips).observe(root,{childList:true});
   post({event:'firstinteractive'});
   size();
 })();

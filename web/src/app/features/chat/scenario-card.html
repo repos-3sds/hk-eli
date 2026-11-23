@@ -53,16 +53,16 @@
   <figure class="fig">
     <figcaption>Exposed notional by predicted result, today to {{ levelText(last()) }}</figcaption>
     @let c = columns();
-    <svg [attr.viewBox]="'0 0 ' + cw + ' ' + ch" role="img" [attr.aria-label]="'Notional by predicted result at each level; ' + title() + ' selected'">
+    <svg eliHoverTip [attr.viewBox]="'0 0 ' + cw + ' ' + ch" role="img" [attr.aria-label]="'Notional by predicted result at each level; ' + title() + ' selected'">
       @for (g of c.grid; track g.y) {
         <line x1="58" [attr.x2]="cw" [attr.y1]="g.y" [attr.y2]="g.y" class="grid" />
         <text x="52" [attr.y]="g.y + 3" class="axis" text-anchor="end">{{ g.label }}</text>
       }
       @for (b of c.bars; track b.i) {
-        <g class="col" [class.on]="b.i === index()" (click)="select(b.i)">
+        <g class="col" [class.on]="b.i === index()" [attr.data-tip]="b.tip" (click)="select(b.i)">
           <rect [attr.x]="b.x - 1" y="0" [attr.width]="b.w + 2" [attr.height]="ch - 22" class="hit" />
           @for (p of b.parts; track p.k) {
-            <rect [attr.x]="p.x" [attr.y]="p.y" [attr.width]="p.w" [attr.height]="p.h" [attr.class]="p.cls"><title>{{ p.title }}</title></rect>
+            <rect [attr.x]="p.x" [attr.y]="p.y" [attr.width]="p.w" [attr.height]="p.h" [attr.class]="p.cls" />
           }
         </g>
       }
@@ -70,8 +70,8 @@
         <text [attr.x]="t.x" [attr.y]="ch - 6" class="axis" [attr.text-anchor]="t.anchor">{{ t.label }}</text>
       }
     </svg>
-    <div class="legend">
-      @for (l of legend(); track l.k) {<span><i [class]="l.cls"></i>{{ l.label }}</span>}
+    <div class="legend" eliHoverTip>
+      @for (l of legend(); track l.k) {<span [attr.data-tip]="l.tip"><i [class]="l.cls"></i>{{ l.label }}</span>}
       <span class="hint">Click a column or use the slider</span>
     </div>
   </figure>
@@ -93,12 +93,12 @@
     <section class="panel" aria-label="What changes">
       <h5>What changes at {{ levelText(index()) }}</h5>
       @if (st.transitions.length) {
-        <ul class="trans">
+        <ul class="trans" eliHoverTip>
           @for (t of st.transitions; track t.from + t.to) {
             <li>
-              <span class="tag" [class]="'tag ' + statusClass(t.from)">{{ statusLabel(t.from) }}</span>
+              <span class="tag" [class]="'tag ' + statusClass(t.from)" [attr.data-tip]="statusTip(t.from)">{{ statusLabel(t.from) }}</span>
               <mat-icon svgIcon="arrow-right" aria-label="to" />
-              <span class="tag" [class]="'tag ' + statusClass(t.to)">{{ statusLabel(t.to) }}</span>
+              <span class="tag" [class]="'tag ' + statusClass(t.to)" [attr.data-tip]="statusTip(t.to)">{{ statusLabel(t.to) }}</span>
               <span class="tn">{{ t.positions }} {{ t.positions === 1 ? 'position' : 'positions' }}</span>
               <span class="th">{{ money(t.hkd) }}</span>
             </li>
@@ -118,10 +118,10 @@
         </div>
       </div>
       @if (rows().length) {
-        <div class="bars">
+        <div class="bars" eliHoverTip>
           @for (x of rows(); track x.r.key) {
-            <div class="brow">
-              <span class="bl" [title]="x.r.label">{{ x.r.label }}</span>
+            <div class="brow" [attr.data-tip]="x.r.label + '\nChanges status: ' + money(x.r.changed_hkd) + ' · ' + x.r.changed_positions + ' positions\nExposed: ' + money(x.r.exposed_hkd)">
+              <span class="bl">{{ x.r.label }}</span>
               <span class="btrack" [style.width.%]="x.track"><span class="bfill" [style.width.%]="x.track ? (100 * x.pct) / x.track : 0"></span></span>
               <span class="bv">{{ money(x.r.changed_hkd) }}<small> of {{ money(x.r.exposed_hkd) }}</small></span>
             </div>
@@ -145,15 +145,15 @@
       @for (l of ladder(); track l.r.pos_id) {
         <div class="lrow" [class.moved]="l.changed">
           <div class="lmeta"><span class="lname">{{ l.label }}</span><span class="lsub">{{ money(l.r.hkd) }} · {{ l.basket }}</span></div>
-          <div class="ltrack" role="img"
+          <div class="ltrack" role="img" eliHoverTip
             [attr.aria-label]="l.label + ': worst-of ' + l.r.now.mtm + '% now, ' + l.sim + '% at ' + levelText(index()) + '; KI ' + l.r.ki + '%, strike ' + l.r.strike + '%, KO ' + l.r.ko + '%'">
             <span class="zone" [style.left.%]="l.ki" [style.width.%]="l.strike - l.ki"></span>
-            <span class="bar ki" [style.left.%]="l.ki" title="Knock-in {{ l.r.ki }}%"></span>
-            <span class="bar strike" [style.left.%]="l.strike" title="Strike {{ l.r.strike }}%"></span>
-            <span class="bar ko" [style.left.%]="l.ko" title="Knock-out {{ l.r.ko }}%"></span>
+            <span class="bar ki" [style.left.%]="l.ki" [attr.data-tip]="'Knock-in ' + l.r.ki + '%'"></span>
+            <span class="bar strike" [style.left.%]="l.strike" [attr.data-tip]="'Strike ' + l.r.strike + '%'"></span>
+            <span class="bar ko" [style.left.%]="l.ko" [attr.data-tip]="'Knock-out ' + l.r.ko + '%'"></span>
             <span class="path" [style.left.%]="l.at < l.now ? l.at : l.now" [style.width.%]="l.at < l.now ? l.now - l.at : l.at - l.now"></span>
-            <span class="dot now" [class]="'dot now ' + l.nowCls" [style.left.%]="l.now" [title]="'Today ' + l.r.now.mtm + '% (' + l.r.now.wps + ')'"></span>
-            <span class="dot at" [class]="'dot at ' + l.cls" [style.left.%]="l.at" [title]="levelText(index()) + ': ' + l.sim + '% (' + l.wps + ')'"></span>
+            <span class="dot now" [class]="'dot now ' + l.nowCls" [style.left.%]="l.now" [attr.data-tip]="'Today: worst-of ' + l.r.now.mtm + '% (' + l.r.now.wps + ')\n' + statusLabel(l.r.now.status)"></span>
+            <span class="dot at" [class]="'dot at ' + l.cls" [style.left.%]="l.at" [attr.data-tip]="'At ' + levelText(index()) + ': worst-of ' + l.sim + '% (' + l.wps + ')\n' + statusLabel(l.status)"></span>
           </div>
           <div class="lstat">
             <span class="tag" [class]="'tag ' + statusClass(l.r.now.status)">{{ statusLabel(l.r.now.status) }}</span>

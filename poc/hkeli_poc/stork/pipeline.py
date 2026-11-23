@@ -593,9 +593,9 @@ def _d(iso: str) -> str:
 
 
 PARAM_META = {
-    "market_spot": {"caption": "Market Spot", "kind": "percent", "min": 0.5, "max": 1.2, "step": 0.01},
+    "market_spot": {"caption": "Market Spot", "kind": "percent", "min": 0.0, "max": 2.0, "step": 0.01},
     "shock_ticker": {"caption": "Shock Ticker", "kind": "text"},
-    "shock_pct": {"caption": "Shock %", "kind": "percent", "min": -0.6, "max": 0.5, "step": 0.01},
+    "shock_pct": {"caption": "Shock %", "kind": "percent", "min": -1.0, "max": 1.0, "step": 0.01},
 }
 
 

@@ -201,7 +201,7 @@ def parse_shock(q: str, ticker: str | None) -> dict | None:
     if m:
         x = float(m.group(1))
         spot = x / 100 if (m.group(2) or x > 3) else x
-        if not 0.3 <= spot <= 1.6:
+        if not 0.0 <= spot <= 2.0:
             return {"kind": "market", "ticker": None, "move": None, "assumption": None}
         return {"kind": "market", "ticker": None, "move": round(spot - 1, 4), "assumption": None}
     market = bool(re.search(r"\b(market|everything|all (stocks|underlyings)|whole book|across the board)\b", s)) and not ticker
@@ -221,7 +221,7 @@ def parse_shock(q: str, ticker: str | None) -> dict | None:
             m = re.search(r"(?<![\w.])([-+−])\s*(\d+(?:\.\d+)?)\s*%", s)
             if m:
                 move = (-1 if m.group(1) in "-−" else 1) * float(m.group(2)) / 100
-    if move is not None and not -0.6 <= move <= 0.5:
+    if move is not None and not -1.0 <= move <= 1.0:
         move = None
     if not ticker and not market:
         if move is None and not re.search(r"market|spot", s):

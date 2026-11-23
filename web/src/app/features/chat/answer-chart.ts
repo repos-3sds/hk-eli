@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { ChartCategory, ChartSpec, PredictResult } from '../../core/chat/chat.models';
+import { HoverTip } from '../../core/ui/hover-tip';
 
 const RESULT_ORDER: readonly PredictResult[] = ['KO', 'EXP', 'EXP(Below Strike)', 'EX', 'All'];
 const RESULT_LABEL: Record<PredictResult, string> = { KO: 'KO', EXP: 'Expiry', 'EXP(Below Strike)': 'Expiry below strike', EX: 'Exercised', All: '' };
@@ -29,10 +30,11 @@ const WIDE = 1200;
  */
 @Component({
   selector: 'eli-answer-chart',
+  imports: [HoverTip],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @let s = spec();
-    <figure class="ch" [class]="'ch ch-' + s.kind" [class.compact]="compact()">
+    <figure eliHoverTip class="ch" [class]="'ch ch-' + s.kind" [class.compact]="compact()">
       @if (s.title && !compact()) {<figcaption>{{ s.title }}</figcaption>}
       @switch (s.kind) {
         @case ('kpi') {
@@ -41,11 +43,11 @@ const WIDE = 1200;
         @case ('hbar') {
           <div class="rows" role="list">
             @for (r of bars(); track r.key) {
-              <div class="row" role="listitem" [class.dim]="r.dim" [class.hl]="r.hl">
-                <span class="lab" [title]="r.label">{{ r.label }}</span>
+              <div class="row" role="listitem" [class.dim]="r.dim" [class.hl]="r.hl" [attr.data-tip]="r.tip">
+                <span class="lab">{{ r.label }}</span>
                 <span class="bar">
                   @for (p of r.parts; track p.result) {
-                    <span [class]="p.cls" [style.width.%]="p.pct" [title]="p.title"></span>
+                    <span [class]="p.cls" [style.width.%]="p.pct"></span>
                   }
                 </span>
                 <span class="val">{{ r.value }}@if (r.note) {<small> {{ r.note }}</small>}</span>
@@ -62,7 +64,7 @@ const WIDE = 1200;
               <text [attr.x]="c.l - 6" [attr.y]="g.y + 3" class="axis" text-anchor="end">{{ g.label }}</text>
             }
             @for (r of c.rects; track $index) {
-              <rect [attr.x]="r.x" [attr.y]="r.y" [attr.width]="r.w" [attr.height]="r.h" [attr.class]="r.cls"><title>{{ r.title }}</title></rect>
+              <rect [attr.x]="r.x" [attr.y]="r.y" [attr.width]="r.w" [attr.height]="r.h" [attr.class]="r.cls" [attr.data-tip]="r.title" />
             }
             @for (t of c.ticks; track $index) {
               <text [attr.x]="t.x" [attr.y]="c.h - 6" class="axis" text-anchor="middle">{{ t.label }}</text>
@@ -80,7 +82,7 @@ const WIDE = 1200;
               <text [attr.x]="t.x" [attr.y]="b.h - 8" class="axis" text-anchor="middle">{{ t.label }}</text>
             }
             @for (d of b.dots; track $index) {
-              <circle [attr.cx]="d.cx" [attr.cy]="d.cy" [attr.r]="d.r" [attr.class]="d.cls"><title>{{ d.title }}</title></circle>
+              <circle [attr.cx]="d.cx" [attr.cy]="d.cy" [attr.r]="d.r" [attr.class]="d.cls" [attr.data-tip]="d.title" />
               @if (d.text) {<text [attr.x]="d.cx" [attr.y]="d.cy - d.r - 4" class="plab" text-anchor="middle">{{ d.text }}</text>}
             }
           </svg>
@@ -161,6 +163,8 @@ export class AnswerChart {
       hl: hl.has(c.key),
       value: hkd(c.total, s.unit),
       note: c.note,
+      tip: [c.label, ...c.parts.filter((p) => p.value > 0 && p.result !== 'All').map((p) => `${RESULT_LABEL[p.result] || p.result}: ${hkd(p.value, s.unit)}`),
+        `Total: ${hkd(c.total, s.unit)}`, ...(c.note ? [c.note] : [])].join('\n'),
       parts: c.parts
         .filter((p) => p.value > 0)
         .map((p) => ({
@@ -191,7 +195,7 @@ export class AnswerChart {
       for (const p of c.parts) {
         const hgt = Math.max(0, ((h - b - t) * p.value) / max);
         y -= hgt;
-        rects.push({ x, y, w: bw, h: hgt, cls: RESULT_CLASS[p.result] ?? 'r-all', title: `${c.label} · ${RESULT_LABEL[p.result] || p.result}: ${hkd(p.value)}` });
+        rects.push({ x, y, w: bw, h: hgt, cls: RESULT_CLASS[p.result] ?? 'r-all', title: `${c.label}\n${RESULT_LABEL[p.result] || p.result}: ${hkd(p.value)}\nDay total: ${hkd(c.total)}` });
       }
       if (n % every === 0) ticks.push({ x: x + bw / 2, label: c.label });
     });
@@ -223,7 +227,7 @@ export class AnswerChart {
         cy: Y(p.y),
         r: 3 + 13 * Math.sqrt(p.size / smax),
         cls: `${RESULT_CLASS[p.result] ?? 'r-all'}${on ? '' : ' dim'}`,
-        title: `${p.label} · ${p.x}% · ${RESULT_LABEL[p.result] || p.result} · ${p.y} deals · ${hkd(p.size)}`,
+        title: `${p.label}\nMTM ${p.x}% · ${RESULT_LABEL[p.result] || p.result}\n${p.y} deals · ${hkd(p.size)}`,
         text: hl.size && hl.has(p.label) ? p.label : '',
       };
     });

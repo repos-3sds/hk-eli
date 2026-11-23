@@ -49,9 +49,9 @@ FIELDS = {
 }
 # Tableau parameters (datasource "Parameters"): name -> (caption, datatype, default, domain xml)
 PARAMS = {
-    "Parameter 1": ("Market Spot", "real", "1.0", "<range granularity='0.01' max='1.2' min='0.5' />"),
+    "Parameter 1": ("Market Spot", "real", "1.0", "<range granularity='0.01' max='2.0' min='0.0' />"),
     "Parameter 2": ("Shock Ticker", "string", "&quot;&quot;", ""),
-    "Parameter 3": ("Shock %", "real", "0.0", "<range granularity='0.01' max='0.5' min='-0.6' />"),
+    "Parameter 3": ("Shock %", "real", "0.0", "<range granularity='0.01' max='1.0' min='-1.0' />"),
 }
 SPOT, TICKER, SHOCK = "[Parameters].[Parameter 1]", "[Parameters].[Parameter 2]", "[Parameters].[Parameter 3]"
 # Simulated level of each basket stock: the named stock moves by Shock %, then every stock by Market Spot.

@@ -1,10 +1,18 @@
 import { ChangeDetectionStrategy, Component, computed, effect, input, output, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSliderModule } from '@angular/material/slider';
+import { HoverTip } from '../../core/ui/hover-tip';
 import { ScenarioBreakdown, ScenarioSpec, ScenarioStatus, ScenarioStep } from '../../core/chat/chat.models';
 
 export const STATUS_ORDER: readonly ScenarioStatus[] = ['KO', 'EXP', 'EXP(Below Strike)', 'EX'];
 const STATUS_LABEL: Record<ScenarioStatus, string> = { KO: 'KO', EXP: 'Expiry', 'EXP(Below Strike)': 'Below strike', EX: 'Exercised' };
+/** What each predicted result means for the client (insight, not advice). */
+export const STATUS_MEANING: Record<ScenarioStatus, string> = {
+  KO: 'Knocked out early: 100% cash back plus coupon',
+  EXP: 'Runs to expiry at or above strike: 100% cash back plus coupon',
+  'EXP(Below Strike)': 'Below strike but not knocked in (airbag intact): 100% cash back',
+  EX: 'Knocked in and below strike: shares delivered at strike, a loss',
+};
 const STATUS_CLASS: Record<ScenarioStatus, string> = { KO: 'r-ko', EXP: 'r-exp', 'EXP(Below Strike)': 'r-bs', EX: 'r-ex' };
 
 /** The agent's money format (poc svg.money), so the tiles read the same as the words next to them. */
@@ -43,7 +51,7 @@ const CL = 58;
  */
 @Component({
   selector: 'eli-scenario-card',
-  imports: [MatIconModule, MatSliderModule],
+  imports: [MatIconModule, MatSliderModule, HoverTip],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './scenario-card.html',
   styleUrl: './scenario-card.scss',
@@ -140,7 +148,14 @@ export class ScenarioCard {
         y -= h;
         return { k, cls: STATUS_CLASS[k], x, y, w: bw, h, title: `${g.label}: ${STATUS_LABEL[k]} ${money(g.statuses[k].hkd)}, ${g.statuses[k].positions} positions` };
       });
-      return { i, x, w: bw, parts };
+      const total = STATUS_ORDER.reduce((a, k) => a + g.statuses[k].hkd, 0);
+      const tip = [
+        `${s.kind === 'market' ? 'Market spot ' : (s.ticker ?? '') + ' '}${levelLabel(s, s.moves[i])}`,
+        ...STATUS_ORDER.filter((k) => g.statuses[k].positions > 0).map((k) => `${STATUS_LABEL[k]}: ${money(g.statuses[k].hkd)} · ${g.statuses[k].positions} positions`),
+        `Changed vs today: ${g.changed.positions} positions · ${money(g.changed.hkd)}`,
+        `Total exposed: ${money(total)}`,
+      ].join('\n');
+      return { i, x, w: bw, parts, tip };
     });
     const every = n > 41 ? 10 : 5; // 101 steps: a label every 10 points, so they never touch
     const ticks = s.moves
@@ -153,7 +168,7 @@ export class ScenarioCard {
     return { bars, ticks, grid };
   });
 
-  protected readonly legend = computed(() => STATUS_ORDER.map((k) => ({ k, cls: STATUS_CLASS[k], label: STATUS_LABEL[k] })));
+  protected readonly legend = computed(() => STATUS_ORDER.map((k) => ({ k, cls: STATUS_CLASS[k], label: STATUS_LABEL[k], tip: `${STATUS_LABEL[k]} (${k})\n${STATUS_MEANING[k]}` })));
 
   protected readonly rows = computed<{ r: ScenarioBreakdown; pct: number; track: number }[]>(() => {
     const st = this.step();
@@ -231,6 +246,9 @@ export class ScenarioCard {
 
   protected statusLabel(k: ScenarioStatus): string {
     return STATUS_LABEL[k];
+  }
+  protected statusTip(k: ScenarioStatus): string {
+    return `${STATUS_LABEL[k]} (${k})\n${STATUS_MEANING[k]}`;
   }
   protected statusClass(k: ScenarioStatus): string {
     return STATUS_CLASS[k];
