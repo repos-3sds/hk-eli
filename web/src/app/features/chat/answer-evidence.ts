@@ -23,12 +23,12 @@ export class AnswerNotices {
   readonly block = input.required<NoticesBlock>();
 }
 
-/** Sources and proofs, then how the answer was produced (Ask MIRA's layout). Open by default (Hawk: don't collapse). */
+/** Sources and proofs, then how the answer was produced (Ask MIRA's layout). Collapsed by default (Hawk, 23 Nov 2026); a click opens each. */
 @Component({
   selector: 'eli-answer-evidence',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <details open>
+    <details>
       @if (figures().length || block().views.length) {
         <summary>Sources and proofs · {{ figures().length }} {{ figures().length === 1 ? 'figure' : 'figures' }} · {{ block().views.length }} {{ block().views.length === 1 ? 'source' : 'sources' }}</summary>
       } @else {
@@ -59,7 +59,7 @@ export class AnswerNotices {
       @if (block().assumptions.length) {<p class="muted assume">Assumed: {{ block().assumptions.join(' ') }}</p>}
     </details>
     @if (block().steps.length) {
-      <details open>
+      <details>
         <summary>How this was produced{{ model() ? ' · ' + model() : '' }} · {{ seconds() }}</summary>
         <ol class="steps">
           @for (s of block().steps; track s.n) {
@@ -73,6 +73,8 @@ export class AnswerNotices {
   styles: `
     :host { display: flex; flex-direction: column; gap: var(--eli-space-6); padding-top: var(--eli-space-6); border-top: 1px solid var(--eli-separator); }
     summary { cursor: pointer; color: var(--eli-text-muted-2); font-size: var(--eli-font-size-xs); font-weight: var(--eli-weight-semibold); letter-spacing: 0.06em; text-transform: uppercase; }
+    summary:hover { color: var(--eli-text-strong); }
+    summary:focus-visible { outline: 2px solid var(--eli-focus-ring); outline-offset: 2px; border-radius: var(--eli-radius-s); }
     details[open] summary { margin-bottom: var(--eli-space-5); }
     .muted { color: var(--eli-text-muted); font-size: var(--eli-font-size-s); }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--eli-font-size-xs); overflow-wrap: anywhere; }
