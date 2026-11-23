@@ -123,9 +123,13 @@ def merge_intent(base: Intent, raw: dict, kb: KB.Knowledge, today: date) -> tupl
     it.ranking = bool(h.get("ranking") or raw.get("ranking"))
     if raw.get("needs_clarification") and intent == "unknown":
         it.assumptions.append("clarify: " + str(raw.get("clarification") or "")[:300])
+    if base.shock:
+        # a what-if read by code wins: the named stock is the one being moved, not a WPS filter
+        it.intent, it.shock, it.wps = "scenario_analysis", base.shock, None
+        it.assumptions.extend(a for a in base.assumptions if a not in it.assumptions)
     it.grain = grain_for(it)
     apply_defaults(it)
-    if intent != base.intent:
+    if it.intent != base.intent:
         it.assumptions.append(f"Read as '{intent.replace('_', ' ')}'.")
     return it, []
 

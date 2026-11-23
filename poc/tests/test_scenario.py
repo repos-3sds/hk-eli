@@ -176,3 +176,15 @@ def test_topic_bundle_flags_a_view_that_cannot_take_the_scope():
     a = answer("Which branches in D1 have the largest TRE predicted maturity in the next 60 days?", InProcessMock(), "current")
     assert a["status"] == "UNSUPPORTED"     # fixed 30-day sheets: no embed at all, never a wrong scope
     assert not a.get("embeds")
+
+
+def test_what_if_survives_the_model_reading():
+    """With the gateway on, the model's intent is merged in; the what-if code read (stock, size) must win."""
+    from hkeli_poc import knowledge as KB
+    from hkeli_poc.stork.agent import merge_intent
+    base = understand(Q_NVDA, TODAY)
+    raw = {"intent": "scenario_analysis", "wps": "NVDA UW", "segments": [], "ranking": False}
+    it, problems = merge_intent(base, raw, KB.load(), TODAY)
+    assert problems == []
+    assert it.shock == base.shock and it.shock["move"] == -0.10
+    assert it.wps is None and it.intent == "scenario_analysis" and it.grain == "position"
