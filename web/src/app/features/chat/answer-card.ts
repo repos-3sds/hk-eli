@@ -1,15 +1,17 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { ChatAnswer } from '../../core/chat/chat.models';
 import { AnswerChart } from './answer-chart';
 import { AnswerEvidence, AnswerNotices } from './answer-evidence';
 import { AnswerText } from './answer-text';
+import { ScenarioCard } from './scenario-card';
+import { TableauViews } from './tableau-views';
 
 /** One answer: typed blocks (text, facts, client rows, bars, ideas, bullets), the trust line and follow-up questions. */
 @Component({
   selector: 'eli-answer-card',
-  imports: [MatButtonModule, MatIconModule, AnswerChart, AnswerNotices, AnswerEvidence, AnswerText],
+  imports: [MatButtonModule, MatIconModule, AnswerChart, AnswerNotices, AnswerEvidence, AnswerText, ScenarioCard, TableauViews],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <article class="card" [class.fallback]="answer().fallback">
@@ -70,6 +72,12 @@ import { AnswerText } from './answer-text';
           }
           @case ('chart') {
             <eli-answer-chart [spec]="b.spec" />
+          }
+          @case ('scenario') {
+            <eli-scenario-card [spec]="b.spec" (level)="move.set($event)" />
+          }
+          @case ('views') {
+            <eli-tableau-views [embeds]="b.embeds" [move]="scenarioMove()" [ticker]="scenarioTicker()" />
           }
           @case ('notices') {
             <eli-answer-notices [block]="b" />
@@ -161,6 +169,18 @@ export class AnswerCard {
 
   protected refreshed(): string {
     return (this.answer().refreshedAt ?? '').replace('T', ' ');
+  }
+
+  /** The what-if slider's level once the user moves it; until then the views keep the asked level. */
+  protected readonly move = signal<number | null>(null);
+  protected scenarioMove(): number | null {
+    const sc = this.answer().blocks.find((b) => b.kind === 'scenario');
+    if (!sc || sc.kind !== 'scenario') return null;
+    return this.move() ?? sc.spec.move;
+  }
+  protected scenarioTicker(): string | null {
+    const sc = this.answer().blocks.find((b) => b.kind === 'scenario');
+    return sc && sc.kind === 'scenario' ? sc.spec.ticker : null;
   }
 
   readonly answer = input.required<ChatAnswer>();

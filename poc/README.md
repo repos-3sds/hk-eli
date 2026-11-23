@@ -87,8 +87,16 @@ Status values: `OK`, `OK_WITH_WARNING`, `NO_DATA`, `NEEDS_CLARIFICATION`, `UNSUP
 
 The mock holds the 12 published HK_ELI views on synthetic data, in two versions: `current` (as the spec
 describes it today) and `proposed` (with worksheet changes W1–W7). `/compare` runs one question per change
-on both. All data is invented. `scripts/check_tableau.py` compares a real site with the view contract and
+on both. All data is invented. The proposed workbook also has W8, the position scenario sheet for
+single-stock what-ifs (see [docs/whatif-scenario.md](docs/whatif-scenario.md)). `scripts/check_tableau.py` compares a real site with the view contract and
 prints only names, counts and pass/fail.
+
+## What-if simulation
+
+"If NVDA falls below 10%, how many portfolios change status?" or "market spot from 100 to 80%": the engine
+(`stork/scenario.py`) works out every slider step from the view rows, reconciles with the sheet's Predictive
+Result, and checks each step's words against its figures. The widget's slider picks a step and drives
+Market Spot or Shock % on the embedded views live. Details and the W8 ask: [docs/whatif-scenario.md](docs/whatif-scenario.md).
 
 ## Semantic catalog and concept matcher
 

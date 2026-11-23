@@ -25,6 +25,8 @@ Q_NVDA = "If NVDA falls below 10%, what happens? How many portfolios will change
     ("What if market spot is 0.9", "market", None, -0.10),
     ("What if the market falls 20%?", "market", None, -0.20),
     ("What happens if Tesla falls?", "single", "TSLA UW", None),
+    ("What if market spot goes from 100% to 80%?", "market", None, -0.20),
+    ("If I change the market spot from 100 to 80%, what changes?", "market", None, -0.20),
 ])
 def test_shock_is_read_from_the_words(q, kind, ticker, move):
     it = understand(q, TODAY)

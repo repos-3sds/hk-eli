@@ -222,11 +222,12 @@ def build(intent: Intent, reg: Registry, anchor: date, anchor_known: bool, force
     if intent.intent == "scenario_analysis" and sh.get("ticker"):
         if "in_shock_basket" in v["filters"]:
             plan.vf["in_shock_basket"] = ["TRUE"]
-        elif "wps" in v["filters"] and v["kind"] == "bubble":
-            plan.vf["wps"] = [sh["ticker"]]
+        elif "wps" in v["dimensions"]:
+            # WPS views can't select "any stock in the basket": mark the stock where it is the worst performer
+            plan.embed_highlight, plan.embed_highlight_field = [sh["ticker"]], "wps"
             plan.caveats.append({"code": "WPS_ONLY", "level": "info",
-                                 "text": f"This view filters by worst-performing stock, so it shows ELI where {sh['ticker']} "
-                                         "is the worst performer today, not every ELI that holds it."})
+                                 "text": f"{sh['ticker']} is highlighted where it is the worst-performing stock today; "
+                                         "this view can't show every ELI that holds it."})
 
     if intent.result and intent.intent in ("customer_count", "maturity_detail", "district"):
         plan.vf["predict_result"] = [intent.result]

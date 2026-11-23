@@ -194,7 +194,9 @@ def parse_shock(q: str, ticker: str | None) -> dict | None:
     if not WHATIF.search(s):
         return None
     assumption = None
-    m = re.search(r"market\s*spot\s*(?:is|at|to|of|=|becomes|goes to)?\s*(\d+(?:\.\d+)?)\s*(%?)", s) or \
+    # "from 100 to 80%": the level it goes to is the one that counts
+    m = re.search(r"spot\b[^?.]*?\bfrom\s+\d+(?:\.\d+)?\s*%?\s*(?:to|->|→)\s*(\d+(?:\.\d+)?)\s*(%?)", s) or \
+        re.search(r"market\s*spot\s*(?:is|at|to|of|=|becomes|goes to|changes to|moves to)?\s*(\d+(?:\.\d+)?)\s*(%?)", s) or \
         re.search(r"spot\s+(?:at|to|of)\s+(\d+(?:\.\d+)?)\s*(%?)", s)
     if m:
         x = float(m.group(1))

@@ -91,6 +91,14 @@ def answer(question: str, http, site: str, scenario: str | None = None, user: st
         out["concepts"] = [{"concept": c["concept"], "label": c.get("label") or c["concept"],
                             "value": c.get("short") or c.get("value"), "gap": bool(c.get("gap"))}
                            for c in it.concepts if not c["concept"].startswith("metric:") and not c.get("flag")]
+        if it.shock:
+            # in a what-if the stock is the one being moved, not a worst-performer filter
+            shock_label = "Market move" if it.shock["kind"] == "market" else "Stock moved"
+            shock_value = (f"spot {round((1 + it.shock['move']) * 100)}%" if it.shock["kind"] == "market" and it.shock["move"] is not None
+                           else it.shock["ticker"])
+            out["concepts"] = [c for c in out["concepts"] if c["concept"] not in ("wps", "market_spot")]
+            if shock_value:
+                out["concepts"].insert(0, {"concept": "shock", "label": shock_label, "value": shock_value, "gap": False})
         tr.add("Concepts", {"found": [c["concept"] + (f"={c['value']}" if c["value"] else "") for c in it.concepts
                                       if not c.get("gap")],
                             "not_in_views": [c["concept"] for c in it.concepts if c.get("gap")],
@@ -775,8 +783,9 @@ def _scenario(it, reg, client, out, tr, site, scen, anchor, anchor_known):
                               f"({money(res.universe['hkd'])}); it is the worst performer today in {res.universe['as_wps']} of them.")
     else:
         out["bullets"].append("Market spot moves every underlying by the same factor: simulated level = worst-of level x market spot.")
-    out["bullets"].append("Move the slider to see every level from today to "
-                          f"{'-' if res.moves[-1] < 0 else '+'}{_pct(res.moves[-1])}; the words and charts follow the slider.")
+    end = (f"a market spot of {round((1 + res.moves[-1]) * 100)}%" if shock.kind == "market"
+           else f"{'-' if res.moves[-1] < 0 else '+'}{_pct(res.moves[-1])}")
+    out["bullets"].append(f"Move the slider to see every level from today to {end}; the words, charts and Tableau views follow it.")
     if asked["transitions"]:
         out["table"] = {"columns": ["From", "To", "Positions", "HKD"],
                         "rows": [[t["from"], t["to"], str(t["positions"]), money(t["hkd"])] for t in asked["transitions"]]}

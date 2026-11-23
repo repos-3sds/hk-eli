@@ -180,21 +180,22 @@ def narrative(shock: Shock, st: dict, universe: dict) -> tuple[str, list[str]]:
 
     n, hkd = universe["positions"], universe["hkd"]
     if shock.kind == "market":
-        what = f"If the market spot is {f(str(round((1 + st['move']) * 100)))}% (every underlying {f(str(abs(round(st['move'] * 100))))}% {'lower' if st['move'] < 0 else 'higher'})"
+        what = (f"A market spot of {f(str(round((1 + st['move']) * 100)))}% (every underlying "
+                f"{f(str(abs(round(st['move'] * 100))))}% {'lower' if st['move'] < 0 else 'higher'})")
         pool = f"the {f(str(n))} live positions ({f(_hkd(hkd))})"
     else:
-        what = f"If {shock.ticker} {'falls' if st['move'] < 0 else 'rises'} {f(str(abs(round(st['move'] * 100))))}%"
+        what = f"A {f(str(abs(round(st['move'] * 100))))}% {'fall' if st['move'] < 0 else 'rise'} in {shock.ticker}"
         pool = f"the {f(str(n))} live positions with {shock.ticker} in the basket ({f(_hkd(hkd))})"
     if st["move"] == 0:
         return (f"At today's levels nothing changes. This covers {pool}; move the slider to see which "
                 f"positions would change predicted status."), figs
     c = st["changed"]
     if c["positions"] == 0:
-        txt = f"{what}, none of {pool} changes predicted status."
+        txt = f"{what} would not change the predicted status of any of {pool}."
         if st["near_ki"]["positions"]:
             txt += f" {f(str(st['near_ki']['positions']))} would sit within {f(str(int(NEAR_KI)))} points of knock-in."
         return txt, figs
-    txt = (f"{what}, {f(str(c['positions']))} of {pool} change predicted status: "
+    txt = (f"{what} would change the predicted status of {f(str(c['positions']))} of {pool}: "
            f"{f(_hkd(c['hkd']))}, {f(str(round(c['share'] * 100, 1)))}% of that notional, across "
            f"{f(str(c['customers']))} customers.")
     t = st["transitions"][0]
