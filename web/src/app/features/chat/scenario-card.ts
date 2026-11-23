@@ -29,7 +29,7 @@ export function emphasise(text: string): { t: string; num: boolean }[] {
 }
 
 type Breakdown = 'segment' | 'district' | 'branch';
-export type ScenarioTab = 'summary' | 'changes' | 'positions' | 'views' | 'details';
+export type ScenarioTab = 'changes' | 'positions' | 'views' | 'details';
 
 let uidSeq = 0;
 const CW = 600;
@@ -60,7 +60,7 @@ export class ScenarioCard {
   protected readonly uid = `eli-sc-${++uidSeq}`;
   protected readonly index = signal(0);
   protected readonly breakdown = signal<Breakdown>('segment');
-  protected readonly tab = signal<ScenarioTab>('summary');
+  protected readonly tab = signal<ScenarioTab>('changes');
   protected readonly statuses = STATUS_ORDER;
   protected readonly cw = CW;
   protected readonly ch = CH;
@@ -81,17 +81,16 @@ export class ScenarioCard {
   });
   protected readonly presets = computed(() => {
     const s = this.spec();
-    const want = new Set([0, 5, 10, 20, 30, Math.round(Math.abs(s.move) * 100)]);
+    const want = new Set([0, 5, 10, 20, 30, 50, 75, 100, Math.round(Math.abs(s.move) * 100)]);
     return s.moves
       .map((m, i) => ({ i, m, label: i === 0 ? 'Today' : levelLabel(s, m), asked: i === s.asked_index }))
       .filter((p) => want.has(Math.round(Math.abs(p.m) * 100)));
   });
 
-  /** Sections as tabs, so the card fits a screen; the words and slider above stay put. */
+  /** The overview (tiles and chart) always shows; the detail sections sit below it behind tabs. */
   protected readonly tabs = computed(() => {
     const st = this.step();
     const out: { id: ScenarioTab; label: string; count: number | null }[] = [
-      { id: 'summary', label: 'Summary', count: null },
       { id: 'changes', label: 'What changes', count: st.changed.positions },
       { id: 'positions', label: 'Positions vs barriers', count: this.spec().ladder.length || null },
     ];
@@ -143,10 +142,13 @@ export class ScenarioCard {
       });
       return { i, x, w: bw, parts };
     });
+    const every = n > 41 ? 10 : 5; // 101 steps: a label every 10 points, so they never touch
     const ticks = s.moves
       .map((m, i) => ({ i, m }))
-      .filter(({ m }) => Math.round(Math.abs(m) * 100) % 5 === 0)
-      .map(({ m, i }) => ({ x: CL + i * slot + slot / 2, label: levelLabel(s, m) }));
+      .filter(({ m }) => Math.round(Math.abs(m) * 100) % every === 0)
+      .map(({ m, i }) => ({ x: CL + i * slot + slot / 2, label: levelLabel(s, m) }))
+      // the end labels sit inside the chart, so "−100%" is never cut off at the edge
+      .map((t) => ({ ...t, anchor: t.x > CW - 24 ? 'end' : 'middle', x: t.x > CW - 24 ? CW : t.x }));
     const grid = [0, 0.5, 1].map((f) => ({ y: CH - 22 - plotH * f, label: money(max * f).replace('HKD ', '') }));
     return { bars, ticks, grid };
   });
@@ -160,12 +162,22 @@ export class ScenarioCard {
     return list.slice(0, 8).map((r) => ({ r, pct: (100 * r.changed_hkd) / max, track: (100 * r.exposed_hkd) / max }));
   });
 
+  /** One scale for the whole slider range (it never shifts while sliding): every level any step reaches, in 25s. */
+  protected readonly ladderScale = computed(() => {
+    const vals = this.spec().ladder.flatMap((r) => [r.ki, r.strike, r.ko, r.now.mtm, ...r.path.map((p) => p[0])]);
+    const lo = Math.max(0, Math.min(40, Math.floor(Math.min(...vals, 100) / 25) * 25));
+    const hi = Math.max(140, Math.ceil(Math.max(...vals, 100) / 25) * 25);
+    const every = hi - lo > 150 ? 50 : 25;
+    const ticks = [];
+    for (let v = Math.ceil(lo / every) * every; v <= hi; v += every) ticks.push({ v, x: ((v - lo) / (hi - lo)) * 100 });
+    return { lo, hi, ticks };
+  });
+
   /** The positions that move most, each against its own KI, strike and KO, from today to the picked level. */
   protected readonly ladder = computed(() => {
     const s = this.spec();
     const i = this.index();
-    const lo = 40;
-    const hi = 140;
+    const { lo, hi } = this.ladderScale();
     const x = (v: number) => Math.max(0, Math.min(100, ((v - lo) / (hi - lo)) * 100));
     return s.ladder.map((r) => {
       const [sim, status, wps] = r.path[i];
@@ -178,7 +190,6 @@ export class ScenarioCard {
       };
     });
   });
-  protected readonly ladderTicks = [50, 75, 100, 125].map((v) => ({ v, x: ((v - 40) / 100) * 100 }));
 
   protected select(i: number): void {
     const n = Math.max(0, Math.min(this.last(), i));
@@ -188,6 +199,34 @@ export class ScenarioCard {
 
   protected onSlider(v: number): void {
     this.select(v);
+  }
+
+  /** The number in the % box: the size of the move (10 for −10%), or the market spot (90 for 90%). */
+  protected levelNumber(i: number): number {
+    const m = this.spec().moves[i];
+    return this.spec().control.unit === 'spot' ? Math.round((1 + m) * 100) : Math.abs(Math.round(m * 100));
+  }
+  protected readonly inputMin = computed(() => Math.min(this.levelNumber(0), this.levelNumber(this.last())));
+  protected readonly inputMax = computed(() => Math.max(this.levelNumber(0), this.levelNumber(this.last())));
+  /** "−" before the box for a fall, "+" for a rise; none for market spot, which is a level, not a move. */
+  protected readonly inputSign = computed(() => {
+    const s = this.spec();
+    return s.control.unit === 'spot' ? '' : s.moves[this.last()] < 0 ? '−' : '+';
+  });
+
+  /** A typed %: the nearest slider step (1 point apart), kept inside the range. A sign typed with a move is ignored. */
+  protected onTyped(box: HTMLInputElement): void {
+    const raw = parseFloat(box.value.replace('−', '-'));
+    if (Number.isFinite(raw)) {
+      const v = this.spec().control.unit === 'spot' ? raw : Math.abs(raw);
+      const moves = this.spec().moves;
+      let best = 0;
+      moves.forEach((_m, k) => {
+        if (Math.abs(this.levelNumber(k) - v) < Math.abs(this.levelNumber(best) - v)) best = k;
+      });
+      this.select(best);
+    }
+    box.value = String(this.levelNumber(this.index())); // show what was applied, also when the same step or a bad value
   }
 
   protected statusLabel(k: ScenarioStatus): string {
