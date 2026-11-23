@@ -211,6 +211,38 @@ def _population(view: dict, ds: Dataset) -> list[dict]:
     return rows
 
 
+# Filter cards the embed offers, like Tableau's quick filters. A range field with many values is left to the
+# "Matures within" flags (in_n7 ... in_n90), which the widget groups into one card.
+NO_FILTER_CARD = {"days_to_pred_maturity"}
+MAX_CARD_VALUES = 200
+
+
+def filter_cards(site: str, view: dict, vf: dict[str, list[str]], stale: bool = False) -> list[dict]:
+    """Each published filter on the view with its values (the domain) and what is applied now (None = all).
+
+    The domain comes from the worksheet's own rows (its fixed filters and parameters applied), as Tableau lists
+    "all values in the database" for the sheet.
+    """
+    ds = dataset(stale)
+    bd = ds.business_date
+    vf = dict(vf)
+    params = {k: vf.pop(k) for k in list(vf) if k in PARAMETERS}
+    pop = _population(view, ds)
+    if view["parameters"]:
+        pop = _simulate(pop, view, params, {})
+    cards = []
+    for field in view["filters"]:
+        if field in view["missing"] or field in NO_FILTER_CARD:
+            continue
+        values = sorted({_value(r, field, bd) for r in pop})
+        if len(values) > MAX_CARD_VALUES:
+            continue
+        # [] = nothing ticked (an empty view), None = no filter (all values)
+        applied = [x for x in vf[field] if x != ""] if field in vf else None
+        cards.append({"field": field, "caption": CAPTION.get(field, field), "values": values, "applied": applied})
+    return cards
+
+
 def _mtm_bin(x: float) -> int:
     return int(x // 5 * 5)  # 5-point bins, as the mock worksheet defines them
 

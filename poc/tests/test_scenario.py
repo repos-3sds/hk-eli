@@ -238,3 +238,20 @@ def test_four_stock_basket_and_a_two_stock_view_still_work():
     cols2, rows2 = _rows_with_legs(2)                                          # today's HK_ELI shape: two legs
     p2 = SC.positions_from_rows(cols2, rows2)[0]
     assert SC.basket(p2) == ["AAA", "BBB"] and SC.simulate(p2, "single", "AAA", -0.10)["wps"] == "AAA"
+
+
+def test_embed_page_lists_its_filter_cards_with_values_and_what_is_applied():
+    import json as _json
+    import re as _re
+    v = find_view("proposed", "ALL_position_scenario")
+    frag = embed_html("proposed", v, {"bp_div_type": ["Treasures(HK)"], "wps": [""]}, [], frame=False)
+    cards = {c["field"]: c for c in _json.loads(_re.search(r'id="hk-filters">(.*?)</script>', frag, _re.S).group(1))}
+    assert set(cards) == {"deal_status", "bp_div_type", "cust_district", "cust_branch", "in_shock_basket", "wps", "predict_result"}
+    assert cards["bp_div_type"]["applied"] == ["Treasures(HK)"] and "PB" in cards["bp_div_type"]["values"]
+    assert cards["cust_branch"]["applied"] is None          # no filter = all values
+    assert cards["wps"]["applied"] == []                    # nothing ticked = an empty view, as in Tableau
+    assert cards["predict_result"]["values"] == ["EX", "EXP", "EXP(Below Strike)", "KO"]
+    # a range field with many values is left to the "matures within" flags
+    m = find_view("proposed", "TRE_maturity_detail_n30d")
+    page = embed_html("proposed", m, {}, [])
+    assert "getFiltersAsync" in page and '"field": "in_n30"' in page and '"days_to_pred_maturity"' not in page.split("hk-filters")[1]

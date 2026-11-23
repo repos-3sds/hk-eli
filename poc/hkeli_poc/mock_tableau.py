@@ -16,13 +16,14 @@ from __future__ import annotations
 import csv
 import html
 import io
+import json
 import secrets
 
 from fastapi import APIRouter, Header, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 
 from . import svg
-from .workbook import CAPTION, PARAMETERS, SITES, VIEWS, find_view, public_catalog, query_view
+from .workbook import CAPTION, PARAMETERS, SITES, VIEWS, filter_cards, find_view, public_catalog, query_view
 
 router = APIRouter(prefix="/tableau")
 _TOKENS: dict[str, str] = {}
@@ -110,6 +111,8 @@ EMBED_JS = """
 (function(){
   var params=new URLSearchParams(location.search), root=document.getElementById('hk-viz');
   function post(m){ if(parent!==window) parent.postMessage(Object.assign({source:'hkeli-viz'},m), location.origin); }
+  // The view's filter cards (field, caption, values, applied), as Tableau's getFiltersAsync + getDomainAsync give them.
+  function filters(){ var el=root.querySelector('#hk-filters'); try{ return el?JSON.parse(el.textContent):[]; }catch(e){ return []; } }
   function render(id){
     root.classList.add('busy');
     var q=new URLSearchParams(params); q.set(':fragment','1');
@@ -121,6 +124,7 @@ EMBED_JS = """
   window.addEventListener('message',function(ev){
     if(ev.origin!==location.origin||!ev.data||ev.data.target!=='hkeli-viz') return;
     var d=ev.data;
+    if(d.method==='getFiltersAsync'){ post({event:'done',id:d.id,data:filters()}); return; }
     if(d.method==='applyFilterAsync'){ params.set(d.field,(d.values||[]).join(',')); }
     else if(d.method==='clearFilterAsync'){ params.delete(d.field); }
     else if(d.method==='changeParameterValueAsync'){ params.set(d.name,String(d.value)); }
@@ -182,11 +186,14 @@ def embed_html(site: str, view: dict, filters: dict[str, list[str]], highlight: 
         chips.append(f'<span class="chip off" title="Not a published filter on this view, so the embed cannot apply it">'
                      f'{html.escape(CAPTION.get(f, f))}: not a filter on this view</span>')
     body = svg.render(view, cols, rows, highlight)
+    # "</" can't close the script early: json.dumps leaves "<" as is, so escape it
+    cards = json.dumps(filter_cards(site, view, {**applied, **params}, stale=stale)).replace("<", "\\u003c")
     inner = f"""<div class="bar"><b>{html.escape(view['name'])}</b><span class="tag">HK_ELI</span>
 <span class="tag {site}">{'Workbook with W1–W7' if site == 'proposed' else 'Workbook today'}</span>
 <span class="muted small" style="margin-left:auto">Mock Tableau · synthetic data</span></div>
 <div class="filters">{''.join(chips) or '<span class="muted small">No filters</span>'}</div>
-<div class="body">{body}</div>"""
+<div class="body">{body}</div>
+<script type="application/json" id="hk-filters">{cards}</script>"""
     if not frame:
         return inner
     return (f"<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
