@@ -15,10 +15,12 @@ export function flagDays(c: VizFilterCard): number | null {
 }
 
 export function summary(c: VizFilterCard): string {
+  // Only an unfiltered card reads "All": a view filtered to its only value (Deal Status = LIVE) says so
   const a = c.applied;
-  if (a === null || (a.length === c.values.length && c.values.every((v) => a.includes(v)))) return 'All';
+  if (a === null) return 'All';
   if (a.length === 0) return 'None';
   if (a.length === 1) return a[0];
+  if (a.length === c.values.length && c.values.every((v) => a.includes(v))) return a.length <= 3 ? a.join(', ') : `All ${a.length}`;
   return `${a.length} of ${c.values.length}`;
 }
 
@@ -44,7 +46,7 @@ export function summary(c: VizFilterCard): string {
       }
       @for (c of lists(); track c.field) {
         <div class="slot">
-          <button type="button" class="card" [class.on]="summaryOf(c) !== 'All'" [disabled]="busy()"
+          <button type="button" class="card" [class.on]="c.applied !== null" [disabled]="busy()"
                   [attr.aria-expanded]="open() === c.field" (click)="toggle(c.field)">
             <span class="cap">{{ c.caption }}</span><span class="val">{{ summaryOf(c) }}</span><span class="caret" aria-hidden="true">▾</span>
           </button>
@@ -54,7 +56,7 @@ export function summary(c: VizFilterCard): string {
                 <input class="find" type="search" placeholder="Search" [attr.aria-label]="'Search ' + c.caption"
                        [value]="query()" (input)="query.set($any($event.target).value)" />
               }
-              <label class="opt all"><input type="checkbox" [checked]="summaryOf(c) === 'All'" (change)="all(c, $any($event.target).checked)" />(All)</label>
+              <label class="opt all"><input type="checkbox" [checked]="c.applied === null || c.applied.length === c.values.length" (change)="all(c, $any($event.target).checked)" />(All)</label>
               <div class="opts">
                 @for (v of shown(c); track v) {
                   <label class="opt"><input type="checkbox" [checked]="isOn(c, v)" (change)="tick(c, v, $any($event.target).checked)" />{{ v }}</label>

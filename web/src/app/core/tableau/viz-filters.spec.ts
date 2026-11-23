@@ -23,6 +23,8 @@ describe('VizFilters', () => {
     expect(summary(BRANCH)).toBe('All');
     expect(summary({ ...SEG, applied: ['PB', 'Treasures(HK)'] })).toBe('2 of 3');
     expect(summary({ ...SEG, applied: [] })).toBe('None');
+    // filtered to the only value it has: say the value, not "All"
+    expect(summary({ field: 'deal_status', caption: 'Deal Status', values: ['LIVE'], applied: ['LIVE'] })).toBe('LIVE');
     expect(flagDays(flag(30))).toBe(30);
     expect(flagDays(SEG)).toBeNull();
   });
