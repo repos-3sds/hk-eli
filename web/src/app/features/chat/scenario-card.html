@@ -1,0 +1,173 @@
+@let s = spec();
+@let st = step();
+<section class="sc" aria-label="What-if simulation">
+  <header class="head">
+    <mat-icon svgIcon="sliders" aria-hidden="true" />
+    <span class="eyebrow">What-if</span>
+    <h4 class="title">{{ title() }}</h4>
+    <span class="pill sim" title="Simulated: an instant move from today's level, everything else unchanged">Simulated</span>
+    @if (!asked()) {
+      <button type="button" class="back" (click)="select(s.asked_index)">Back to {{ levelText(s.asked_index) }} (asked)</button>
+    }
+  </header>
+
+  <div class="control">
+    <label class="clabel" [attr.for]="uid">{{ s.control.caption }}</label>
+    <mat-slider class="slider" [min]="0" [max]="last()" [step]="1" [discrete]="false" [displayWith]="levelText.bind(this)">
+      <input matSliderThumb [id]="uid" [value]="index()" (valueChange)="onSlider($event)"
+        [attr.aria-valuetext]="title()" [attr.aria-label]="s.control.caption" />
+    </mat-slider>
+    <output class="cval" [attr.for]="uid">{{ levelText(index()) }}</output>
+  </div>
+  <div class="presets" role="group" aria-label="Jump to a level">
+    @for (p of presets(); track p.i) {
+      <button type="button" class="preset" [class.on]="p.i === index()" [attr.aria-pressed]="p.i === index()" (click)="select(p.i)">
+        {{ p.label }}@if (p.asked) {<small> asked</small>}
+      </button>
+    }
+  </div>
+
+  <p class="words" aria-live="polite">
+    @for (w of words(); track $index) {@if (w.num) {<b>{{ w.t }}</b>} @else {{{ w.t }}}}
+  </p>
+
+  <div class="tabs" role="tablist" aria-label="What-if sections" (keydown)="onTabKey($event)">
+    @for (t of tabs(); track t.id) {
+      <button type="button" role="tab" class="tab" [id]="uid + '-tab-' + t.id" [attr.aria-controls]="uid + '-panel-' + t.id"
+        [attr.aria-selected]="tab() === t.id" [attr.tabindex]="tab() === t.id ? 0 : -1" [class.on]="tab() === t.id" (click)="tab.set(t.id)">
+        {{ t.label }}@if (t.count !== null) {<span class="tcount">{{ t.count }}</span>}
+      </button>
+    }
+  </div>
+
+  <div class="panel-wrap" role="tabpanel" [id]="uid + '-panel-summary'" [attr.aria-labelledby]="uid + '-tab-summary'" [hidden]="tab() !== 'summary'">
+  <div class="tiles">
+    @for (t of tiles(); track t.label) {
+      <div class="tile" [class.warn]="t.warn">
+        <span class="tl">{{ t.label }}</span>
+        <span class="tv">{{ t.value }}</span>
+        <span class="ts">{{ t.sub }}</span>
+      </div>
+    }
+  </div>
+
+  <figure class="fig">
+    <figcaption>Exposed notional by predicted result, today to {{ levelText(last()) }}</figcaption>
+    @let c = columns();
+    <svg [attr.viewBox]="'0 0 ' + cw + ' ' + ch" role="img" [attr.aria-label]="'Notional by predicted result at each level; ' + title() + ' selected'">
+      @for (g of c.grid; track g.y) {
+        <line x1="58" [attr.x2]="cw" [attr.y1]="g.y" [attr.y2]="g.y" class="grid" />
+        <text x="52" [attr.y]="g.y + 3" class="axis" text-anchor="end">{{ g.label }}</text>
+      }
+      @for (b of c.bars; track b.i) {
+        <g class="col" [class.on]="b.i === index()" (click)="select(b.i)">
+          <rect [attr.x]="b.x - 1" y="0" [attr.width]="b.w + 2" [attr.height]="ch - 22" class="hit" />
+          @for (p of b.parts; track p.k) {
+            <rect [attr.x]="p.x" [attr.y]="p.y" [attr.width]="p.w" [attr.height]="p.h" [attr.class]="p.cls"><title>{{ p.title }}</title></rect>
+          }
+        </g>
+      }
+      @for (t of c.ticks; track t.x) {
+        <text [attr.x]="t.x" [attr.y]="ch - 6" class="axis" text-anchor="middle">{{ t.label }}</text>
+      }
+    </svg>
+    <div class="legend">
+      @for (l of legend(); track l.k) {<span><i [class]="l.cls"></i>{{ l.label }}</span>}
+      <span class="hint">Click a column or use the slider</span>
+    </div>
+  </figure>
+  </div>
+
+  <div class="panel-wrap" role="tabpanel" [id]="uid + '-panel-changes'" [attr.aria-labelledby]="uid + '-tab-changes'" [hidden]="tab() !== 'changes'">
+  <div class="two">
+    <section class="panel" aria-label="What changes">
+      <h5>What changes at {{ levelText(index()) }}</h5>
+      @if (st.transitions.length) {
+        <ul class="trans">
+          @for (t of st.transitions; track t.from + t.to) {
+            <li>
+              <span class="tag" [class]="'tag ' + statusClass(t.from)">{{ statusLabel(t.from) }}</span>
+              <mat-icon svgIcon="arrow-right" aria-label="to" />
+              <span class="tag" [class]="'tag ' + statusClass(t.to)">{{ statusLabel(t.to) }}</span>
+              <span class="tn">{{ t.positions }} {{ t.positions === 1 ? 'position' : 'positions' }}</span>
+              <span class="th">{{ money(t.hkd) }}</span>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="empty">No position changes predicted status at this level.@if (index() === 0) { Move the slider to start.}</p>
+      }
+    </section>
+    <section class="panel" aria-label="Where it lands">
+      <div class="ph">
+        <h5>Where it lands</h5>
+        <div class="seg" role="group" aria-label="Break down by">
+          @for (b of ['segment', 'district', 'branch']; track b) {
+            <button type="button" [class.on]="breakdown() === b" [attr.aria-pressed]="breakdown() === b" (click)="breakdown.set($any(b))">{{ b === 'segment' ? 'Segment' : b === 'district' ? 'District' : 'Branch' }}</button>
+          }
+        </div>
+      </div>
+      @if (rows().length) {
+        <div class="bars">
+          @for (x of rows(); track x.r.key) {
+            <div class="brow">
+              <span class="bl" [title]="x.r.label">{{ x.r.label }}</span>
+              <span class="btrack" [style.width.%]="x.track"><span class="bfill" [style.width.%]="x.track ? (100 * x.pct) / x.track : 0"></span></span>
+              <span class="bv">{{ money(x.r.changed_hkd) }}<small> of {{ money(x.r.exposed_hkd) }}</small></span>
+            </div>
+          }
+        </div>
+        @if (breakdown() !== 'segment') {<p class="foot">Districts and branches are Treasures (HK) only. PB and TPC have none.</p>}
+      } @else {
+        <p class="empty">Nothing to break down at this level.</p>
+      }
+    </section>
+  </div>
+  </div>
+
+  <div class="panel-wrap" role="tabpanel" [id]="uid + '-panel-positions'" [attr.aria-labelledby]="uid + '-tab-positions'" [hidden]="tab() !== 'positions'">
+  @if (ladder().length) {
+    <section class="panel ladder" aria-label="Largest positions against their barriers">
+      <h5>Largest positions against their barriers <small>worst-of level, % of initial</small></h5>
+      <div class="lscale" aria-hidden="true">
+        @for (t of ladderTicks; track t.v) {<span [style.left.%]="t.x">{{ t.v }}%</span>}
+      </div>
+      @for (l of ladder(); track l.r.pos_id) {
+        <div class="lrow" [class.moved]="l.changed">
+          <div class="lmeta"><span class="lname">{{ l.label }}</span><span class="lsub">{{ money(l.r.hkd) }} · {{ l.basket }}</span></div>
+          <div class="ltrack" role="img"
+            [attr.aria-label]="l.label + ': worst-of ' + l.r.now.mtm + '% now, ' + l.sim + '% at ' + levelText(index()) + '; KI ' + l.r.ki + '%, strike ' + l.r.strike + '%, KO ' + l.r.ko + '%'">
+            <span class="zone" [style.left.%]="l.ki" [style.width.%]="l.strike - l.ki"></span>
+            <span class="bar ki" [style.left.%]="l.ki" title="Knock-in {{ l.r.ki }}%"></span>
+            <span class="bar strike" [style.left.%]="l.strike" title="Strike {{ l.r.strike }}%"></span>
+            <span class="bar ko" [style.left.%]="l.ko" title="Knock-out {{ l.r.ko }}%"></span>
+            <span class="path" [style.left.%]="l.at < l.now ? l.at : l.now" [style.width.%]="l.at < l.now ? l.now - l.at : l.at - l.now"></span>
+            <span class="dot now" [class]="'dot now ' + l.nowCls" [style.left.%]="l.now" [title]="'Today ' + l.r.now.mtm + '% (' + l.r.now.wps + ')'"></span>
+            <span class="dot at" [class]="'dot at ' + l.cls" [style.left.%]="l.at" [title]="levelText(index()) + ': ' + l.sim + '% (' + l.wps + ')'"></span>
+          </div>
+          <div class="lstat">
+            <span class="tag" [class]="'tag ' + statusClass(l.r.now.status)">{{ statusLabel(l.r.now.status) }}</span>
+            @if (l.changed) {<mat-icon svgIcon="arrow-right" aria-label="to" /><span class="tag" [class]="'tag ' + l.cls">{{ statusLabel(l.status) }}</span>}
+          </div>
+        </div>
+      }
+      <div class="legend">
+        <span><i class="mk ki"></i>Knock-in (KI)</span><span><i class="mk strike"></i>Strike</span><span><i class="mk ko"></i>Knock-out (KO)</span>
+        <span><i class="mk ring"></i>Today</span><span><i class="mk fill"></i>At {{ levelText(index()) }}</span>
+      </div>
+    </section>
+  } @else {
+    <p class="empty">No positions to show.</p>
+  }
+  </div>
+
+  <div class="panel-wrap" role="tabpanel" [id]="uid + '-panel-views'" [attr.aria-labelledby]="uid + '-tab-views'" [hidden]="tab() !== 'views'">
+    <ng-content select="[scViews]" />
+  </div>
+  <div class="panel-wrap" role="tabpanel" [id]="uid + '-panel-details'" [attr.aria-labelledby]="uid + '-tab-details'" [hidden]="tab() !== 'details'">
+    <ng-content select="[scDetails]" />
+  </div>
+
+  <p class="source"><mat-icon svgIcon="info" aria-hidden="true" />Every step worked out by code from {{ s.source }}; the slider only picks a step.
+    @if (s.checked) {Words checked against each step's figures.}</p>
+</section>

@@ -94,6 +94,30 @@ EXTRA = [
     dict(id="last_refresh", kind="event", label="Last refresh", aliases=["last refresh", "refresh time", "last updated"],
          description="When the extract last refreshed (W2 view)."),
 ]
+# W8 position scenario sheet (proposed): per-stock levels, the knock-in flag and the simulated fields.
+EXTRA += [
+    dict(id="asset_id", kind="identifier", label="Deal", aliases=["deal id", "asset id", "ELI id"],
+         description="Identifier of one ELI deal; several positions can share it."),
+    dict(id="asset_tks_mtm", kind="measure", label="Underlying 1 level %", aliases=["underlying 1 level", "stock 1 MTM"],
+         description="Level of underlying 1 as a percentage of its initial price (W8 field)."),
+    dict(id="asset_tks_2_mtm", kind="measure", label="Underlying 2 level %", aliases=["underlying 2 level", "stock 2 MTM"],
+         description="Level of underlying 2 as a percentage of its initial price (W8 field)."),
+    dict(id="has_knocked_in", kind="flag", label="Already knocked in", aliases=["has knocked in", "knocked-in flag"],
+         description="True when the knock-in barrier has already been touched (feature mart field, W8)."),
+    dict(id="predictive_result", kind="dimension", label="Predictive result (scenario)",
+         aliases=["predictive result", "simulated result", "scenario result"],
+         description="Predicted result after the scenario parameters (Market Spot, W8 stock shock). Simulated, never an outcome."),
+    dict(id="sim_wps", kind="dimension", label="Simulated worst performer", aliases=["simulated WPS"],
+         description="Worst-performing stock after the scenario move (W8)."),
+    dict(id="sim_wps_mtm", kind="measure", label="Simulated worst-of level %", aliases=["simulated MTM", "simulated level"],
+         description="Worst-of level after the scenario move, as a percentage of initial (W8)."),
+    dict(id="shock_ticker", kind="parameter", label="Shock ticker", aliases=["shock ticker"],
+         description="Scenario parameter: the stock that moves on its own (W8)."),
+    dict(id="shock_pct", kind="parameter", label="Shock %", aliases=["shock percent"],
+         description="Scenario parameter: how far the shock ticker moves, e.g. -0.10 (W8)."),
+    dict(id="in_shock_basket", kind="flag", label="Holds the shocked stock", aliases=["in shock basket"],
+         description="TRUE when the Shock Ticker parameter is either basket stock (W8 filter)."),
+]
 for n in (7, 14, 30, 60, 90):
     EXTRA.append(dict(id=f"in_n{n}", kind="flag", label=f"Predicted maturity within {n} days",
                       aliases=[f"next {n} days flag", f"N{n}D"],

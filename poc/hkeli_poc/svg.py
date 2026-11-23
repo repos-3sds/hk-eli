@@ -74,6 +74,10 @@ def _table(cols, rows, limit=40):
         for c, v in zip(cols, r):
             if c in ("Volume Bu",):
                 v = f"{float(v):,.0f}"
+            if c in ("Predictive Result", "Predict Result") and v in RESULT_COLOURS:
+                tds.append(f'<td><i style="display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;'
+                           f'background:{RESULT_COLOURS[v]}"></i>{_esc(v)}</td>')
+                continue
             tds.append(f"<td>{_esc(v)}</td>")
         body.append(f"<tr>{''.join(tds)}</tr>")
     more = f'<div class="rowcount"><b>{len(rows)}</b> rows in this view' + (f' · first {limit} shown' if len(rows) > limit else '') + '</div>'
@@ -82,7 +86,8 @@ def _table(cols, rows, limit=40):
 
 def _bars(view, cols, rows, highlight):
     vi = _col(cols, "Volume Bu")
-    ri = _col(cols, "Predict Result")
+    # Simulation sheets colour by the scenario's Predictive Result (at Market Spot 100% it equals Predict Result)
+    ri = _col(cols, "Predictive Result") if "Predictive Result" in cols else _col(cols, "Predict Result")
     label_idx = [i for i, c in enumerate(cols) if c in ("Bp Div Type", "Cust District", "Cust Branch", "Wps") ]
     # For branch view, label with branch only; district is grouping context.
     if "Cust Branch" in cols:

@@ -24,7 +24,7 @@ Keep the **Client ID**, **Secret ID** and **Secret value**. Never paste them int
 
 ## 3. Fast path: upload the ready workbook (replaces steps 3 and 4)
 
-`poc/tableau/HK_ELI.twbx` holds all 13 sheets with the synthetic data packed in (rebuild it with
+`poc/tableau/HK_ELI.twbx` holds all 14 sheets with the synthetic data packed in (rebuild it with
 `python scripts/build_twbx.py tableau/HK_ELI.twbx`). On Tableau Cloud choose **New → Upload Workbook**,
 pick the file, keep the name `HK_ELI`, tick **Show sheets as tabs**, and upload. Then go to step 5.
 
@@ -73,6 +73,10 @@ Filters and choose **Show Filter**, so the embed can set it. "Context" means rig
 | 11 | `ALL_outstanding_distribution_n30d` | Columns: MTM% (bin). Rows: CNTD(Asset Id). Marks: Circle, Size SUM(Volume Bu), Color Predict Result, Label Wps | Deal Status = LIVE (context, shown), Bp Div Type, Cust District, Cust Branch, Predict Maturity, In N7…In N90 (shown) |
 | 12 | `max_trade_date` | Text: MAX(Trade Date) | Bp Div Type (shown) |
 | 13 | `data_as_of` | Rows: Business Date (exact date, discrete), Last Refresh (discrete) | none |
+| 14 | `ALL_position_scenario` (W8, proposed) | Rows: one per position with every basket stock, its MTM, strike, KO, KI, Has Knocked In, Sim Wps, Sim Wps Mtm, Predictive Result. Text: SUM(Volume Bu). Color: Predictive Result | Deal Status = LIVE (context, shown), Bp Div Type, Cust District, Cust Branch, In Shock Basket, Wps, Predict Result (shown). Parameter cards: Market Spot, Shock Ticker, Shock % |
+
+Sheets 9 and 10 are coloured by **Predictive Result** (the Market Spot calc), so moving Market Spot recolours
+the bars. The parameters and calcs are listed in [whatif-scenario.md](whatif-scenario.md).
 
 **Publish As** workbook name `HK_ELI`, and leave **Show sheets as tabs** on so every sheet is a view.
 
@@ -99,7 +103,7 @@ For a local run, export the same variables in your shell instead.
 
 ```bash
 cd poc
-python scripts/check_tableau.py      # signs in, finds the 13 sheets, compares their columns
+python scripts/check_tableau.py      # signs in, finds the 14 sheets, compares their columns
 ./run.sh                             # open http://localhost:8050 (Codespaces opens it for you)
 ```
 

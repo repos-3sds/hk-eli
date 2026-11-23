@@ -1,0 +1,39 @@
+.views { display: flex; flex-direction: column; gap: var(--eli-space-6); padding-top: var(--eli-space-6); border-top: 1px solid var(--eli-separator); }
+.vhead { display: flex; flex-wrap: wrap; align-items: center; gap: var(--eli-space-5); }
+.toggle { display: inline-flex; align-items: center; gap: var(--eli-space-3); padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer;
+  mat-icon { width: 16px; height: 16px; color: var(--eli-text-muted); }
+  &:focus-visible { outline: 2px solid var(--eli-focus-ring); outline-offset: 2px; border-radius: var(--eli-radius-s); } }
+.title { color: var(--eli-text-muted-2); font-size: var(--eli-font-size-xs); font-weight: var(--eli-weight-semibold); letter-spacing: 0.06em; text-transform: uppercase; }
+.count { color: var(--eli-text-muted); font-size: var(--eli-font-size-s); }
+.chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--eli-space-3); }
+.chips-label { margin-right: var(--eli-space-2); color: var(--eli-text-muted); font-size: var(--eli-font-size-xs); }
+.chip, .pchip { display: inline-flex; align-items: baseline; gap: var(--eli-space-2); padding: 1px var(--eli-space-4); border: 1px solid var(--eli-separator); border-radius: var(--eli-radius-s);
+  color: var(--eli-text-muted-2); font-size: var(--eli-font-size-xs);
+  b { color: var(--eli-text-strong); font-weight: var(--eli-weight-semibold); } }
+.pchip { border-color: rgb(43 179 163 / 55%); }
+.view { display: flex; flex-direction: column; gap: var(--eli-space-4); }
+.vrow { display: flex; align-items: center; gap: var(--eli-space-4); min-width: 0; }
+.role { flex: none; padding: 1px var(--eli-space-4); border-radius: var(--eli-radius-pill); background: var(--eli-bg-row); color: var(--eli-text-muted-2); font-size: var(--eli-font-size-xs);
+  &.main { background: rgb(99 171 255 / 16%); color: var(--eli-accent-link); } }
+.vtitle { min-width: 0; overflow: hidden; color: var(--eli-text-primary); font-size: var(--eli-font-size-s); font-weight: var(--eli-weight-semibold); white-space: nowrap; text-overflow: ellipsis; }
+.vname { flex: none; color: var(--eli-text-muted); font-size: var(--eli-font-size-xs); }
+.open { display: inline-flex; flex: none; align-items: center; gap: var(--eli-space-2); margin-left: auto; color: var(--eli-accent-link); font-size: var(--eli-font-size-s); text-decoration: none;
+  mat-icon { width: 12px; height: 12px; }
+  &:hover { text-decoration: underline; } &:focus-visible { outline: 2px solid var(--eli-focus-ring); outline-offset: 2px; } }
+.note { display: flex; flex-wrap: wrap; align-items: center; gap: var(--eli-space-3); margin: 0; color: var(--eli-text-muted); font-size: var(--eli-font-size-s);
+  mat-icon { flex: none; width: 13px; height: 13px; }
+  &.warn { color: var(--eli-accent-orange); } }
+.muted { color: var(--eli-text-muted); }
+.skip { display: flex; align-items: flex-start; gap: var(--eli-space-3); margin: 0; padding: var(--eli-space-4) var(--eli-space-5); border: 1px dashed var(--eli-separator); border-radius: var(--eli-radius-s);
+  color: var(--eli-text-muted); font-size: var(--eli-font-size-s);
+  mat-icon { flex: none; width: 13px; height: 13px; margin-top: 2px; }
+  b { color: var(--eli-text-primary); font-weight: var(--eli-weight-semibold); } }
+.views.tabbed { padding-top: 0; border-top: 0; }
+.view[hidden] { display: none; }
+.vtabs { display: flex; flex-wrap: wrap; gap: var(--eli-space-3); }
+.vtab { display: inline-flex; align-items: center; gap: var(--eli-space-3); height: 28px; padding: 0 var(--eli-space-6); border: 1px solid var(--eli-border); border-radius: 14px;
+  background: transparent; color: var(--eli-text-primary); font: inherit; font-size: var(--eli-font-size-s); cursor: pointer;
+  &:hover { border-color: var(--eli-accent-link); }
+  &.on { border-color: var(--eli-accent-link); background: rgb(99 171 255 / 16%); color: var(--eli-text-strong); }
+  &:focus-visible { outline: 2px solid var(--eli-focus-ring); outline-offset: 2px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--eli-accent-link); } }

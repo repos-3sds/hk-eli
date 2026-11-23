@@ -1657,9 +1657,9 @@
    "name": "ALL_outstanding_simulation_n30d",
    "recordId": "outstanding-wps-n30-all",
    "tableauView": "ALL_outstanding_simulation_n30d",
-   "purpose": "WPS exposure, any segment, any window",
+   "purpose": "WPS exposure, any segment, any window (Market Spot simulation)",
    "usage": "Intents: wps_exposure",
-   "grain": "wps x predict_result",
+   "grain": "wps x predict_result x predictive_result",
    "synonyms": [],
    "enabled": true,
    "intents": [
@@ -1711,6 +1711,18 @@
        "meaning": "Expiry above strike predicted"
       }
      ]
+    },
+    {
+     "name": "predictive_result",
+     "type": "dimension",
+     "description": "Predicted result after the scenario parameters (Market Spot, W8 stock shock). Simulated, never an outcome.",
+     "synonyms": [
+      "predictive result",
+      "simulated result",
+      "scenario result"
+     ],
+     "valueType": "free",
+     "enumValues": []
     },
     {
      "name": "deal_status",
@@ -1862,7 +1874,9 @@
       "market spot",
       "market scenario multiplier",
       "price shock multiplier",
-      "simulate market at 95%"
+      "simulate market at 95%",
+      "what if",
+      "stress"
      ],
      "valueType": "free",
      "enumValues": []
@@ -1875,9 +1889,9 @@
    "name": "TRE_outstanding_simulation_n30d",
    "recordId": "outstanding-wps-n30-tre",
    "tableauView": "TRE_outstanding_simulation_n30d",
-   "purpose": "TRE WPS exposure",
+   "purpose": "TRE WPS exposure (Market Spot simulation)",
    "usage": "Intents: wps_exposure",
-   "grain": "wps x predict_result",
+   "grain": "wps x predict_result x predictive_result",
    "synonyms": [],
    "enabled": true,
    "intents": [
@@ -1929,6 +1943,18 @@
        "meaning": "Expiry above strike predicted"
       }
      ]
+    },
+    {
+     "name": "predictive_result",
+     "type": "dimension",
+     "description": "Predicted result after the scenario parameters (Market Spot, W8 stock shock). Simulated, never an outcome.",
+     "synonyms": [
+      "predictive result",
+      "simulated result",
+      "scenario result"
+     ],
+     "valueType": "free",
+     "enumValues": []
     },
     {
      "name": "predict_maturity",
@@ -2123,7 +2149,9 @@
       "market spot",
       "market scenario multiplier",
       "price shock multiplier",
-      "simulate market at 95%"
+      "simulate market at 95%",
+      "what if",
+      "stress"
      ],
      "valueType": "free",
      "enumValues": []
@@ -2540,6 +2568,467 @@
       "last refresh",
       "refresh time",
       "last updated"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    }
+   ]
+  },
+  {
+   "id": "position-scenario-all",
+   "datasourceId": "hk_eli_workbook",
+   "name": "ALL_position_scenario",
+   "recordId": "position-scenario-all",
+   "tableauView": "ALL_position_scenario",
+   "purpose": "Position scenario: every basket stock against strike, KI and KO",
+   "usage": "Intents: scenario_analysis",
+   "grain": "pos_id x asset_id x cif_id",
+   "synonyms": [],
+   "enabled": true,
+   "intents": [
+    "scenario_analysis"
+   ],
+   "fields": [
+    {
+     "name": "pos_id",
+     "type": "identifier",
+     "description": "Identifier of one ELI position.",
+     "synonyms": [
+      "position",
+      "position ID",
+      "deal reference"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "asset_id",
+     "type": "identifier",
+     "description": "Identifier of one ELI deal; several positions can share it.",
+     "synonyms": [
+      "deal id",
+      "asset id",
+      "ELI id"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "cif_id",
+     "type": "identifier",
+     "description": "Customer identifier. Customer counts are distinct counts and never add up across groups.",
+     "synonyms": [
+      "CIF",
+      "CIF ID",
+      "customer ID",
+      "client ID",
+      "customer identifier",
+      "customer"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "bp_div_type",
+     "type": "dimension",
+     "description": "Business segment of the customer: Treasures (HK), Treasures Private Client, Private Banking.",
+     "synonyms": [
+      "segment",
+      "business segment",
+      "business division",
+      "TRE",
+      "Treasures",
+      "TPC"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "Treasures(TPC)",
+       "meaning": "Treasures Private Client"
+      },
+      {
+       "value": "Treasures(HK)",
+       "meaning": "Treasures Hong Kong"
+      },
+      {
+       "value": "PB",
+       "meaning": "Private Banking"
+      }
+     ]
+    },
+    {
+     "name": "cust_district",
+     "type": "dimension",
+     "description": "Sales district of the customer. Treasures (HK) only.",
+     "synonyms": [
+      "district",
+      "D1",
+      "D2",
+      "D3"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "TRE-D1",
+       "meaning": ""
+      },
+      {
+       "value": "TRE-D2",
+       "meaning": ""
+      },
+      {
+       "value": "TRE-D3",
+       "meaning": ""
+      }
+     ]
+    },
+    {
+     "name": "cust_branch",
+     "type": "dimension",
+     "description": "Servicing branch of the customer. Treasures (HK) only.",
+     "synonyms": [
+      "branch",
+      "customer branch",
+      "servicing branch",
+      "branches"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "Central",
+       "meaning": ""
+      },
+      {
+       "value": "Admiralty",
+       "meaning": ""
+      },
+      {
+       "value": "Wan Chai",
+       "meaning": ""
+      },
+      {
+       "value": "Causeway Bay",
+       "meaning": ""
+      },
+      {
+       "value": "Tsim Sha Tsui",
+       "meaning": ""
+      },
+      {
+       "value": "Mong Kok",
+       "meaning": ""
+      },
+      {
+       "value": "Kowloon Bay",
+       "meaning": ""
+      },
+      {
+       "value": "Kwun Tong",
+       "meaning": ""
+      },
+      {
+       "value": "Sha Tin",
+       "meaning": ""
+      },
+      {
+       "value": "Tsuen Wan",
+       "meaning": ""
+      },
+      {
+       "value": "Tuen Mun",
+       "meaning": ""
+      },
+      {
+       "value": "Yuen Long",
+       "meaning": ""
+      }
+     ]
+    },
+    {
+     "name": "rm_name",
+     "type": "dimension",
+     "description": "Relationship manager who serves the customer.",
+     "synonyms": [
+      "RM",
+      "RM name",
+      "relationship manager"
+     ],
+     "valueType": "lookup",
+     "enumValues": []
+    },
+    {
+     "name": "asset_tks",
+     "type": "dimension",
+     "description": "Ticker of the first underlying stock.",
+     "synonyms": [
+      "underlying 1",
+      "first underlying",
+      "stock 1"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "asset_tks_2",
+     "type": "dimension",
+     "description": "Ticker of the second underlying stock.",
+     "synonyms": [
+      "underlying 2",
+      "second underlying",
+      "stock 2"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "asset_tks_mtm",
+     "type": "measure",
+     "description": "Level of underlying 1 as a percentage of its initial price (W8 field).",
+     "synonyms": [
+      "underlying 1 level",
+      "stock 1 MTM"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "asset_tks_2_mtm",
+     "type": "measure",
+     "description": "Level of underlying 2 as a percentage of its initial price (W8 field).",
+     "synonyms": [
+      "underlying 2 level",
+      "stock 2 MTM"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "wps",
+     "type": "dimension",
+     "description": "Worst-performing stock of the ELI's basket today. Not the same as any stock in the basket.",
+     "synonyms": [
+      "WPS",
+      "worst-performing stock",
+      "worst performer",
+      "weakest underlying",
+      "worst-performing underlying"
+     ],
+     "valueType": "lookup",
+     "enumValues": []
+    },
+    {
+     "name": "wps_mtm",
+     "type": "measure",
+     "description": "Mark-to-market of the worst-performing stock, as a percentage.",
+     "synonyms": [
+      "WPS MTM",
+      "average MTM"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "strike_percentage",
+     "type": "measure",
+     "description": "Strike level as a percentage of the initial price.",
+     "synonyms": [
+      "strike",
+      "strike level",
+      "strike percentage"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "ko_percentage",
+     "type": "measure",
+     "description": "Knock-out barrier as a percentage of the initial price.",
+     "synonyms": [
+      "KO barrier",
+      "knock-out barrier",
+      "KO level",
+      "KO percentage"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "ki_percentage",
+     "type": "measure",
+     "description": "Knock-in barrier as a percentage of the initial price.",
+     "synonyms": [
+      "KI barrier",
+      "knock-in barrier",
+      "KI level",
+      "KI percentage"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "has_knocked_in",
+     "type": "flag",
+     "description": "True when the knock-in barrier has already been touched (feature mart field, W8).",
+     "synonyms": [
+      "has knocked in",
+      "knocked-in flag"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "predict_result",
+     "type": "dimension",
+     "description": "Model estimate of how the ELI ends: KO, EXP, EXP(Below Strike) or EX. Never a confirmed outcome.",
+     "synonyms": [
+      "predicted result",
+      "expected result",
+      "predicted outcome",
+      "expected outcome",
+      "predicted KO",
+      "predicted expiry"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "EXP(Below Strike)",
+       "meaning": "Expiry below strike predicted, cash settled"
+      },
+      {
+       "value": "KO",
+       "meaning": "Knock-out predicted"
+      },
+      {
+       "value": "EX",
+       "meaning": "Exercise predicted, stock delivered"
+      },
+      {
+       "value": "EXP",
+       "meaning": "Expiry above strike predicted"
+      }
+     ]
+    },
+    {
+     "name": "predict_maturity",
+     "type": "event",
+     "description": "Predicted maturity date: next observation date if KO is predicted, otherwise contractual maturity.",
+     "synonyms": [
+      "predicted maturity",
+      "expected maturity",
+      "estimated maturity",
+      "upcoming maturity",
+      "maturity opportunity",
+      "maturing next X days"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "sim_wps",
+     "type": "dimension",
+     "description": "Worst-performing stock after the scenario move (W8).",
+     "synonyms": [
+      "simulated WPS"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "sim_wps_mtm",
+     "type": "measure",
+     "description": "Worst-of level after the scenario move, as a percentage of initial (W8).",
+     "synonyms": [
+      "simulated MTM",
+      "simulated level"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "predictive_result",
+     "type": "dimension",
+     "description": "Predicted result after the scenario parameters (Market Spot, W8 stock shock). Simulated, never an outcome.",
+     "synonyms": [
+      "predictive result",
+      "simulated result",
+      "scenario result"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "deal_status",
+     "type": "status",
+     "description": "Lifecycle status of the deal. Outstanding means LIVE.",
+     "synonyms": [
+      "live",
+      "outstanding",
+      "active"
+     ],
+     "valueType": "enum",
+     "enumValues": [
+      {
+       "value": "LIVE",
+       "meaning": "Live, outstanding deal"
+      }
+     ]
+    },
+    {
+     "name": "in_shock_basket",
+     "type": "flag",
+     "description": "TRUE when the Shock Ticker parameter is either basket stock (W8 filter).",
+     "synonyms": [
+      "in shock basket"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "volume_bu",
+     "type": "measure",
+     "description": "Outstanding notional of a position in HKD equivalent. 'Outstanding' always means SUM(volume_bu) over live deals.",
+     "synonyms": [
+      "outstanding",
+      "outstanding amount",
+      "ELI exposure",
+      "ELI notional",
+      "notional amount",
+      "HKD equivalent"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "market_spot",
+     "type": "parameter",
+     "description": "Scenario multiplier on market prices used by the simulation views.",
+     "synonyms": [
+      "market spot",
+      "market scenario multiplier",
+      "price shock multiplier",
+      "simulate market at 95%",
+      "what if",
+      "stress"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "shock_ticker",
+     "type": "parameter",
+     "description": "Scenario parameter: the stock that moves on its own (W8).",
+     "synonyms": [
+      "shock ticker"
+     ],
+     "valueType": "free",
+     "enumValues": []
+    },
+    {
+     "name": "shock_pct",
+     "type": "parameter",
+     "description": "Scenario parameter: how far the shock ticker moves, e.g. -0.10 (W8).",
+     "synonyms": [
+      "shock percent"
      ],
      "valueType": "free",
      "enumValues": []
@@ -3024,11 +3513,13 @@
     "market spot",
     "market scenario multiplier",
     "price shock multiplier",
-    "simulate market at 95%"
+    "simulate market at 95%",
+    "what if",
+    "stress",
+    "shock",
+    "falls 10%"
    ],
-   "description": "Scenario multiplier on market prices used by the simulation views.",
-   "supported": false,
-   "userText": "Market scenarios (market spot) are not available in this version. I can show today's predicted results instead."
+   "description": "Scenario multiplier on market prices used by the simulation views."
   },
   {
    "id": "trade_date",
@@ -3195,6 +3686,104 @@
     "last updated"
    ],
    "description": "When the extract last refreshed (W2 view)."
+  },
+  {
+   "id": "asset_id",
+   "kind": "identifier",
+   "label": "Deal",
+   "aliases": [
+    "deal id",
+    "asset id",
+    "ELI id"
+   ],
+   "description": "Identifier of one ELI deal; several positions can share it."
+  },
+  {
+   "id": "asset_tks_mtm",
+   "kind": "measure",
+   "label": "Underlying 1 level %",
+   "aliases": [
+    "underlying 1 level",
+    "stock 1 MTM"
+   ],
+   "description": "Level of underlying 1 as a percentage of its initial price (W8 field)."
+  },
+  {
+   "id": "asset_tks_2_mtm",
+   "kind": "measure",
+   "label": "Underlying 2 level %",
+   "aliases": [
+    "underlying 2 level",
+    "stock 2 MTM"
+   ],
+   "description": "Level of underlying 2 as a percentage of its initial price (W8 field)."
+  },
+  {
+   "id": "has_knocked_in",
+   "kind": "flag",
+   "label": "Already knocked in",
+   "aliases": [
+    "has knocked in",
+    "knocked-in flag"
+   ],
+   "description": "True when the knock-in barrier has already been touched (feature mart field, W8)."
+  },
+  {
+   "id": "predictive_result",
+   "kind": "dimension",
+   "label": "Predictive result (scenario)",
+   "aliases": [
+    "predictive result",
+    "simulated result",
+    "scenario result"
+   ],
+   "description": "Predicted result after the scenario parameters (Market Spot, W8 stock shock). Simulated, never an outcome."
+  },
+  {
+   "id": "sim_wps",
+   "kind": "dimension",
+   "label": "Simulated worst performer",
+   "aliases": [
+    "simulated WPS"
+   ],
+   "description": "Worst-performing stock after the scenario move (W8)."
+  },
+  {
+   "id": "sim_wps_mtm",
+   "kind": "measure",
+   "label": "Simulated worst-of level %",
+   "aliases": [
+    "simulated MTM",
+    "simulated level"
+   ],
+   "description": "Worst-of level after the scenario move, as a percentage of initial (W8)."
+  },
+  {
+   "id": "shock_ticker",
+   "kind": "parameter",
+   "label": "Shock ticker",
+   "aliases": [
+    "shock ticker"
+   ],
+   "description": "Scenario parameter: the stock that moves on its own (W8)."
+  },
+  {
+   "id": "shock_pct",
+   "kind": "parameter",
+   "label": "Shock %",
+   "aliases": [
+    "shock percent"
+   ],
+   "description": "Scenario parameter: how far the shock ticker moves, e.g. -0.10 (W8)."
+  },
+  {
+   "id": "in_shock_basket",
+   "kind": "flag",
+   "label": "Holds the shocked stock",
+   "aliases": [
+    "in shock basket"
+   ],
+   "description": "TRUE when the Shock Ticker parameter is either basket stock (W8 filter)."
   },
   {
    "id": "in_n7",

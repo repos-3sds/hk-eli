@@ -49,3 +49,29 @@ describe('toChatAnswer', () => {
     expect(a.understood).toEqual([{ label: 'Coupon', value: undefined, gap: true }, { label: 'Business segment', value: 'TRE', gap: false }, { label: 'Predicted maturity', value: undefined, gap: false }]);
   });
 });
+
+describe('toChatAnswer what-if', () => {
+  const WHATIF = {
+    ...BRANCHES,
+    headline: 'A 10% fall in NVDA UW would change the predicted status of 30 of the 101 live positions.',
+    scenario: { kind: 'single', ticker: 'NVDA UW', move: -0.1, moves: [0, -0.1], asked_index: 1, grid: [], ladder: [] },
+    embeds: [
+      { view: 'ALL_position_scenario', record_id: 'position-scenario-all', title: 'Position scenario', role: 'primary', kind: 'table',
+        url: '/tableau/proposed/views/ALL_position_scenario?shock_pct=-0.1', filters: { in_shock_basket: ['TRUE'] },
+        parameters: [{ name: 'shock_pct', caption: 'Shock %', value: -0.1 }], bind: 'shock_pct', notes: [], cannot_apply: [] },
+      { view: 'TRE_x', record_id: 'tre-x', skipped: true, why_not: 'fixed 30-day window' },
+    ],
+  } as unknown as StorkAnswer;
+
+  it('puts the words in the scenario block, then every view of the topic', () => {
+    const a = toChatAnswer(WHATIF, 's-2');
+    const kinds = a.blocks.map((b) => b.kind);
+    expect(kinds[0]).toBe('scenario');
+    expect(kinds).not.toContain('text');
+    const views = a.blocks.find((b) => b.kind === 'views');
+    expect(views?.kind === 'views' && views.embeds.map((e) => [e.recordId, e.bind ?? null, e.vizKind ?? null, !!e.skipped])).toEqual([
+      ['position-scenario-all', 'shock_pct', 'table', false],
+      ['tre-x', null, null, true],
+    ]);
+  });
+});

@@ -22,7 +22,7 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 
 from . import svg
-from .workbook import CAPTION, SITES, VIEWS, find_view, public_catalog, query_view
+from .workbook import CAPTION, PARAMETERS, SITES, VIEWS, find_view, public_catalog, query_view
 
 router = APIRouter(prefix="/tableau")
 _TOKENS: dict[str, str] = {}
@@ -98,15 +98,49 @@ table.vt{border-collapse:collapse;font-size:11px;white-space:nowrap}table.vt th{
 table.vt td{padding:4px 8px;border-top:1px solid #1d2633}
 .rowcount{font-size:12px;color:#8a96a8;margin:0 0 8px}.rowcount b{color:#e8edf4;font-size:15px}
 .empty{padding:28px;text-align:center;color:#8a96a8;border:1px dashed #2a3547;border-radius:6px}
+.chip.param{border-color:#2bb3a3;color:#5fd3c4}
+#hk-viz{transition:opacity .15s}#hk-viz.busy{opacity:.55}
+"""
+
+# A small stand-in for the Tableau Embedding API v3 runtime calls, so the widget can drive the mock exactly as it
+# drives <tableau-viz>: applyFilterAsync / clearFilterAsync / changeParameterValueAsync, answered with a done
+# event, and a firstinteractive event on load. Same origin only.
+EMBED_JS = """
+(function(){
+  var params=new URLSearchParams(location.search), root=document.getElementById('hk-viz');
+  function post(m){ if(parent!==window) parent.postMessage(Object.assign({source:'hkeli-viz'},m), location.origin); }
+  function render(id){
+    root.classList.add('busy');
+    var q=new URLSearchParams(params); q.set(':fragment','1');
+    fetch(location.pathname+'?'+q.toString(),{credentials:'same-origin'}).then(function(r){
+      if(!r.ok) throw new Error('HTTP '+r.status); return r.text();
+    }).then(function(h){ root.innerHTML=h; root.classList.remove('busy'); post({event:'done',id:id}); })
+      .catch(function(e){ root.classList.remove('busy'); post({event:'error',id:id,message:String(e)}); });
+  }
+  window.addEventListener('message',function(ev){
+    if(ev.origin!==location.origin||!ev.data||ev.data.target!=='hkeli-viz') return;
+    var d=ev.data;
+    if(d.method==='applyFilterAsync'){ params.set(d.field,(d.values||[]).join(',')); }
+    else if(d.method==='clearFilterAsync'){ params.delete(d.field); }
+    else if(d.method==='changeParameterValueAsync'){ params.set(d.name,String(d.value)); }
+    else return;
+    render(d.id);
+  });
+  post({event:'firstinteractive'});
+})();
 """
 
 
 def embed_html(site: str, view: dict, filters: dict[str, list[str]], highlight: list[str], stale: bool = False,
                frame: bool = True) -> str:
-    applied, ignored = {}, []
+    applied, ignored, params = {}, [], {}
     for f, vals in filters.items():
+        if f in PARAMETERS:
+            if f in view.get("parameters", []):
+                params[f] = vals
+            continue
         (applied.__setitem__(f, vals) if f in view["filters"] else ignored.append(f))
-    cols, rows, _ = query_view(site, view, applied, stale=stale)
+    cols, rows, info = query_view(site, view, {**applied, **params}, stale=stale)
     chips = []
     if view["tre_lock"]:
         chips.append('<span class="chip fixed">Bp Div Type = Treasures(HK) (fixed)</span>')
@@ -115,6 +149,11 @@ def embed_html(site: str, view: dict, filters: dict[str, list[str]], highlight: 
     for f, vals in applied.items():
         shown = ", ".join(vals) if len(vals) <= 3 else f"{len(vals)} values"
         chips.append(f'<span class="chip">{html.escape(CAPTION.get(f, f))} = {html.escape(shown)}</span>')
+    for f, val in (info.get("parameters") or {}).items():
+        if f == "shock_ticker" and not val:
+            continue
+        shown = f"{val * 100:.0f}%" if f == "market_spot" else (f"{val * 100:+.0f}%" if f == "shock_pct" else str(val))
+        chips.append(f'<span class="chip param" title="Tableau parameter">{html.escape(CAPTION.get(f, f))} = {html.escape(shown)}</span>')
     for f in ignored:
         chips.append(f'<span class="chip off" title="Not a published filter on this view, so the embed cannot apply it">'
                      f'{html.escape(CAPTION.get(f, f))}: not a filter on this view</span>')
@@ -126,7 +165,9 @@ def embed_html(site: str, view: dict, filters: dict[str, list[str]], highlight: 
 <div class="body">{body}</div>"""
     if not frame:
         return inner
-    return f"<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>{html.escape(view['name'])}</title><style>{EMBED_CSS}</style></head><body>{inner}</body></html>"
+    return (f"<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
+            f"<title>{html.escape(view['name'])}</title><style>{EMBED_CSS}</style></head><body><div id='hk-viz'>{inner}</div>"
+            f"<script>{EMBED_JS}</script></body></html>")
 
 
 @router.get("/{site}/views/{view_name}", response_class=HTMLResponse)
@@ -137,7 +178,7 @@ def embed(site: str, view_name: str, request: Request):
     q = request.query_params
     filters = {k: v.split(",") for k, v in q.items() if not k.startswith(":") and k != "scenario"}
     highlight = q.get(":highlight", "").split(",") if q.get(":highlight") else []
-    return embed_html(site, view, filters, highlight, stale=q.get("scenario") == "stale")
+    return embed_html(site, view, filters, highlight, stale=q.get("scenario") == "stale", frame=not q.get(":fragment"))
 
 
 @router.get("/api/catalog/{site}")

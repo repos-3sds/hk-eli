@@ -4,7 +4,30 @@ import { Observable, catchError, map, of, timeout } from 'rxjs';
 import { AskEvent } from './chat-data-source';
 import { APP_CONFIG } from '../config/app-config';
 import { ChatDataSource, StoredTurn } from './chat-data-source';
-import { AnswerBlock, ChartSpec, ChatAnswer, ChatQuestion } from './chat.models';
+import { AnswerBlock, ChartSpec, ChatAnswer, ChatQuestion, ScenarioSpec, TableauEmbed } from './chat.models';
+
+/** One view of the topic bundle as the agent sends it (snake_case). */
+interface StorkEmbed {
+  readonly kind?: string;
+  readonly view: string;
+  readonly record_id: string;
+  readonly title?: string;
+  readonly role?: 'primary' | 'related';
+  readonly url?: string;
+  readonly src?: string;
+  readonly mode?: string;
+  readonly presentation?: string;
+  readonly filters?: Record<string, string[]>;
+  readonly filters_by_caption?: Record<string, string[]>;
+  readonly highlight?: string[];
+  readonly highlight_caption?: string | null;
+  readonly parameters?: { name: string; caption: string; value: number | string; tableau_name?: string }[];
+  readonly bind?: 'shock_pct' | 'market_spot' | null;
+  readonly notes?: string[];
+  readonly cannot_apply?: string[];
+  readonly skipped?: boolean;
+  readonly why_not?: string;
+}
 
 /** What the Python Stork pipeline returns from POST /api/ask (poc/hkeli_poc/stork/pipeline.py). */
 export interface StorkAnswer {
@@ -30,6 +53,8 @@ export interface StorkAnswer {
     readonly highlight?: string[];
     readonly highlight_caption?: string;
   } | null;
+  readonly embeds?: readonly StorkEmbed[] | null;
+  readonly scenario?: ScenarioSpec | null;
   readonly followups?: readonly string[];
   readonly as_of?: { readonly business_date: string | null; readonly last_refresh: string | null; readonly known: boolean } | null;
   readonly scope?: string | null;
@@ -61,6 +86,10 @@ const CAVEAT_LABELS: Record<string, string> = {
   CONTROL_TOTAL_OK: 'Totals reconcile',
   TABLE_CALC_NOT_EXPORTED: 'Calc not exported',
   SCOPE_MISMATCH: 'Chart scope',
+  SIMULATED: 'Simulated',
+  SCENARIO_VIEW_MISSING: 'Needs W8',
+  SCENARIO_AGGREGATE: 'Notional only',
+  WPS_ONLY: 'WPS only',
   MEASURE_NOT_PUBLISHED: 'No customer count',
   TRE_ONLY: 'Treasures only',
   CONCEPT_NOT_SUPPORTED: 'Not in any view',
@@ -70,9 +99,16 @@ const NUMERIC = /^(HKD |-)?[\d,.]+(m|bn|k|%)?$/;
 
 /** Turns a pipeline answer into our typed answer blocks. Every figure is the pipeline's; nothing is recomputed here. */
 export function toChatAnswer(a: StorkAnswer, id: string): ChatAnswer {
-  const blocks: AnswerBlock[] = [{ kind: 'text', text: a.headline }];
-  if (a.chart) {
+  // A what-if answer's words live in the scenario block, where they follow the slider.
+  const blocks: AnswerBlock[] = a.scenario ? [] : [{ kind: 'text', text: a.headline }];
+  if (a.scenario) {
+    blocks.push({ kind: 'scenario', spec: a.scenario });
+  } else if (a.chart) {
     blocks.push({ kind: 'chart', spec: a.chart });
+  }
+  const embeds = (a.embeds ?? []).map(toEmbed);
+  if (embeds.length) {
+    blocks.push({ kind: 'views', embeds });
   }
   if (a.bullets?.length) {
     blocks.push({ kind: 'bullets', title: 'Also', items: a.bullets });
@@ -133,6 +169,30 @@ export function toChatAnswer(a: StorkAnswer, id: string): ChatAnswer {
       ? { kind: a.clarify.code === 'VALUE_AMBIGUOUS' ? 'ambiguous' : 'not_found', label: a.clarify.label, options: a.clarify.options }
       : undefined,
     understood: understood(a.concepts),
+  };
+}
+
+export function toEmbed(e: StorkEmbed): TableauEmbed {
+  return {
+    view: e.view,
+    recordId: e.record_id,
+    title: e.title ?? e.view,
+    role: e.role ?? 'related',
+    vizKind: e.kind,
+    url: e.url,
+    src: e.src,
+    mode: e.mode,
+    presentation: e.presentation,
+    filters: e.filters ?? {},
+    filtersByCaption: e.filters_by_caption,
+    highlight: e.highlight,
+    highlightCaption: e.highlight_caption ?? undefined,
+    parameters: (e.parameters ?? []).map((p) => ({ name: p.name, caption: p.caption, value: p.value, tableauName: p.tableau_name })),
+    bind: e.bind ?? null,
+    notes: e.notes ?? [],
+    cannotApply: e.cannot_apply ?? [],
+    skipped: e.skipped,
+    whyNot: e.why_not,
   };
 }
 

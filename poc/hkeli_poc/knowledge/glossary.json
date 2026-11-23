@@ -346,7 +346,11 @@
         "market spot",
         "market scenario multiplier",
         "price shock multiplier",
-        "simulate market at 95%"
+        "simulate market at 95%",
+        "what if",
+        "stress",
+        "shock",
+        "falls 10%"
       ],
       "patterns": [
         "simulat",
@@ -354,9 +358,8 @@
         "price shock",
         "scenario"
       ],
-      "supported": false,
-      "rule": "Scenario results are simulated. Not supported in this build (views 9 and 10 list the parameter only).",
-      "user_text": "Market scenarios (market spot) are not available in this version. I can show today's predicted results instead."
+      "supported": true,
+      "rule": "Scenario results are simulated and labelled so. Market spot multiplies every underlying (simulated mtm% = wps_mtm x market_spot, views 9 and 10). A single-stock move needs the W8 position scenario view. Never invent a value: ask when the question gives no size."
     },
     {
       "id": "trade_date",

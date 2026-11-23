@@ -24,3 +24,12 @@ Runtime config is `public/config/app-config.json` (`gatewayBaseUrl`, `requestTim
 | `src/app/features/chat/` | Chat: store, answer card, chart, evidence |
 | `src/app/features/library/` | Prompts tab |
 | `src/app/shell/` | Digimarkets header, rail and widget frame, help |
+
+## What-if card and live Tableau views
+
+A what-if answer (`scenario` from the agent) shows `eli-scenario-card`: a slider over every step the agent
+already worked out, with the words, tiles, stacked columns, transitions, breakdown and barrier ladder for the
+picked step. Below it, `eli-tableau-views` embeds every view of the topic with the same filters
+(`eli-tableau-viz`); the slider calls `changeParameterValueAsync` (Market Spot or Shock %) on each bound view.
+Mock views answer over `postMessage`; real views use the Embedding API v3 with a Connected App token. See
+`poc/docs/whatif-scenario.md`.

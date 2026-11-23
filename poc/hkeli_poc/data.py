@@ -132,6 +132,11 @@ def _generate(business_date: date, seed: int = 42) -> list[dict]:
                 "ki_percentage": ki,
                 "wps": wps,
                 "wps_mtm": wps_mtm,
+                # Per-underlying performance (% of initial) and the knock-in flag. The feature mart has them
+                # (has_knocked_in, KO_Price, Knock_In_Price); today's views do not carry them (ask W8).
+                "asset_tks_mtm": round(perf[unders[0]], 1),
+                "asset_tks_2_mtm": round(perf[unders[1]], 1) if n_under > 1 else None,
+                "has_knocked_in": knocked_in,
                 **cust,
             })
     return rows

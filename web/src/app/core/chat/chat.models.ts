@@ -79,8 +79,106 @@ export interface EvidenceBlock {
   readonly assumptions: readonly string[];
 }
 
+/** One Tableau view of the answer's topic, with the same filter spec compiled for it (poc plan.bundle). */
+export interface TableauEmbed {
+  readonly view: string;
+  readonly recordId: string;
+  readonly title: string;
+  readonly role: 'primary' | 'related';
+  /** The view's chart type (bars, bubble, table), for sizing. */
+  readonly vizKind?: string;
+  /** Mock view page (iframe) or, in real mode, the view's address on the Tableau server for <tableau-viz>. */
+  readonly url?: string;
+  readonly src?: string;
+  readonly mode?: string;
+  readonly presentation?: string;
+  readonly filters: Readonly<Record<string, readonly string[]>>;
+  readonly filtersByCaption?: Readonly<Record<string, readonly string[]>>;
+  readonly highlight?: readonly string[];
+  readonly highlightCaption?: string;
+  readonly parameters: readonly { readonly name: string; readonly caption: string; readonly value: number | string; readonly tableauName?: string }[];
+  /** The parameter the what-if slider drives on this view, or null when the view can't show the move. */
+  readonly bind?: 'shock_pct' | 'market_spot' | null;
+  readonly notes: readonly string[];
+  readonly cannotApply: readonly string[];
+  /** The view can't take this question's scope (for example a fixed window): shown as a note, never with a wrong scope. */
+  readonly skipped?: boolean;
+  readonly whyNot?: string;
+}
+
+export interface ViewsBlock {
+  readonly kind: 'views';
+  readonly embeds: readonly TableauEmbed[];
+}
+
+export type ScenarioStatus = 'KO' | 'EXP' | 'EXP(Below Strike)' | 'EX';
+
+export interface ScenarioBreakdown {
+  readonly key: string;
+  readonly label: string;
+  readonly changed_hkd: number;
+  readonly changed_positions: number;
+  readonly exposed_hkd: number;
+}
+
+/** One slider step, worked out by the agent's what-if engine. The screen only picks a step; it never computes. */
+export interface ScenarioStep {
+  readonly move: number;
+  readonly label: string;
+  readonly narrative: string;
+  readonly statuses: Readonly<Record<ScenarioStatus, { readonly hkd: number; readonly positions: number }>>;
+  readonly changed: { readonly positions: number; readonly deals: number; readonly customers: number; readonly hkd: number; readonly share: number; readonly worse: number; readonly better: number };
+  readonly transitions: readonly { readonly from: ScenarioStatus; readonly to: ScenarioStatus; readonly positions: number; readonly hkd: number }[];
+  readonly knock_in_new: { readonly positions: number; readonly hkd: number };
+  readonly near_ki: { readonly positions: number; readonly hkd: number };
+  readonly ko_lost: { readonly positions: number; readonly hkd: number };
+  readonly by_segment: readonly ScenarioBreakdown[];
+  readonly by_district: readonly ScenarioBreakdown[];
+  readonly by_branch: readonly ScenarioBreakdown[];
+}
+
+export interface ScenarioLadderRow {
+  readonly pos_id: string;
+  readonly cif_id: string;
+  readonly segment: string;
+  readonly branch: string;
+  readonly hkd: number;
+  readonly basket: readonly string[];
+  readonly strike: number;
+  readonly ki: number;
+  readonly ko: number;
+  readonly knocked_in: boolean;
+  readonly now: { readonly wps: string; readonly mtm: number; readonly status: ScenarioStatus };
+  /** Per slider step: [simulated worst-of level %, predicted result, worst-of stock]. */
+  readonly path: readonly (readonly [number, ScenarioStatus, string])[];
+}
+
+export interface ScenarioSpec {
+  readonly kind: 'single' | 'market';
+  readonly ticker: string | null;
+  readonly label: string;
+  readonly move: number;
+  readonly assumption?: string | null;
+  readonly near_ki_points: number;
+  readonly control: { readonly name: 'shock_pct' | 'market_spot'; readonly caption: string; readonly unit: 'move' | 'spot' };
+  readonly moves: readonly number[];
+  readonly asked_index: number;
+  readonly universe: { readonly positions: number; readonly deals: number; readonly customers: number; readonly hkd: number; readonly as_wps: number };
+  readonly grid: readonly ScenarioStep[];
+  readonly ladder: readonly ScenarioLadderRow[];
+  readonly source: string;
+  readonly checked: boolean;
+}
+
+export interface ScenarioBlock {
+  readonly kind: 'scenario';
+  readonly spec: ScenarioSpec;
+}
+
 export type AnswerBlock =
   | TextBlock
+  | ViewsBlock
+  | ScenarioBlock
   | BulletsBlock
   | TableBlock
   | ChartBlock

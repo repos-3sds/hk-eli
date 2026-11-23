@@ -17,6 +17,12 @@ export function answerAsText(answer: ChatAnswer): string {
       case 'notices':
         lines.push(...b.items.map((i) => `${i.label}: ${i.text}`));
         break;
+      case 'scenario':
+        lines.push(b.spec.grid[b.spec.asked_index].narrative);
+        break;
+      case 'views':
+        lines.push(`Tableau views: ${b.embeds.filter((e) => !e.skipped).map((e) => e.view).join(', ')}`);
+        break;
       case 'chart':
       case 'evidence':
         break;

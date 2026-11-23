@@ -2,7 +2,7 @@
 
     cd poc && python scripts/build_twbx.py out/HK_ELI.twbx
 
-Upload it on Tableau Cloud with New -> Upload Workbook (name HK_ELI). It replaces building the 13
+Upload it on Tableau Cloud with New -> Upload Workbook (name HK_ELI). It replaces building the 14
 sheets by hand (docs/tableau-cloud-setup.md steps 3 and 4). Every sheet carries the fields, captions,
 context filters and shown filters the POC's view contract expects.
 """
@@ -43,7 +43,27 @@ FIELDS = {
     "business_date": ("Business Date", *STR_DIM), "last_refresh": ("Last Refresh", *STR_DIM),
     "days_to_pred_maturity": ("Days To Pred Maturity", "integer", "dimension", "ordinal"),
     **{f"in_n{d}": (f"In N{d}", *STR_DIM) for d in (7, 14, 30, 60, 90)},
+    "asset_tks_mtm": ("Asset Tks Mtm", "real", "dimension", "ordinal"),
+    "asset_tks_2_mtm": ("Asset Tks 2 Mtm", "real", "dimension", "ordinal"),
+    "has_knocked_in": ("Has Knocked In", *STR_DIM),
 }
+# Tableau parameters (datasource "Parameters"): name -> (caption, datatype, default, domain xml)
+PARAMS = {
+    "Parameter 1": ("Market Spot", "real", "1.0", "<range granularity='0.01' max='1.2' min='0.5' />"),
+    "Parameter 2": ("Shock Ticker", "string", "&quot;&quot;", ""),
+    "Parameter 3": ("Shock %", "real", "0.0", "<range granularity='0.01' max='0.5' min='-0.6' />"),
+}
+SPOT, TICKER, SHOCK = "[Parameters].[Parameter 1]", "[Parameters].[Parameter 2]", "[Parameters].[Parameter 3]"
+# Simulated level of each basket stock: the named stock moves by Shock %, then every stock by Market Spot.
+LEG1 = f"[asset_tks_mtm] * IIF([asset_tks] = {TICKER}, 1 + {SHOCK}, 1) * {SPOT}"
+LEG2 = f"[asset_tks_2_mtm] * IIF([asset_tks_2] = {TICKER}, 1 + {SHOCK}, 1) * {SPOT}"
+SIM = f"IF ISNULL([asset_tks_2_mtm]) THEN {LEG1} ELSE MIN({LEG1}, {LEG2}) END"
+
+
+def _predictive(level: str) -> str:
+    """What is HK ELI 5.2 on a simulated worst-of level; the same rules as poc/hkeli_poc/stork/scenario.py."""
+    return (f"IF {level} >= [ko_percentage] THEN 'KO' ELSEIF {level} >= [strike_percentage] THEN 'EXP' "
+            f"ELSEIF [has_knocked_in] <> 'True' AND {level} >= [ki_percentage] THEN 'EXP(Below Strike)' ELSE 'EX' END")
 CSV_TYPES = {k: v[1] for k, v in FIELDS.items()}
 
 # calculated fields: name -> (caption, datatype, role, type, formula)
@@ -61,12 +81,28 @@ CALCS = {
     "calc_share_label": ("Share", "string", "measure", "nominal",
                          "STR(ROUND(100 * SUM([volume_bu]) / MIN({FIXED : SUM([volume_bu])}), 1)) + '%'"),
     "calc_mtm_bin": ("MTM% (bin)", "integer", "dimension", "ordinal", "FLOOR([wps_mtm] / 5) * 5"),
+    # Simulation. With no stock shock SIM = wps_mtm x Market Spot, which is the office's formula for views 9
+    # and 10 today; with Shock Ticker and Shock % set (W8), the named stock moves first.
+    "calc_predictive": ("Predictive Result", "string", "dimension", "nominal", _predictive(f"({SIM})")),
+    "calc_sim_mtm": ("Sim Wps Mtm", "real", "dimension", "ordinal", f"ROUND({SIM}, 1)"),
+    "calc_sim_wps": ("Sim Wps", "string", "dimension", "nominal",
+                     f"IF ISNULL([asset_tks_2_mtm]) OR {LEG1} <= {LEG2} THEN [asset_tks] ELSE [asset_tks_2] END"),
+    # Basket membership for the shocked stock, so vf_ and applyFilterAsync can keep exposed positions (exact match TRUE)
+    "calc_in_shock_basket": ("In Shock Basket", "string", "dimension", "nominal",
+                             f"IIF([asset_tks] = {TICKER} OR [asset_tks_2] = {TICKER}, 'TRUE', 'FALSE')"),
 }
 RESULT_COLOURS = {"KO": "#3d8bfd", "EXP": "#6f7d91", "EXP(Below Strike)": "#ef6b4a", "EX": "#2bb3a3"}
 PALETTE = ("<style><style-rule element='mark'><encoding attr='color' field='[none:predict_result:nk]' type='palette'>"
            + "".join(f"<map to='{c}'><bucket>&quot;{k}&quot;</bucket></map>" for k, c in RESULT_COLOURS.items())
            + "</encoding></style-rule></style>")
 W1 = ["days_to_pred_maturity", "in_n7", "in_n14", "in_n30", "in_n60", "in_n90"]
+
+
+def param_xml(n: str) -> str:
+    cap, dt, val, dom = PARAMS[n]
+    return (f"<column caption={quoteattr(cap)} datatype='{dt}' name='[{n}]' param-domain-type='{'range' if dom else 'any'}' "
+            f"role='measure' type='{'quantitative' if dt == 'real' else 'nominal'}' value='{val}'>"
+            f"<calculation class='tableau' formula='{val}' />{dom}</column>")
 
 
 def col_xml(name: str) -> str:
@@ -127,7 +163,8 @@ def all_filter(field: str) -> str:
 
 
 def sheet(name: str, *, rows=(), cols=(), mark="Automatic", color=None, size=None, text=(), label=(),
-          tooltip=(), fixed=None, shown=(), title="", sort=None, zoom="entire-view", tpl=None, big=False, label_mode=None) -> tuple[str, str]:
+          tooltip=(), fixed=None, shown=(), title="", sort=None, zoom="entire-view", tpl=None, big=False, label_mode=None,
+          params=()) -> tuple[str, str]:
     """fixed: list of (field, values, context, exclude). shown: fields with an all-values shown filter."""
     fixed = fixed or []
     uses: list[tuple[str, str]] = []
@@ -143,7 +180,9 @@ def sheet(name: str, *, rows=(), cols=(), mark="Automatic", color=None, size=Non
         if f not in fields:
             fields.append(f)
         if f in CALCS:
-            for dep in ("volume_bu", "predict_result", "cif_id", "trade_date", "wps_mtm", "bp_div_type"):  # fields a calc reads
+            for dep in ("volume_bu", "predict_result", "cif_id", "trade_date", "wps_mtm", "bp_div_type", "asset_tks",
+                        "asset_tks_2", "asset_tks_mtm", "asset_tks_2_mtm", "strike_percentage", "ko_percentage",
+                        "ki_percentage", "has_knocked_in"):  # fields a calc reads
                 if f"[{dep}]" in CALCS[f][4] and dep not in fields:
                     fields.append(dep)
     deps = "".join(col_xml(f) for f in fields) + "".join(inst_xml(d, f) for d, f in uses)
@@ -175,8 +214,11 @@ def sheet(name: str, *, rows=(), cols=(), mark="Automatic", color=None, size=Non
     r = shelf(rows)
     c = shelf(cols)
     ws = (f"<worksheet name={quoteattr(name)}>{title_xml}<table><view>"
-          f"<datasources><datasource caption='HK ELI positions' name='{DS}' /></datasources>"
-          f"<datasource-dependencies datasource='{DS}'>{deps}</datasource-dependencies>"
+          f"<datasources>" + ("<datasource name='Parameters' />" if params else "")
+          + f"<datasource caption='HK ELI positions' name='{DS}' /></datasources>"
+          + ("<datasource-dependencies datasource='Parameters'>" + "".join(param_xml(p) for p in params)
+             + "</datasource-dependencies>" if params else "")
+          + f"<datasource-dependencies datasource='{DS}'>{deps}</datasource-dependencies>"
           f"{filters}" + (f"<slices>{slices}</slices>" if slices else "") + sort_xml +
           f"<aggregation value='true' /></view><style>{fmts}</style>"
           f"<panes><pane selection-relaxation-option='selection-relaxation-allow'><view><breakdown value='auto' /></view>"
@@ -188,6 +230,7 @@ def sheet(name: str, *, rows=(), cols=(), mark="Automatic", color=None, size=Non
           f"<rows>{('(' + r + ')') if len(rows) > 1 else r}</rows><cols>{('(' + c + ')') if len(cols) > 1 else c}</cols>"
           f"</table><simple-id uuid='{{{str(uuid.uuid5(uuid.NAMESPACE_URL, 'hkeli/' + name)).upper()}}}' /></worksheet>")
     legend = f"<card param='{ref(*color)}' type='color' />" if color and color[0] == "none" else ""
+    legend += "".join(f"<card param='[Parameters].[{p}]' type='parameter' />" for p in params)
     win = (f"<window class='worksheet' maximized='true' name={quoteattr(name)}><cards>"
            f"<edge name='left'><strip size='160'><card type='pages' /><card type='filters' /><card type='marks' /></strip></edge>"
            f"<edge name='top'><strip size='31'><card type='title' /></strip></edge>"
@@ -211,6 +254,10 @@ def sheets():
                    "trade_currency", "volume", "asset_tks", "asset_tks_2", "strike_percentage", "ko_percentage",
                    "ki_percentage", "pos_id", "wps"]
     tre_shown = ["deal_status", "cust_district", "cust_branch", "predict_maturity", *W1]
+    scenario_dims = ["pos_id", "asset_id", "cif_id", "bp_div_type", "cust_district", "cust_branch", "rm_name", "asset_tks",
+                     "asset_tks_2", "asset_tks_mtm", "asset_tks_2_mtm", "wps", "wps_mtm", "strike_percentage",
+                     "ko_percentage", "ki_percentage", "has_knocked_in", "predict_result", "predict_maturity",
+                     "calc_sim_wps", "calc_sim_mtm", "calc_predictive"]
     return [
         # Spec: "Outstanding notional KPI"
         sheet("all_outatanding_total", mark="Text", text=[SUM], big=True, fixed=[LIVE], shown=["deal_status", "bp_div_type"],
@@ -248,12 +295,15 @@ def sheets():
               shown=["deal_status", "bp_div_type", "predict_maturity", *W1],
               title="Outstanding ELI by segment and district (excludes TPC)"),
         # Spec: Rows wps; Columns SUM; segmented by predict_result
-        sheet("ALL_outstanding_simulation_n30d", rows=[N("wps")], cols=[SUM], mark="Bar", color=N("predict_result"),
-              tooltip=[AMT], fixed=[LIVE], shown=["deal_status", "bp_div_type", "predict_maturity", *W1], sort="wps",
-              zoom="fit-width", title="Outstanding ELI by worst-performing stock (all segments)"),
-        sheet("TRE_outstanding_simulation_n30d", rows=[N("wps")], cols=[SUM], mark="Bar", color=N("predict_result"),
-              tooltip=[AMT], fixed=[TRE, LIVE], shown=["cust_district", "cust_branch", "predict_maturity", *W1],
-              sort="wps", zoom="fit-width", title="TRE outstanding ELI by worst-performing stock"),
+        # Spec: Rows wps; Columns SUM; colour predictive_result; Market Spot parameter control
+        sheet("ALL_outstanding_simulation_n30d", rows=[N("wps")], cols=[SUM], mark="Bar", color=N("calc_predictive"),
+              tooltip=[AMT, N("predict_result")], fixed=[LIVE], shown=["deal_status", "bp_div_type", "predict_maturity", *W1],
+              sort="wps", zoom="fit-width", params=["Parameter 1"],
+              title="Outstanding ELI by worst-performing stock, predictive result at Market Spot (all segments)"),
+        sheet("TRE_outstanding_simulation_n30d", rows=[N("wps")], cols=[SUM], mark="Bar", color=N("calc_predictive"),
+              tooltip=[AMT, N("predict_result")], fixed=[TRE, LIVE],
+              shown=["cust_district", "cust_branch", "predict_maturity", *W1], params=["Parameter 1"],
+              sort="wps", zoom="fit-width", title="TRE outstanding ELI by worst-performing stock, at Market Spot"),
         # Spec: Columns MTM% (bin); Rows deal count; colour predict_result; size SUM; label wps
         sheet("ALL_outstanding_distribution_n30d", cols=[N("calc_mtm_bin")], rows=[("ctd", "asset_id")], mark="Circle",
               size=SUM, color=N("predict_result"), label=[N("wps")], tooltip=[AMT], fixed=[LIVE], label_mode="selection",
@@ -264,6 +314,12 @@ def sheets():
               title="Latest trade date"),
         sheet("data_as_of", mark="Text", text=[N("business_date"), N("last_refresh")], big=True,
               title="Data as of (business date, last refresh)"),
+        # W8: position level, every basket stock against strike, KI and KO, with a single-stock shock
+        sheet("ALL_position_scenario", rows=[N(d) for d in scenario_dims], mark="Text", text=[SUM],
+              color=N("calc_predictive"), fixed=[LIVE], zoom="fit-width",
+              shown=["deal_status", "bp_div_type", "cust_district", "cust_branch", "calc_in_shock_basket", "wps", "predict_result"],
+              params=["Parameter 1", "Parameter 2", "Parameter 3"],
+              title="Position scenario: predictive result after a stock move and Market Spot"),
     ]
 
 
@@ -276,7 +332,9 @@ def twb() -> str:
             "version='18.1' xmlns:user='http://www.tableausoftware.com/xml/user'>"
             "<preferences><preference name='ui.encoding.shelf.height' value='24' />"
             "<preference name='ui.shelf.height' value='26' /></preferences>"
-            f"<datasources><datasource caption='HK ELI positions' inline='true' name='{DS}' version='18.1'>"
+            "<datasources><datasource hasconnection='false' inline='true' name='Parameters' version='18.1'>"
+            "<aliases enabled='yes' />" + "".join(param_xml(n) for n in PARAMS) + "</datasource>"
+            f"<datasource caption='HK ELI positions' inline='true' name='{DS}' version='18.1'>"
             "<connection class='federated'><named-connections>"
             "<named-connection caption='hk_eli_positions' name='textscan.hkeli'>"
             f"<connection class='textscan' directory='Data/Datasources' filename='{CSV_NAME}' password='' server='' />"
@@ -310,7 +368,7 @@ def main(out: Path):
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("HK_ELI.twb", twb())
         z.writestr(f"Data/Datasources/{CSV_NAME}", csv_text())
-    print(f"wrote {out} ({out.stat().st_size} bytes, 13 sheets)")
+    print(f"wrote {out} ({out.stat().st_size} bytes, {len(sheets())} sheets)")
 
 
 if __name__ == "__main__":
