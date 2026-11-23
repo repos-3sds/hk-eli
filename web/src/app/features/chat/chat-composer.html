@@ -2,16 +2,13 @@
   <div class="box">
     <label class="eli-visually-hidden" for="chat-ask">Ask a question</label>
     <textarea #input id="chat-ask" name="ask" rows="1" class="input" placeholder="Ask about the ELI book: outstanding, maturities, branches, WPS, MTM" maxlength="500"
-      [ngModel]="store.draft()" (ngModelChange)="store.draft.set($event)" (keydown)="onKeydown($event)"></textarea>
-    <div class="box-foot">
-      <span class="ctx"><mat-icon svgIcon="chart-column" aria-hidden="true" />HK_ELI Tableau views</span>
-      <span class="spacer"></span>
-      @if (store.busy()) {
-        <button type="submit" class="send stop" aria-label="Stop the answer" matTooltip="Stop (Esc)"><span class="stop-mark" aria-hidden="true"></span></button>
-      } @else {
-        <button type="submit" class="send" [disabled]="!store.draft().trim()" aria-label="Send question" matTooltip="Send (Enter)"><mat-icon svgIcon="send" /></button>
-      }
-    </div>
+      [ngModel]="store.draft()" (ngModelChange)="store.draft.set($event)" (input)="fit()" (keydown)="onKeydown($event)"></textarea>
+    <span class="ctx"><mat-icon svgIcon="chart-column" aria-hidden="true" />HK_ELI Tableau views</span>
+    @if (store.busy()) {
+      <button type="submit" class="send stop" aria-label="Stop the answer" matTooltip="Stop (Esc)"><span class="stop-mark" aria-hidden="true"></span></button>
+    } @else {
+      <button type="submit" class="send" [disabled]="!store.draft().trim()" aria-label="Send question" matTooltip="Send (Enter)"><mat-icon svgIcon="send" /></button>
+    }
   </div>
   <p class="hint"><span>Enter to send · Shift+Enter for a new line · ↑ to edit your last question</span><span>Figures from data, wording by AI. Internal use only. Not advice.</span></p>
 </form>
