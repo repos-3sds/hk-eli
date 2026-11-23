@@ -106,6 +106,7 @@ def answer(question: str, http, site: str, scenario: str | None = None, user: st
     tr.add("Understand", {"intent": it.intent, "grain": it.grain, "assumptions": it.assumptions, "by": it.source})
     out["scope"] = it.scope_line()
     out["assumptions"] = [a for a in it.assumptions if not a.startswith("clarify: ")]
+    _ticker_notes(it, out)
     if it.unsupported:
         u = it.unsupported[0]
         out.update(status="UNSUPPORTED", reasons=["CONCEPT_NOT_SUPPORTED"],
@@ -193,7 +194,9 @@ def answer(question: str, http, site: str, scenario: str | None = None, user: st
         return out
 
     if it.intent == "scenario_analysis":
-        return _scenario(it, reg, client, out, tr, site, scenario, anchor, anchor_known)
+        res = _scenario(it, reg, client, out, tr, site, scenario, anchor, anchor_known)
+        _one_of_several(it, res, moved=(it.shock or {}).get("ticker"))
+        return _finish(res)
 
     # 4-6 route, plan, compile
     pl = P.build(it, reg, anchor, anchor_known)
@@ -232,6 +235,8 @@ def answer(question: str, http, site: str, scenario: str | None = None, user: st
     if out["status"] in ("OK",):
         _write(it, pl, cols, rows, out)
         out["chart"] = _chart(it, pl, cols, rows)
+    if it.intent != "wps_exposure":
+        _one_of_several(it, out, moved=it.wps)
     if out["status"] in ("OK",):
         _finish(out)
         out["meta"]["insight"] = agent.word(out, llm, lib, kb, calls)
@@ -317,6 +322,14 @@ def _chart(it, pl, cols, rows):
     if it.intent == "wps_exposure":
         cats = _stacks(cols, rows, lambda r: r[i["Wps"]])
         cats.sort(key=lambda c: -c["total"])
+        if len(it.wps_list) > 1:
+            asked = set(it.wps_list)
+            shown = [c for c in cats if c["key"] in asked] or cats[:10]
+            shown += [c for c in cats if c not in shown][: max(0, 10 - len(shown))]
+            shown.sort(key=lambda c: -c["total"])
+            return {"kind": "hbar", "title": "Outstanding ELI by worst-performing stock (yours highlighted)",
+                    "categories": shown, "more": max(0, len(cats) - len(shown)),
+                    "highlight": [c["key"] for c in shown if c["key"] in asked], "stacked": True}
         return {"kind": "hbar", "title": "Outstanding ELI by worst-performing stock", "categories": cats[:10],
                 "more": max(0, len(cats) - 10), "highlight": hl or [cats[0]["key"]], "stacked": True}
     if it.intent == "mtm_distribution":
@@ -338,6 +351,38 @@ def _chart(it, pl, cols, rows):
         return {"kind": "hbar", "title": "Distinct customers with predicted maturity", "categories": cats, "unit": "customers",
                 "highlight": hl, "stacked": False}
     return None
+
+
+STATUS_COLS = [("KO", "KO"), ("EXP", "Expiry"), ("EXP(Below Strike)", "Below strike"), ("EX", "Exercised")]
+
+
+def _ticker_notes(it, out) -> None:
+    """Say how the stocks were read: an exchange code we changed, a ticker the book does not have."""
+    h = it.hints or {}
+    for sw in h.get("ticker_swaps") or []:
+        out["caveats"].append({"code": "TICKER_READ_AS", "level": "info",
+                               "text": f"{sw['from']} read as {sw['to']}, the listing the book holds."})
+    unknown = h.get("tickers_unknown") or []
+    if unknown:
+        out["caveats"].append({"code": "TICKER_NOT_IN_BOOK", "level": "info",
+                               "text": f"{', '.join(unknown)}: not in the book, so there is no live ELI on "
+                                       f"{'it' if len(unknown) == 1 else 'them'}."})
+
+
+def _one_of_several(it, out, moved: str | None) -> None:
+    """Several stocks named but the answer covers one: say so, never answer silently for one of them."""
+    many = [t for t in it.wps_list if t]
+    if len(many) < 2 or not out or out.get("status") in ("UNSUPPORTED",):
+        return
+    covered = moved or "none of them"
+    others = [t for t in many if t != moved]
+    out["caveats"].append({"code": "ONE_OF_SEVERAL", "level": "warning",
+                           "text": f"You named {len(many)} stocks; this answer covers {covered} only. "
+                                   f"Ask about {', '.join(others[:4])}{' and more' if len(others) > 4 else ''} "
+                                   f"{'on its own' if len(others) == 1 else 'one at a time'}, "
+                                   "or ask for an overview of all of them."})
+    ask = ("What if {t} falls 10%?" if it.intent == "scenario_analysis" else "Show me the distribution on {t}")
+    out["followups"] = [*(ask.format(t=t) for t in others[:3]), *out.get("followups", [])][:5]
 
 
 def _finish(out):
@@ -434,6 +479,51 @@ def _sum_by(cols, rows, keys):
     for r in rows:
         agg[tuple(r[i] for i in idx)] += float(r[vi] or 0)
     return sorted(agg.items(), key=lambda kv: -kv[1])
+
+
+def _write_wps_overview(it, pl, cols, rows, out, total, src):
+    """Several stocks asked at once: one row per stock, in the order asked, every figure from the view's rows."""
+    by = _sum_by(cols, rows, ["Wps"])
+    rank = {k[0]: n for n, (k, _x) in enumerate(by, 1)}
+    hkd = {k[0]: x for k, x in by}
+    split = dict(_sum_by(cols, rows, ["Wps", "Predict Result"]))
+    asked = it.wps_list
+    present = [t for t in asked if hkd.get(t, 0) > 0]
+    absent = [t for t in asked if t not in present]
+    trows = []
+    for t in asked:
+        if t in present:
+            trows.append([t, money(hkd[t]), pct(hkd[t] / total), f"{rank[t]} of {len(by)}",
+                          *(money(split.get((t, k), 0)) for k, _ in STATUS_COLS)])
+        else:
+            trows.append([t, "HKD 0", "0.0%", "not a WPS", *("HKD 0" for _ in STATUS_COLS)])
+    out["table"] = {"columns": ["Stock", "Outstanding as WPS", "Share", "Rank", *(lbl for _, lbl in STATUS_COLS)],
+                    "rows": trows}
+    together = sum(hkd[t] for t in present)
+    if present:
+        top = max(present, key=lambda t: hkd[t])
+        out["headline"] = (f"Of the {len(asked)} stocks you asked about, {top} carries the most outstanding ELI as the "
+                           f"worst-performing stock: {_num(out, hkd[top], money(hkd[top]), 'hkd', src)} "
+                           f"({_num(out, hkd[top] / total, pct(hkd[top] / total), 'share', src + ' (sum ratio)')}), "
+                           f"rank {rank[top]} of {len(by)}" + (
+                               f". Together the {len(present)} carry {_num(out, together, money(together), 'hkd', src)} "
+                               f"({_num(out, together / total, pct(together / total), 'share', src + ' (sum ratio)')} of "
+                               f"{_num(out, total, money(total), 'hkd', src)})." if len(present) > 1 else
+                               f", of {_num(out, total, money(total), 'hkd', src)} in all."))
+        for t in present:
+            if t != top:
+                _num(out, hkd[t], money(hkd[t]), "hkd", src)
+    else:
+        out["headline"] = f"None of the {len(asked)} stocks you asked about is the worst-performing stock of a live ELI in this scope."
+    if absent:
+        out["bullets"].append(f"{', '.join(absent)}: not the worst-performing stock of any live ELI in this scope.")
+    out["bullets"].append("Outstanding as WPS counts an ELI under its worst-performing stock only; a stock can sit in "
+                          "more baskets than that. Ask the what-if for a stock to see every basket that holds it.")
+    # one "simulate a fall" per stock, then the distribution of the largest
+    out["followups"] = [f"What if {t} falls 10%?" for t in present][:5]
+    if present:
+        out["followups"].append(f"Show me the distribution on {top}")
+    pl.embed_highlight, pl.embed_highlight_field = present or asked, "wps"
 
 
 def _write(it, pl, cols, rows, out):
@@ -542,6 +632,9 @@ def _write(it, pl, cols, rows, out):
                         "rows": [[short(k[0]), k[1].replace("TRE-", ""), money(x)] + ([cust.get(k, "")] if cust else []) for k, x in by]}
         if named:
             out["followups"] = [f"Which branches in {named[0][0][1].replace('TRE-', '')} have the largest TRE maturity in the next 30 days?"]
+
+    elif it.intent == "wps_exposure" and len(it.wps_list) > 1:
+        _write_wps_overview(it, pl, cols, rows, out, total, src)
 
     elif it.intent == "wps_exposure":
         by = _sum_by(cols, rows, ["Wps"])
