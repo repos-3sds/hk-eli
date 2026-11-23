@@ -2,6 +2,10 @@
 
 Binds HOST (default 127.0.0.1) and PORT (default 8050). Runs in the foreground of the terminal that
 started it; stop it with Ctrl+C. No reloader, no background process.
+
+In a container (OpenShift UAT) the pod must listen on all interfaces so the Service can reach it.
+Set ALLOW_PUBLIC_BIND=true together with HOST=0.0.0.0; the image does this. Without it, any address
+other than loopback is refused, as before.
 """
 from __future__ import annotations
 
@@ -17,9 +21,11 @@ def main() -> int:
     except config.ConfigError as e:
         print(f"Setting problem: {e}. See .env.example.", file=sys.stderr)
         return 2
-    if cfg.host not in ("127.0.0.1", "localhost", "::1"):
+    public_ok = config.allow_public_bind()
+    if cfg.host not in ("127.0.0.1", "localhost", "::1") and not public_ok:
         print(f"Refusing to bind {cfg.host}: this service listens on 127.0.0.1 only (the edge calls it locally).",
               file=sys.stderr)
+        print("In a container set ALLOW_PUBLIC_BIND=true (the image does).", file=sys.stderr)
         return 2
     import uvicorn
     print(f"HK ELI Chatbot on http://{cfg.host}:{cfg.port}  (Ctrl+C to stop)")

@@ -1,0 +1,12 @@
+# The one public entry point. Users open https://<route-host>/ ; the API stays internal behind nginx.
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: hk-eli-chatbot-web
+  labels: {app.kubernetes.io/name: hk-eli-chatbot-web, app.kubernetes.io/part-of: hk-eli-chatbot}
+  annotations:
+    haproxy.router.openshift.io/timeout: 120s   # live answers stream for up to two minutes
+spec:
+  to: {kind: Service, name: hk-eli-chatbot-web}
+  port: {targetPort: http}
+  tls: {termination: edge, insecureEdgeTerminationPolicy: Redirect}

@@ -1,0 +1,12 @@
+# oc apply -k openshift/        (set the image first: kustomize edit set image hk-eli-chatbot-api=<registry>/<repo>:<tag>)
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - configmap.yaml
+  - pvc.yaml
+  - deployment.yaml
+  - service.yaml
+images:
+  - name: hk-eli-chatbot-api
+    newName: ghcr.io/repos-3sds/hk-eli-chatbot-api
+    newTag: latest

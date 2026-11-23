@@ -1,0 +1,10 @@
+# OPTIONAL: exposes the API outside the cluster (for API testing). Not in kustomization.yaml by default.
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: hk-eli-chatbot-api
+  labels: {app.kubernetes.io/name: hk-eli-chatbot-api, app.kubernetes.io/part-of: hk-eli-chatbot}
+spec:
+  to: {kind: Service, name: hk-eli-chatbot-api}
+  port: {targetPort: http}
+  tls: {termination: edge, insecureEdgeTerminationPolicy: Redirect}

@@ -1,0 +1,26 @@
+# Runs both UAT images together on one machine, the same way OpenShift wires them:
+# the browser talks only to the web service (:8081), which forwards /api/stork and /tableau to the agent.
+#   docker compose -f compose.uat.yaml up --build      then open http://localhost:8081
+# (After the repo split each repo builds its own image; this file stays here as the local check.)
+services:
+  hk-eli-chatbot-api:
+    build: ./poc
+    image: hk-eli-chatbot-api:local
+    user: "1000770000:0"          # a random UID like OpenShift's
+    read_only: true
+    tmpfs: [/tmp]
+    volumes: [api-var:/app/var]
+    environment:
+      DEFAULT_USER: uat.user
+      # LLM_MODE: gateway         # plus LLM_GATEWAY_URL and LLM_API_KEY for live Gemini wording
+  hk-eli-chatbot-web:
+    build: ./web
+    image: hk-eli-chatbot-web:local
+    user: "1000770000:0"
+    depends_on: [hk-eli-chatbot-api]
+    environment:
+      API_URL: http://hk-eli-chatbot-api:8080
+      AS_OF_DATE: "2026-11-19"
+    ports: ["8081:8080"]
+volumes:
+  api-var: {}

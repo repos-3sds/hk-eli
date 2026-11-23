@@ -135,6 +135,11 @@ class Settings:
         return datetime.now(ZoneInfo(self.timezone)).date()
 
 
+def allow_public_bind() -> bool:
+    """True only in a container (OpenShift), where the pod must listen on 0.0.0.0 for its Service."""
+    return _bool("ALLOW_PUBLIC_BIND", False)
+
+
 # Mock data is built around this business day; real mode uses the clock.
 MOCK_DEMO_TODAY = "2026-11-19"
 

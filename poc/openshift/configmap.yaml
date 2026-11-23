@@ -1,0 +1,27 @@
+# Settings for the agent in UAT. Change values here (or with `oc set env`), never in the image.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hk-eli-chatbot-api
+  labels: {app.kubernetes.io/name: hk-eli-chatbot-api, app.kubernetes.io/part-of: hk-eli-chatbot}
+data:
+  LOG_LEVEL: info
+  APP_TIMEZONE: Asia/Hong_Kong
+  # Fictional demo book is built around this business day. Leave empty with TABLEAU_MODE=real.
+  DEMO_TODAY: "2026-11-19"
+  DB_PATH: /app/var/hkeli.sqlite
+  # No login for UAT: every call is made as DEFAULT_USER. Behind the future Java edge set TRUST_EDGE_HEADERS=true.
+  TRUST_EDGE_HEADERS: "false"
+  DEFAULT_USER: uat.user
+  # mock = built-in fictional HK_ELI workbook, no network. real = the bank's Tableau server (fill TABLEAU_* below).
+  TABLEAU_MODE: mock
+  TABLEAU_EMBED: embed
+  # TABLEAU_SERVER: https://<tableau-server>
+  # TABLEAU_SITE: <site-content-url>
+  # TABLEAU_USER: <tableau-username>
+  # off = rules and templates only (no model). gateway = Gemini through the approved model gateway.
+  LLM_MODE: "off"
+  # LLM_GATEWAY_URL: https://<model-gateway-host>
+  # LLM_GATEWAY_PATH: /v1/models/{model}:generateContent
+  # LLM_MODEL: gemini-2.5-flash
+  # LLM_AUTH_HEADER: Authorization

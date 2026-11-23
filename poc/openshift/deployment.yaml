@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hk-eli-chatbot-api
+  labels: {app.kubernetes.io/name: hk-eli-chatbot-api, app.kubernetes.io/part-of: hk-eli-chatbot, app.kubernetes.io/component: backend}
+spec:
+  # One replica: the conversation store is SQLite on a volume. Scale out only after moving to MariaDB.
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app.kubernetes.io/name: hk-eli-chatbot-api}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: hk-eli-chatbot-api, app.kubernetes.io/part-of: hk-eli-chatbot}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: api
+          image: hk-eli-chatbot-api:latest   # set by kustomize `images:` or `oc set image`
+          imagePullPolicy: IfNotPresent
+          ports:
+            - {name: http, containerPort: 8080, protocol: TCP}
+          envFrom:
+            - configMapRef: {name: hk-eli-chatbot-api}
+            - secretRef: {name: hk-eli-chatbot-api, optional: true}
+          readinessProbe:
+            httpGet: {path: /readyz, port: http}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            initialDelaySeconds: 10
+            periodSeconds: 20
+            timeoutSeconds: 3
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {cpu: "1", memory: 768Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: var, mountPath: /app/var}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: var
+          persistentVolumeClaim: {claimName: hk-eli-chatbot-api-var}
+        - name: tmp
+          emptyDir: {}
