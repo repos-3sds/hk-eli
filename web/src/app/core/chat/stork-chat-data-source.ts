@@ -166,10 +166,14 @@ export function toChatAnswer(a: StorkAnswer, id: string): ChatAnswer {
     figures: (a.numbers ?? []).map((n) => ({ display: n.display, measure: n.measure, source: n.source })),
     model: a.meta?.model && a.meta.model !== 'off' ? a.meta.model : undefined,
     clarify: a.clarify?.options.length
-      ? { kind: a.clarify.code === 'VALUE_AMBIGUOUS' ? 'ambiguous' : 'not_found', label: a.clarify.label, options: a.clarify.options }
+      ? { kind: clarifyKind(a.clarify.code), label: a.clarify.label, options: a.clarify.options }
       : undefined,
     understood: understood(a.concepts),
   };
+}
+
+function clarifyKind(code: string): 'ambiguous' | 'not_found' | 'reading' {
+  return code === 'VALUE_AMBIGUOUS' ? 'ambiguous' : code === 'INTENT_UNSURE' ? 'reading' : 'not_found';
 }
 
 export function toEmbed(e: StorkEmbed): TableauEmbed {

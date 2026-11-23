@@ -222,9 +222,13 @@ export interface ChatAnswer {
   /** Pipeline answers: every figure the code computed, with the view it was read from. Shown as verified chips. */
   readonly figures?: readonly { readonly display: string; readonly measure: string; readonly source: string }[];
   readonly model?: string;
-  /** Pipeline answers: a value the user named fits several stored values, or none. The options are real values to pick from. */
+  /**
+   * Pipeline answers: a value the user named fits several stored values, or none (`ambiguous`, `not_found`), or the
+   * question itself can be read more than one way (`reading`: "Did you mean"). The options are real values or
+   * readings to pick from; each carries the question that answers it.
+   */
   readonly clarify?: {
-    readonly kind: 'ambiguous' | 'not_found';
+    readonly kind: 'ambiguous' | 'not_found' | 'reading';
     /** What the value is, in plain words: "branch", "district". */
     readonly label: string;
     readonly options: readonly { readonly label: string; readonly question: string }[];

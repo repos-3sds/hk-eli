@@ -50,6 +50,21 @@ describe('toChatAnswer', () => {
   });
 });
 
+describe('toChatAnswer did you mean', () => {
+  it('turns readings the agent is unsure about into "Did you mean" choices that each ask a full question', () => {
+    const a = toChatAnswer({
+      question: 'TRE Wan Chai', status: 'NEEDS_CLARIFICATION',
+      headline: "I can read that two ways, so I haven't run a query yet. Pick the answer you want.",
+      clarify: { code: 'INTENT_UNSURE', label: 'reading', text: '', options: [
+        { label: 'Maturity by branch', question: 'Which branches have the largest TRE predicted maturity in the next 30 days?' },
+        { label: 'Customers maturing', question: 'How many TRE customers at Wan Chai have predicted maturity in the next 30 days?' }] },
+    }, 's-4');
+    expect(a.fallback).toBe(true);
+    expect(a.clarify?.kind).toBe('reading');
+    expect(a.clarify?.options[1].question).toContain('Wan Chai');
+  });
+});
+
 describe('toChatAnswer what-if', () => {
   const WHATIF = {
     ...BRANCHES,

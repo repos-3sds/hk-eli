@@ -18,7 +18,7 @@ from datetime import date
 from .. import knowledge as KB
 from .. import prompts as PR
 from ..llm import Call, LLMError
-from .understand import Intent, apply_defaults, grain_for, understand
+from .understand import Intent, apply_defaults, grain_for, reading_clarify, readings, understand
 
 TICKER = re.compile(r"^(\d{1,5} HK|[A-Z]{1,6} U[WSNQ])$")
 FIG = re.compile(r"\d[\d,]*(?:\.\d+)?")
@@ -36,35 +36,87 @@ def understand_schema(prompt: PR.Prompt, kb: KB.Knowledge) -> dict:
         "BRANCHES": kb.values("cust_branch"), "RESULTS": kb.values("predict_result")})
 
 
+def needs_model(base: Intent) -> bool:
+    """The model is asked only when the rules are unsure. A what-if, a refusal or a value question
+    ("which Bay branch?") is settled by code, and a high-confidence rules reading costs no call."""
+    if base.shock or base.unsupported:
+        return False
+    if base.clarify and base.clarify.get("code") != "INTENT_UNSURE":
+        return False
+    return base.confidence != "high"
+
+
 def interpret(question: str, today: date, llm, lib: dict, kb: KB.Knowledge, calls: list) -> Intent:
+    """Rules first; Gemini as a guarded classifier when the rules miss or are unsure.
+
+    Outcomes: the rules' reading (no call); the model's reading when it agrees with the rules, picks one of
+    the rules' own candidates, or is sure where the rules found nothing; otherwise 2-3 'Did you mean'
+    readings for the user to pick. Any model failure falls back to the rules, and the answer says so.
+    """
     base = understand(question, today)
-    if not getattr(llm, "enabled", False):
+    if not getattr(llm, "enabled", False) or not needs_model(base):
         return base
     pr = lib["understand"]
     call = _call("understand", pr, llm)
     t0 = time.perf_counter()
     try:
-        hints = {k: v for k, v in base.hints.items() if v and k not in ("unsupported", "concepts", "gaps", "clarify")}
-        sys_txt, user_txt = pr.render(
-            question=question, today=today.isoformat(), hints_json=json.dumps(hints),
-            intents_json=json.dumps(kb.intents["intents"]),
-            glossary_json=json.dumps(_glossary_for_prompt(kb)))
+        hints = {k: v for k, v in base.hints.items()
+                 if v and k not in ("unsupported", "concepts", "gaps", "clarify", "text", "corrections")}
+        values = dict(question=question, today=today.isoformat(), hints_json=json.dumps(hints),
+                      intents_json=json.dumps([{k: i[k] for k in ("id", "grain", "label", "example") if k in i}
+                                               for i in kb.intents["intents"]]),
+                      glossary_json=json.dumps(_glossary_for_prompt(kb)))
+        if "examples_json" in pr.inputs:
+            values["examples_json"] = json.dumps([[e, i["id"]] for i in kb.intents["intents"] for e in i.get("examples", [])])
+        if "rule_reading" in pr.inputs:
+            values["rule_reading"] = ", ".join(base.candidates) or "nothing"
+        sys_txt, user_txt = pr.render(**values)
         raw = llm.generate_json(sys_txt, user_txt, understand_schema(pr, kb))
         merged, problems = merge_intent(base, raw, kb, today)
         call.latency_ms = round((time.perf_counter() - t0) * 1000)
-        if problems:
-            call.outcome, call.detail = "rejected", ",".join(problems)[:200]
-            calls.append(call)
-            base.source = "gateway->rules"
-            return base
-        calls.append(call)
-        return merged
     except LLMError as e:
         call.latency_ms = round((time.perf_counter() - t0) * 1000)
         call.outcome, call.detail = ("timeout" if e.code == "TIMEOUT" else "error"), e.code
         calls.append(call)
         base.source = "gateway->rules"
         return base
+    if problems:
+        call.outcome, call.detail = "rejected", ",".join(problems)[:200]
+        calls.append(call)
+        base.source = "gateway->rules"
+        return base
+    calls.append(call)
+    return decide(base, merged, raw, kb)
+
+
+def decide(base: Intent, merged: Intent, raw: dict, kb: KB.Knowledge) -> Intent:
+    """Combine the rules' and the model's readings. Code decides; the model only votes."""
+    m = raw.get("intent")
+    conf = raw.get("confidence") if raw.get("confidence") in ("high", "medium", "low") else "medium"
+    alts = [a for a in (raw.get("alternatives") or []) if a in kb.intent_ids and a not in ("unknown", m)]
+    rules = base.intent
+    if m == "unknown":
+        # the model is unsure too: keep the rules' reading (or their 'Did you mean' chips)
+        base.source = "gateway"
+        if rules == "unknown" and not base.clarify and raw.get("needs_clarification") and raw.get("clarification"):
+            base.assumptions.append("clarify: " + str(raw["clarification"])[:300])
+        return base
+    agree = m == rules or (m in base.candidates and conf != "low")
+    sure_alone = rules == "unknown" and conf == "high"
+    if agree or sure_alone:
+        merged.confidence = "high" if m == rules or conf == "high" else "medium"
+        if merged.clarify and merged.clarify.get("code") == "INTENT_UNSURE":
+            merged.clarify = None
+        return merged
+    # disagreement, or the model is not sure: ask, with the readings in front
+    first = [m, rules] + alts if rules != "unknown" else [m] + alts
+    opts = readings(base, first=first)
+    if len(opts) < 2:
+        return merged
+    base.clarify = reading_clarify(base, opts)
+    base.source = "gateway"
+    base.confidence = "medium"
+    return base
 
 
 def _glossary_for_prompt(kb: KB.Knowledge) -> list[dict]:
@@ -84,6 +136,9 @@ def merge_intent(base: Intent, raw: dict, kb: KB.Knowledge, today: date) -> tupl
     intent = raw.get("intent")
     if intent not in kb.intent_ids:
         problems.append("INTENT_NOT_ALLOWED")
+    alts = raw.get("alternatives") or []
+    if not isinstance(alts, list) or any(a not in kb.intent_ids for a in alts):
+        problems.append("ALTERNATIVE_NOT_ALLOWED")
     segs = raw.get("segments") or []
     if not isinstance(segs, list) or any(s not in kb.values("bp_div_type") for s in segs):
         problems.append("SEGMENT_NOT_ALLOWED")
@@ -111,7 +166,8 @@ def merge_intent(base: Intent, raw: dict, kb: KB.Knowledge, today: date) -> tupl
         intent = base.intent      # the model gave up but the rules found a supported intent: use it
     h = base.hints
     it = Intent(question=base.question, hints=h, unsupported=base.unsupported, source="gateway",
-                concepts=base.concepts, clarify=base.clarify)
+                concepts=base.concepts, clarify=base.clarify, candidates=base.candidates, confidence=base.confidence)
+    it.assumptions.extend(a for a in base.assumptions if a.startswith("Read '"))
     it.intent = intent
     it.segments = h.get("segments") or segs
     it.district = h.get("district") or raw.get("district") or None
@@ -208,4 +264,4 @@ def word(out: dict, llm, lib: dict, kb: KB.Knowledge, calls: list) -> str:
     return "gateway->template"
 
 
-__all__ = ["interpret", "word", "merge_intent", "check_wording", "evidence_figures", "understand_schema"]
+__all__ = ["interpret", "decide", "needs_model", "word", "merge_intent", "check_wording", "evidence_figures", "understand_schema"]
