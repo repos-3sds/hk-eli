@@ -28,9 +28,10 @@ let seq = 0;
 export class MockVizDriver implements VizDriver {
   private readonly pending = new Map<string, { ok: () => void; fail: (e: Error) => void }>();
   private readonly onMessage = (ev: MessageEvent) => {
-    const d = ev.data as { source?: string; event?: string; id?: string; message?: string } | null;
+    const d = ev.data as { source?: string; event?: string; id?: string; message?: string; height?: number } | null;
     if (ev.origin !== this.origin || ev.source !== this.frame.contentWindow || d?.source !== 'hkeli-viz') return;
     if (d.event === 'firstinteractive') this.events.firstInteractive();
+    if (d.event === 'resize' && typeof d.height === 'number' && d.height > 0) this.events.resize?.(d.height);
     const p = d.id ? this.pending.get(d.id) : undefined;
     if (!p) return;
     this.pending.delete(d.id!);
@@ -41,7 +42,7 @@ export class MockVizDriver implements VizDriver {
   constructor(
     private readonly frame: HTMLIFrameElement,
     private readonly origin: string,
-    private readonly events: { firstInteractive: () => void },
+    private readonly events: { firstInteractive: () => void; resize?: (height: number) => void },
     private readonly win: Window = window,
   ) {
     win.addEventListener('message', this.onMessage);
@@ -118,7 +119,7 @@ function loadTableauScript(src: string): Promise<void> {
   selector: 'eli-tableau-viz',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="frame" [style.height.px]="height()" [attr.aria-busy]="state() !== 'ready' && state() !== 'error'">
+    <div class="frame" [style.height.px]="fit() ?? height()" [attr.aria-busy]="state() !== 'ready' && state() !== 'error'">
       @if (frameUrl(); as u) {
         <iframe #frame [src]="u" [title]="'Tableau view ' + embed().view" loading="lazy" (load)="onFrameLoad()"></iframe>
       }
@@ -137,7 +138,7 @@ function loadTableauScript(src: string): Promise<void> {
   `,
   styles: `
     :host { display: block; }
-    .frame { position: relative; overflow: hidden; border: 1px solid var(--eli-separator); border-radius: var(--eli-radius-s); background: #11161f; }
+    .frame { position: relative; overflow: hidden; transition: height var(--eli-motion-fast); border: 1px solid var(--eli-separator); border-radius: var(--eli-radius-s); background: #11161f; }
     iframe, .host { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
     .host:empty { display: none; }
     .veil { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--eli-space-5);
@@ -153,6 +154,7 @@ export class TableauViz {
   readonly embed = input.required<TableauEmbed>();
   /** Parameter values to apply at runtime (name -> value). Changes are sent to the live view, not by reloading it. */
   readonly params = input<Readonly<Record<string, number | string>> | null>(null);
+  /** Height before the view reports its own (and always, for real Tableau, which sizes inside its frame). */
   readonly height = input(340);
 
   private readonly http = inject(HttpClient);
@@ -163,6 +165,8 @@ export class TableauViz {
 
   protected readonly state = signal<VizState>('loading');
   protected readonly error = signal('');
+  /** The mock page's own content height, so the whole view shows with no scroll inside the frame. */
+  protected readonly fit = signal<number | null>(null);
   private readonly nonce = signal(0);
   private driver: VizDriver | null = null;
   private applied: Record<string, number | string> = {};
@@ -193,7 +197,10 @@ export class TableauViz {
       const f = this.frame()?.nativeElement;
       this.frameUrl();
       if (f && !this.driver) {
-        untracked(() => (this.driver = new MockVizDriver(f, window.location.origin, { firstInteractive: () => this.ready() })));
+        untracked(() => (this.driver = new MockVizDriver(f, window.location.origin, {
+          firstInteractive: () => this.ready(),
+          resize: (h) => this.fit.set(h + 2), // + the frame's 1px border, top and bottom
+        })));
       }
     });
   }

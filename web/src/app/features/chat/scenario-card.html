@@ -17,7 +17,14 @@
       <input matSliderThumb [id]="uid" [value]="index()" (valueChange)="onSlider($event)"
         [attr.aria-valuetext]="title()" [attr.aria-label]="s.control.caption" />
     </mat-slider>
-    <output class="cval" [attr.for]="uid">{{ levelText(index()) }}</output>
+    <div class="cinput">
+      @if (inputSign()) {<span class="csign" aria-hidden="true">{{ inputSign() }}</span>}
+      <input #box type="number" class="cbox" inputmode="numeric" step="1" [min]="inputMin()" [max]="inputMax()" [value]="levelNumber(index())"
+        [attr.aria-label]="s.control.caption + (s.control.unit === 'spot' ? ', percent' : (inputSign() === '−' ? ', fall in percent' : ', rise in percent'))"
+        (change)="onTyped(box)" (keydown.enter)="onTyped(box)" />
+      <span class="cunit" aria-hidden="true">%</span>
+    </div>
+    <div class="crange" aria-hidden="true"><span>Today</span><span>{{ levelText(last()) }}</span></div>
   </div>
   <div class="presets" role="group" aria-label="Jump to a level">
     @for (p of presets(); track p.i) {
@@ -31,16 +38,8 @@
     @for (w of words(); track $index) {@if (w.num) {<b>{{ w.t }}</b>} @else {{{ w.t }}}}
   </p>
 
-  <div class="tabs" role="tablist" aria-label="What-if sections" (keydown)="onTabKey($event)">
-    @for (t of tabs(); track t.id) {
-      <button type="button" role="tab" class="tab" [id]="uid + '-tab-' + t.id" [attr.aria-controls]="uid + '-panel-' + t.id"
-        [attr.aria-selected]="tab() === t.id" [attr.tabindex]="tab() === t.id ? 0 : -1" [class.on]="tab() === t.id" (click)="tab.set(t.id)">
-        {{ t.label }}@if (t.count !== null) {<span class="tcount">{{ t.count }}</span>}
-      </button>
-    }
-  </div>
-
-  <div class="panel-wrap" role="tabpanel" [id]="uid + '-panel-summary'" [attr.aria-labelledby]="uid + '-tab-summary'" [hidden]="tab() !== 'summary'">
+  <section class="overview" [attr.aria-labelledby]="uid + '-ov'">
+  <h5 class="sec-title" [id]="uid + '-ov'">Overview <small>at {{ levelText(index()) }}</small></h5>
   <div class="tiles">
     @for (t of tiles(); track t.label) {
       <div class="tile" [class.warn]="t.warn">
@@ -68,7 +67,7 @@
         </g>
       }
       @for (t of c.ticks; track t.x) {
-        <text [attr.x]="t.x" [attr.y]="ch - 6" class="axis" text-anchor="middle">{{ t.label }}</text>
+        <text [attr.x]="t.x" [attr.y]="ch - 6" class="axis" [attr.text-anchor]="t.anchor">{{ t.label }}</text>
       }
     </svg>
     <div class="legend">
@@ -76,6 +75,17 @@
       <span class="hint">Click a column or use the slider</span>
     </div>
   </figure>
+  </section>
+
+  <section class="explore" [attr.aria-labelledby]="uid + '-ex'">
+  <h5 class="sec-title" [id]="uid + '-ex'">Details</h5>
+    <div class="tabs" role="tablist" aria-label="What-if sections" (keydown)="onTabKey($event)">
+    @for (t of tabs(); track t.id) {
+      <button type="button" role="tab" class="tab" [id]="uid + '-tab-' + t.id" [attr.aria-controls]="uid + '-panel-' + t.id"
+        [attr.aria-selected]="tab() === t.id" [attr.tabindex]="tab() === t.id ? 0 : -1" [class.on]="tab() === t.id" (click)="tab.set(t.id)">
+        {{ t.label }}@if (t.count !== null) {<span class="tcount">{{ t.count }}</span>}
+      </button>
+    }
   </div>
 
   <div class="panel-wrap" role="tabpanel" [id]="uid + '-panel-changes'" [attr.aria-labelledby]="uid + '-tab-changes'" [hidden]="tab() !== 'changes'">
@@ -130,7 +140,7 @@
     <section class="panel ladder" aria-label="Largest positions against their barriers">
       <h5>Largest positions against their barriers <small>worst-of level, % of initial</small></h5>
       <div class="lscale" aria-hidden="true">
-        @for (t of ladderTicks; track t.v) {<span [style.left.%]="t.x">{{ t.v }}%</span>}
+        @for (t of ladderScale().ticks; track t.v) {<span [style.left.%]="t.x">{{ t.v }}%</span>}
       </div>
       @for (l of ladder(); track l.r.pos_id) {
         <div class="lrow" [class.moved]="l.changed">
@@ -167,6 +177,7 @@
   <div class="panel-wrap" role="tabpanel" [id]="uid + '-panel-details'" [attr.aria-labelledby]="uid + '-tab-details'" [hidden]="tab() !== 'details'">
     <ng-content select="[scDetails]" />
   </div>
+  </section>
 
   <p class="source"><mat-icon svgIcon="info" aria-hidden="true" />Every step worked out by code from {{ s.source }}; the slider only picks a step.
     @if (s.checked) {Words checked against each step's figures.}</p>

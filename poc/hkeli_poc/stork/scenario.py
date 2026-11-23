@@ -86,6 +86,9 @@ def positions_from_rows(cols: list[str], rows: list[list[str]]) -> list[dict]:
     return out
 
 
+MAX_MOVE_PCT = 100   # the slider and the % box go from today to a 100% move
+
+
 @dataclass
 class Shock:
     kind: str                      # single | market
@@ -107,10 +110,9 @@ class Shock:
 
 
 def grid_moves(shock: Shock) -> list[float]:
-    """Slider steps, 1 point apart, from 0 to at least 30% in the asked direction (to the asked move if larger)."""
-    span = max(30, min(60, round(abs(shock.move) * 100)))
+    """Slider steps, 1 point apart, from 0 to 100% in the asked direction (a fall to zero, or a doubling)."""
     sign = -1 if shock.move <= 0 else 1
-    return [round(sign * k / 100, 2) for k in range(0, span + 1)]
+    return [round(sign * k / 100, 2) for k in range(0, MAX_MOVE_PCT + 1)]
 
 
 def _hkd(x: float) -> str:

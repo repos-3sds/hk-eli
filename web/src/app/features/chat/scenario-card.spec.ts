@@ -557,18 +557,47 @@ describe('ScenarioCard', () => {
     expect(el.querySelector('.back')?.textContent).toContain('Back to −10%');
   });
 
-  it('shows one section at a time behind tabs, with the views tab only when views are given', async () => {
+  it('keeps the overview in view and puts the details behind tabs, with the views tab only when views are given', async () => {
     const f = await render();
     const el: HTMLElement = f.nativeElement;
-    const tabs = () => [...el.querySelectorAll<HTMLButtonElement>('[role=tab]')].map((t) => t.textContent?.trim());
-    expect(tabs()).toEqual(['Summary', 'What changes30', 'Positions vs barriers3']);
+    expect(el.querySelector('.overview .tiles')).not.toBeNull();
+    expect(el.querySelector('.overview [role=tabpanel]')).toBeNull();
+    const tabs = () => [...el.querySelectorAll<HTMLButtonElement>('.explore [role=tab]')].map((t) => t.textContent?.trim());
+    expect(tabs()).toEqual(['What changes30', 'Positions vs barriers3']);
     const visible = () => [...el.querySelectorAll<HTMLElement>('[role=tabpanel]')].filter((p) => !p.hidden).map((p) => p.id.split('-panel-')[1]);
-    expect(visible()).toEqual(['summary']);
+    expect(visible()).toEqual(['changes']);
     f.componentRef.setInput('viewCount', 3);
     await f.whenStable();
     expect(tabs()).toContain('Tableau views3');
     el.querySelectorAll<HTMLButtonElement>('[role=tab]')[1].click();
     await f.whenStable();
-    expect(visible()).toEqual(['changes']);
+    expect(visible()).toEqual(['positions']);
+  });
+
+  it('takes a typed % as the nearest step, ignores a typed sign and keeps it inside the range', async () => {
+    const f = await render();
+    const levels: number[] = [];
+    f.componentInstance.level.subscribe((v) => levels.push(v));
+    const el: HTMLElement = f.nativeElement;
+    const box = el.querySelector<HTMLInputElement>('.cbox')!;
+    expect(box.value).toBe('10');
+    expect(el.querySelector('.csign')?.textContent).toBe('−');
+    expect(box.max).toBe('20');
+    const type = async (v: string) => {
+      box.value = v;
+      box.dispatchEvent(new Event('change'));
+      await f.whenStable();
+    };
+    await type('-19');
+    expect(levels.at(-1)).toBe(-0.2);
+    expect(box.value).toBe('20');
+    expect(el.querySelector('.tile .tv')?.textContent).toBe('53');
+    await type('250');
+    expect(box.value).toBe('20');
+    await type('abc');
+    expect(box.value).toBe('20');
+    await type('0');
+    expect(levels.at(-1)).toBe(0);
+    expect(el.querySelector('.crange')?.textContent).toContain('−20%');
   });
 });

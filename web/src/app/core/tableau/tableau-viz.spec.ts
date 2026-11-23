@@ -17,10 +17,11 @@ describe('MockVizDriver', () => {
     const listeners: ((e: MessageEvent) => void)[] = [];
     const win = { addEventListener: (_: string, f: (e: MessageEvent) => void) => listeners.push(f), removeEventListener: () => undefined } as unknown as Window;
     let interactive = 0;
-    const d = new MockVizDriver(frame, 'http://localhost:4210', { firstInteractive: () => interactive++ }, win);
+    const heights: number[] = [];
+    const d = new MockVizDriver(frame, 'http://localhost:4210', { firstInteractive: () => interactive++, resize: (h) => heights.push(h) }, win);
     const reply = (data: unknown, origin = 'http://localhost:4210', source: unknown = contentWindow) =>
       listeners.forEach((f) => f({ data, origin, source } as MessageEvent));
-    return { d, posted, reply, interactive: () => interactive };
+    return { d, posted, reply, heights, interactive: () => interactive };
   }
 
   it('posts the runtime call to the frame and resolves on its "done"', async () => {
@@ -41,5 +42,13 @@ describe('MockVizDriver', () => {
     reply({ source: 'hkeli-viz', event: 'error', id, message: 'Unknown field' });
     await expect(p).rejects.toThrow('Unknown field');
     expect(interactive()).toBe(1);
+  });
+
+  it('passes on the view page\'s own height, so the frame shows the whole view', () => {
+    const { reply, heights } = setup();
+    reply({ source: 'hkeli-viz', event: 'resize', height: 812 });
+    reply({ source: 'hkeli-viz', event: 'resize', height: 0 });
+    reply({ source: 'hkeli-viz', event: 'resize', height: 999 }, 'https://evil.example');
+    expect(heights).toEqual([812]);
   });
 });
