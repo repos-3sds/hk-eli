@@ -38,6 +38,8 @@ export const ANSWER_STAGES = [
   'Writing the answer and checking every figure',
 ] as const;
 const STAGE_DELAYS_MS = [700, 1600, 2600, 3600];
+/** Shown on a saved turn from before full answers were kept, or when the saved answer can't be loaded. */
+const HEADLINE_ONLY = 'Saved answer: the headline only. Ask again for the figures, chart and sources.';
 
 /**
  * The conversation. Lives for the whole session, so leaving the Chat tab and coming back keeps it.
@@ -87,13 +89,36 @@ export class ChatStore {
     this.data.storedHistory?.().subscribe((s) => this.stored.set(s));
   }
 
-  /** Reopens a stored conversation: its questions and headlines come back, and new questions continue it. */
+  /**
+   * Reopens a stored conversation as it was: the questions and headlines show at once, then each answer is
+   * replaced by the whole saved answer (figures, chart, table, what-if, Tableau views, sources). New questions
+   * continue the same conversation.
+   */
   reopenStored(conversationId: string): void {
     const past = this.storedConversations().find((c) => c.id === conversationId);
     if (!past) return;
     this.newChat();
-    this.turns.set(past.turns);
+    this.turns.set(past.turns.map((t) => ({ ...t, answer: t.answer && { ...t.answer, writtenBy: 'Loading the saved answer…' } })));
     this.conversationId.set(conversationId);
+    const fallback = (turnId: string | undefined) => {
+      const t = this.turns().find((x) => x.answer?.turnId === turnId);
+      if (t?.answer) this.patch(t.id, { answer: { ...t.answer, writtenBy: HEADLINE_ONLY } });
+    };
+    const source = this.data.storedConversation?.(conversationId);
+    if (!source) {
+      this.turns().forEach((t) => fallback(t.answer?.turnId));
+      return;
+    }
+    source.subscribe((saved) => {
+      if (this.conversationId() !== conversationId) return;   // the user moved on before it arrived
+      const byTurn = new Map((saved ?? []).map((s) => [s.turnId, s.answer]));
+      for (const t of this.turns()) {
+        const id = t.answer?.turnId;
+        const full = id ? byTurn.get(id) : null;
+        if (full) this.patch(t.id, { answer: { ...full, turnId: id } });
+        else fallback(id);
+      }
+    });
   }
 
   /** Puts a past question back in the ask box to change and send again. */
@@ -217,7 +242,7 @@ export class ChatStore {
         turnId: s.turnId,
         conversationId: s.conversationId,
         status: s.status,
-        writtenBy: 'Saved answer: the headline only. Ask again for the figures, chart and sources.',
+        writtenBy: HEADLINE_ONLY,
       },
     };
   }

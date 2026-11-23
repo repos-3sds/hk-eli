@@ -69,4 +69,39 @@ describe('ChatStore', () => {
     store.rate(store.turns()[0].id, 'up');
     expect(store.turns()[0].feedback).toBe('up');
   });
+
+  it('reopens a stored conversation with every answer in full, falling back to the headline for old turns', () => {
+    const stored = [
+      { turnId: 'T2', conversationId: 'C1', askedAt: '2026-11-23T10:01:00Z', question: 'And PB?', status: 'OK', headline: 'PB headline' },
+      { turnId: 'T1', conversationId: 'C1', askedAt: '2026-11-23T10:00:00Z', question: 'If NVDA falls 10%?', status: 'OK', headline: 'NVDA headline' },
+    ];
+    const full: ChatAnswer = { ...ANSWER, id: 'full', blocks: [{ kind: 'text', text: 'The whole what-if answer' }], followUps: ['What if 20%?'] };
+    const saved = new Subject<readonly { turnId: string; answer: ChatAnswer | null }[] | null>();
+    const storedConversation = vi.fn(() => saved);
+    TestBed.configureTestingModule({ providers: [{ provide: APP_CONFIG, useValue: TEST_CONFIG }, {
+      provide: ChatDataSource, useValue: { ask: () => of(ANSWER), storedHistory: () => of(stored), storedConversation } }] });
+    const store = TestBed.inject(ChatStore);
+    store.reopenStored('C1');
+    expect(storedConversation).toHaveBeenCalledWith('C1');
+    expect(store.turns().map((t) => t.question)).toEqual(['If NVDA falls 10%?', 'And PB?']);
+    expect(store.turns()[0].answer?.writtenBy).toBe('Loading the saved answer…');
+    saved.next([{ turnId: 'T1', answer: full }, { turnId: 'T2', answer: null }]);
+    const [first, second] = store.turns();
+    expect(first.answer?.blocks).toEqual(full.blocks);
+    expect(first.answer?.followUps).toEqual(['What if 20%?']);
+    expect(first.answer?.turnId).toBe('T1');                       // feedback still goes to the stored turn
+    expect(second.answer?.blocks).toEqual([{ kind: 'text', text: 'PB headline' }]);
+    expect(second.answer?.writtenBy).toContain('headline only');
+    expect(store.conversationId()).toBe('C1');
+  });
+
+  it('keeps the headline when the saved answers cannot be loaded', () => {
+    const stored = [{ turnId: 'T1', conversationId: 'C1', askedAt: '2026-11-23T10:00:00Z', question: 'Q', status: 'OK', headline: 'H' }];
+    TestBed.configureTestingModule({ providers: [{ provide: APP_CONFIG, useValue: TEST_CONFIG }, {
+      provide: ChatDataSource, useValue: { ask: () => of(ANSWER), storedHistory: () => of(stored), storedConversation: () => of(null) } }] });
+    const store = TestBed.inject(ChatStore);
+    store.reopenStored('C1');
+    expect(store.turns()[0].answer?.blocks).toEqual([{ kind: 'text', text: 'H' }]);
+    expect(store.turns()[0].answer?.writtenBy).toContain('headline only');
+  });
 });

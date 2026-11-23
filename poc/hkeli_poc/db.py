@@ -84,6 +84,11 @@ MIGRATIONS: list[tuple[int, str]] = [
     ALTER TABLE turn ADD COLUMN channel TEXT NOT NULL DEFAULT 'chat';
     CREATE INDEX ix_turn_user_channel ON turn(user_id, channel, created_at);
     """),
+    # The whole answer as the user saw it (figures, chart, table, what-if steps, views, sources), so History
+    # reopens it as it was, not only the headline. Older turns keep NULL and reopen as the headline.
+    (3, """
+    ALTER TABLE turn ADD COLUMN answer_json TEXT;
+    """),
 ]
 
 CHANNELS = ("chat", "insights")
@@ -168,6 +173,33 @@ class Store:
                  json.dumps([{k: n[k] for k in ("id", "value", "measure")} for n in answer.get("numbers") or []]),
                  latency_ms, channel))
         return tid
+
+    def save_answer(self, turn_id: str, answer: dict) -> None:
+        """Keeps the full answer object returned to the user with its turn (JSON, the same shape as /api/v1/ask)."""
+        with self._lock:
+            self._con.execute("UPDATE turn SET answer_json = ? WHERE id = ?", (json.dumps(answer, default=str), turn_id))
+
+    def conversation_answers(self, user_id: str, conversation_id: str) -> list[dict] | None:
+        """One conversation's turns, oldest first, each with its stored answer (None for turns saved before v3).
+
+        None when the conversation is not this user's, so nobody can read another user's answers.
+        """
+        r = self._con.execute("SELECT user_id FROM conversation WHERE id = ?", (conversation_id,)).fetchone()
+        if not r or r["user_id"] != user_id:
+            return None
+        rows = self._con.execute(
+            "SELECT id, conversation_id, created_at, question, status, headline, channel, answer_json FROM turn"
+            " WHERE conversation_id = ? AND user_id = ? ORDER BY created_at ASC", (conversation_id, user_id))
+        out = []
+        for row in rows:
+            d = dict(row)
+            raw = d.pop("answer_json")
+            try:
+                d["answer"] = json.loads(raw) if raw else None
+            except ValueError:
+                d["answer"] = None
+            out.append(d)
+        return out
 
     def record_llm_calls(self, turn_id: str | None, request_id: str, calls: list[dict]) -> None:
         with self._lock:

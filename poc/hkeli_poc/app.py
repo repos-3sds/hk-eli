@@ -13,6 +13,7 @@ API (v1, JSON):
   POST /api/v1/ask/stream same body; Server-Sent Events: `stage` per pipeline step, then `answer` (or `error`)
   POST /api/v1/feedback   {turn_id, rating: 1|-1, comment?}
   GET  /api/v1/history    ?conversation_id=&limit=
+  GET  /api/v1/history/conversations/{id}   one conversation with every answer in full, oldest first
   GET  /api/v1/config     non-secret settings the UI needs
   GET  /api/embed/config, /api/embed/token   (real Tableau only)
   GET  /healthz (alive)   GET /readyz (store, knowledge base, prompts, Tableau settings)
@@ -242,6 +243,7 @@ def _ask(body: Ask, user: str, rid: str, on_step=None) -> dict:
                               channel=body.channel)
     S.store.record_llm_calls(tid, rid, calls)
     a.update(turn_id=tid, conversation_id=conv, request_id=rid, latency_ms=ms, channel=body.channel)
+    S.store.save_answer(tid, a)   # the whole answer, so History reopens it exactly as shown
     log.info("turn", extra={"extra": {"request_id": rid, "turn_id": tid, "status": a["status"], "intent": a.get("intent"),
                                       "channel": body.channel, "understanding": a["meta"]["understanding"],
                                       "insight": a["meta"]["insight"], "ms": ms}})
@@ -325,6 +327,16 @@ def history(request: Request, conversation_id: str | None = None, limit: int = 5
             channel: Literal["chat", "insights"] = "chat"):
     ensure_started()
     return {"turns": S.store.turns(current_user(request), conversation_id, max(1, min(limit, 200)), channel)}
+
+
+@app.get("/api/v1/history/conversations/{conversation_id}")
+def history_conversation(conversation_id: str, request: Request):
+    """One of this user's conversations with every answer in full (as /api/v1/ask returned it), oldest first."""
+    ensure_started()
+    turns = S.store.conversation_answers(current_user(request), conversation_id[:64])
+    if turns is None:
+        raise HTTPException(404, "No such conversation for this user")
+    return {"conversation_id": conversation_id, "turns": turns}
 
 
 @app.get("/api/v1/config")
