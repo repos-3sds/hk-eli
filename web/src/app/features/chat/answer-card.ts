@@ -45,12 +45,24 @@ import { TableauViews } from './tableau-views';
               <p class="text">{{ b.text }}</p>
             }
             @if (first && answer().clarify; as c) {
-              <div class="pick" role="group" [attr.aria-label]="'Pick a ' + c.label">
-                <span class="pick-label">{{ c.kind === 'ambiguous' ? 'Pick a ' + c.label : c.label === 'district' ? 'Districts' : 'Options' }}</span>
-                @for (o of c.options; track o.label) {
-                  <button type="button" class="pick-btn" [disabled]="!showFollowUps()" [attr.title]="o.question" (click)="followUp.emit(o.question)">{{ o.label }}</button>
-                }
-              </div>
+              @if (c.kind === 'reading') {
+                <div class="readings" role="group" aria-label="Did you mean">
+                  <span class="pick-label">Did you mean</span>
+                  @for (o of c.options; track o.label) {
+                    <button type="button" class="reading-btn" [disabled]="!showFollowUps()" (click)="followUp.emit(o.question)">
+                      <span class="reading-label">{{ o.label }}</span>
+                      <span class="reading-q">{{ o.question }}</span>
+                    </button>
+                  }
+                </div>
+              } @else {
+                <div class="pick" role="group" [attr.aria-label]="'Pick a ' + c.label">
+                  <span class="pick-label">{{ c.kind === 'ambiguous' ? 'Pick a ' + c.label : c.label === 'district' ? 'Districts' : 'Options' }}</span>
+                  @for (o of c.options; track o.label) {
+                    <button type="button" class="pick-btn" [disabled]="!showFollowUps()" [attr.title]="o.question" (click)="followUp.emit(o.question)">{{ o.label }}</button>
+                  }
+                </div>
+              }
             }
           }
           @case ('table') {
@@ -158,6 +170,15 @@ import { TableauViews } from './tableau-views';
       &.gap { border-color: rgb(255 147 46 / 45%); } }
     .pick { display: flex; flex-wrap: wrap; align-items: center; gap: var(--eli-space-4); }
     .pick-label { margin-right: var(--eli-space-2); color: var(--eli-text-muted); font-size: var(--eli-font-size-s); }
+    .readings { display: flex; flex-direction: column; align-items: stretch; gap: var(--eli-space-3); max-width: 560px; }
+    .reading-btn { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: var(--eli-space-4) var(--eli-space-6);
+      border: 1px solid var(--eli-accent-link); border-radius: var(--eli-radius-s); background: rgb(99 171 255 / 8%);
+      color: var(--eli-text-strong); font: inherit; text-align: left; cursor: pointer; }
+    .reading-btn:hover:not(:disabled) { background: rgb(99 171 255 / 16%); }
+    .reading-btn:focus-visible { outline: 2px solid var(--eli-accent-link); outline-offset: 2px; }
+    .reading-btn:disabled { opacity: 0.55; cursor: default; }
+    .reading-label { font-size: var(--eli-font-size-s); font-weight: var(--eli-weight-semibold); }
+    .reading-q { color: var(--eli-text-muted); font-size: var(--eli-font-size-xs); }
     .pick-btn { height: 32px; padding: 0 var(--eli-space-7); border: 1px solid var(--eli-accent-link); border-radius: var(--eli-radius-s); background: rgb(99 171 255 / 10%); color: var(--eli-text-strong); font: inherit; font-size: var(--eli-font-size-s); font-weight: var(--eli-weight-semibold); cursor: pointer;
       &:hover:not(:disabled) { background: rgb(99 171 255 / 20%); } &:focus-visible { outline: 2px solid var(--eli-accent-link); outline-offset: 2px; } &:disabled { opacity: 0.55; cursor: default; } }
     .follow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--eli-space-4); padding-top: var(--eli-space-6); border-top: 1px solid var(--eli-separator); }

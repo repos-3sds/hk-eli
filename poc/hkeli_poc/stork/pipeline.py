@@ -86,7 +86,7 @@ def answer(question: str, http, site: str, scenario: str | None = None, user: st
     it = agent.interpret(question, today, llm, lib, kb, calls)
     out["meta"]["understanding"] = it.source
     out["intent"] = it.intent
-    tr.add("Pre-parse", {k: v for k, v in it.hints.items() if v and k not in ("concepts", "gaps", "clarify")})
+    tr.add("Pre-parse", {k: v for k, v in it.hints.items() if v and k not in ("concepts", "gaps", "clarify", "text", "corrections")})
     if cfg.concept_matcher:
         out["concepts"] = [{"concept": c["concept"], "label": c.get("label") or c["concept"],
                             "value": c.get("short") or c.get("value"), "gap": bool(c.get("gap"))}
@@ -109,11 +109,24 @@ def answer(question: str, http, site: str, scenario: str | None = None, user: st
     if it.unsupported:
         u = it.unsupported[0]
         out.update(status="UNSUPPORTED", reasons=["CONCEPT_NOT_SUPPORTED"],
-                   headline=f"I can't answer that yet. {u['user_text']}".strip())
+                   headline=(u['user_text'] if u.get('rule') == 'refuse' else f"I can't answer that yet. {u['user_text']}").strip())
         out["caveats"].append({"code": "CONCEPT_NOT_SUPPORTED", "level": "block", "text": u["user_text"]})
         out["scope"] = ""   # the parsed scope would mislead here (e.g. a basket stock shown as WPS)
         out["followups"] = ["What is total outstanding ELI?", "How much TRE ELI is predicted to mature in the next 30 days?"]
         tr.add("Route", {"view": None, "reason": f"unsupported concept {u['id']}"})
+        return out
+    out["slots"] = {"segments": it.segments, "district": it.district, "branch": it.branch, "wps": it.wps,
+                    "result": it.result, "window_days": it.window_days, "on_date": it.on_date}
+    out["meta"]["confidence"] = it.confidence
+    if it.clarify and it.clarify["code"] == "INTENT_UNSURE":
+        opts = it.clarify["options"]
+        out.update(status="NEEDS_CLARIFICATION", reasons=["INTENT_UNSURE"],
+                   headline=f"I can read that {'two' if len(opts) == 2 else 'a few'} ways, so I haven't run a query yet. "
+                            "Pick the answer you want.")
+        out["followups"] = [o["question"] for o in opts]
+        out["clarify"] = {"code": "INTENT_UNSURE", "concept": "intent", "label": "reading", "text": "",
+                          "options": [{"label": o["label"], "question": o["question"], "intent": o["intent"]} for o in opts]}
+        tr.add("Route", {"view": None, "reason": "reading unsure: " + ", ".join(o["intent"] for o in opts)})
         return out
     if it.clarify:
         c = it.clarify
