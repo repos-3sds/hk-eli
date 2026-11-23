@@ -61,7 +61,7 @@ def test_bad_settings_fail_loudly(monkeypatch, env, msg):
 # ---------------------------------------------------------------- store
 def test_store_migrates_once_and_keeps_ownership(tmp_path):
     s = Store(tmp_path / "x.sqlite")
-    assert s.version() == 2 and s.migrate() == 2
+    assert s.version() == 3 and s.migrate() == 3
     cid = s.conversation("u1", None)
     assert s.conversation("u1", cid) == cid and s.conversation("u2", cid) != cid   # can't join another user's chat
     tid = s.record_turn(conversation_id=cid, request_id="r" * 8, user_id="u1",
@@ -70,7 +70,7 @@ def test_store_migrates_once_and_keeps_ownership(tmp_path):
     assert s.add_feedback(tid, "u2", 1, None) is None and s.add_feedback(tid, "u1", -1, "wrong branch")
     assert s.counts() == {"conversation": 2, "turn": 1, "llm_call": 0, "feedback": 1}
     s.close()
-    assert Store(tmp_path / "x.sqlite").version() == 2   # reopen: no re-migration
+    assert Store(tmp_path / "x.sqlite").version() == 3   # reopen: no re-migration
 
 
 # ---------------------------------------------------------------- API v1
@@ -84,6 +84,35 @@ def test_ask_records_turn_history_and_feedback():
     assert client.post("/api/v1/feedback", json={"turn_id": a["turn_id"], "rating": 1}).status_code == 200
     assert client.post("/api/v1/feedback", json={"turn_id": "f" * 32, "rating": 1}).status_code == 404
     assert client.post("/api/v1/feedback", json={"turn_id": a["turn_id"], "rating": 0}).status_code == 400
+
+
+def test_history_reopens_the_whole_answer_as_shown():
+    a1 = client.post("/api/v1/ask", json={"question": Q_BRANCH}).json()
+    a2 = client.post("/api/v1/ask", json={"question": "If NVDA falls below 10%, what happens?",
+                                          "conversation_id": a1["conversation_id"]}).json()
+    r = client.get(f"/api/v1/history/conversations/{a1['conversation_id']}")
+    assert r.status_code == 200
+    turns = r.json()["turns"]
+    assert [t["id"] for t in turns] == [a1["turn_id"], a2["turn_id"]]        # oldest first
+    assert turns[0]["answer"] == a1 and turns[1]["answer"] == a2              # exactly what /ask returned
+    sc = turns[1]["answer"]["scenario"]
+    assert len(sc["grid"]) == len(sc["moves"]) and turns[1]["answer"]["embeds"]   # what-if steps and views kept
+
+
+def test_history_conversation_is_private_and_404s_for_others(monkeypatch):
+    a = client.post("/api/v1/ask", json={"question": Q_BRANCH}).json()
+    assert client.get("/api/v1/history/conversations/" + "f" * 32).status_code == 404
+    monkeypatch.setenv("TRUST_EDGE_HEADERS", "true")
+    monkeypatch.setenv("EDGE_SHARED_TOKEN", "edge-test-token")
+    config.reload()
+    try:
+        other = client.get(f"/api/v1/history/conversations/{a['conversation_id']}",
+                           headers={"X-Edge-Token": "edge-test-token", "X-Eli-User": "other.user"})
+        assert other.status_code == 404
+    finally:
+        monkeypatch.delenv("TRUST_EDGE_HEADERS")
+        monkeypatch.delenv("EDGE_SHARED_TOKEN")
+        config.reload()
 
 
 def test_old_ask_path_still_works_and_validates():
@@ -323,5 +352,7 @@ def test_v1_database_upgrades_in_place(tmp_path):
                 " VALUES ('t1','c1','r','u','t','q','OK')")
     con.commit(); con.close()
     s = db.Store(p)
-    assert s.version() == 2
+    assert s.version() == 3
     assert [t["id"] for t in s.turns("u")] == ["t1"] and s.turns("u", channel="insights") == []
+    # a turn saved before v3 has no stored answer: it reopens as its headline
+    assert s.conversation_answers("u", "c1")[0]["answer"] is None

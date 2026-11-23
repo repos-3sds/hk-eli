@@ -11,6 +11,12 @@ export interface StoredTurn {
   readonly headline: string;
 }
 
+/** One stored turn with its whole answer as it was shown (null for turns saved before full answers were kept). */
+export interface StoredAnswer {
+  readonly turnId: string;
+  readonly answer: ChatAnswer | null;
+}
+
 /** One event while an answer is worked out: a pipeline step finished, or the answer itself. */
 export type AskEvent = { readonly kind: 'stage'; readonly label: string } | { readonly kind: 'answer'; readonly answer: ChatAnswer };
 
@@ -28,6 +34,11 @@ export abstract class ChatDataSource {
 
   /** Past questions kept by the server, newest first. Sources without a store keep history in the session only. */
   storedHistory(): Observable<readonly StoredTurn[] | null> {
+    return of(null);
+  }
+
+  /** One stored conversation with every answer in full, oldest first. Null where the source keeps no store. */
+  storedConversation(_conversationId: string): Observable<readonly StoredAnswer[] | null> {
     return of(null);
   }
 

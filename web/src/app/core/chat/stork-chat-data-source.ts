@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, map, of, timeout } from 'rxjs';
 import { AskEvent } from './chat-data-source';
 import { APP_CONFIG } from '../config/app-config';
-import { ChatDataSource, StoredTurn } from './chat-data-source';
+import { ChatDataSource, StoredAnswer, StoredTurn } from './chat-data-source';
 import { AnswerBlock, ChartSpec, ChatAnswer, ChatQuestion, ScenarioSpec, TableauEmbed } from './chat.models';
 
 /** One view of the topic bundle as the agent sends it (snake_case). */
@@ -401,6 +401,18 @@ export class StorkClient {
       );
   }
 
+  /** GET /api/v1/history/conversations/{id}: every answer of one conversation in full, mapped like a live answer. */
+  conversation(conversationId: string): Observable<readonly StoredAnswer[] | null> {
+    return this.http
+      .get<{ turns: { id: string; answer: StorkAnswer | null }[] }>(
+        `${this.config.gatewayBaseUrl}/v1/history/conversations/${encodeURIComponent(conversationId)}`,
+      )
+      .pipe(
+        map((r) => r.turns.map((t) => ({ turnId: t.id, answer: t.answer ? toChatAnswer(t.answer, `s-${++this.counter}`) : null }))),
+        catchError(() => of(null)),
+      );
+  }
+
   feedback(turnId: string, rating: 1 | -1): Observable<unknown> {
     return this.http.post(`${this.config.gatewayBaseUrl}/v1/feedback`, { turn_id: turnId, rating }).pipe(catchError(() => of(null)));
   }
@@ -422,6 +434,10 @@ export class StorkChatDataSource extends ChatDataSource {
 
   override storedHistory(): Observable<readonly StoredTurn[] | null> {
     return this.client.history();
+  }
+
+  override storedConversation(conversationId: string): Observable<readonly StoredAnswer[] | null> {
+    return this.client.conversation(conversationId);
   }
 
   override sendFeedback(turnId: string, rating: 1 | -1): Observable<unknown> {
