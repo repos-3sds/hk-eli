@@ -23,6 +23,8 @@ from hkeli_poc.stork.pipeline import answer
 
 client = TestClient(appmod.app)
 Q_BRANCH = "Which branches in D1 have the largest TRE maturity in the next 30 days?"
+# the rules read this two ways (WPS exposure, maturity by branch), so the model is asked
+Q_UNSURE = "Which TRE branches in D1 have the biggest WPS exposure maturing in the next 30 days?"
 
 
 # ---------------------------------------------------------------- settings
@@ -141,7 +143,7 @@ def test_health_ready_config_and_headers():
     r = client.get("/readyz").json()
     assert r["ready"] and set(r["checks"]) == {"store", "knowledge", "prompts", "tableau", "llm"}
     c = client.get("/api/v1/config").json()
-    assert c["llm_mode"] == "off" and c["prompts"] == {"understand": "1.1.0", "write_answer": "1.0.0"}
+    assert c["llm_mode"] == "off" and c["prompts"] == {"understand": "2.0.0", "write_answer": "1.0.0"}
     page = client.get("/")
     csp = page.headers["Content-Security-Policy"]
     assert "default-src 'self'" in csp and "http" not in csp
@@ -224,7 +226,7 @@ def test_model_reads_question_code_keeps_hints():
     llm = gateway([{"intent": "maturity_branch", "segments": ["PB"], "district": "TRE-D2", "ranking": True,
                     "needs_clarification": False, "window_days": 30},
                    {"headline": "Rewritten.", "bullets": []}], sent)
-    a = run(Q_BRANCH, llm)
+    a = run(Q_UNSURE, llm)
     assert a["meta"]["understanding"] == "gateway" and a["status"] == "OK"
     assert "TRE-D1" in a["scope"] or "D1" in a["scope"]          # code's D1 beat the model's D2
     assert "PB" not in a["scope"]                                # and its TRE beat the model's PB
@@ -237,25 +239,25 @@ def test_model_reads_question_code_keeps_hints():
 def test_model_reply_outside_contract_falls_back_to_rules():
     llm = gateway([{"intent": "sell_more_eli", "segments": [], "ranking": False, "needs_clarification": False},
                    {"headline": "x", "bullets": []}])
-    a = run(Q_BRANCH, llm)
+    a = run(Q_UNSURE, llm)
     assert a["meta"]["understanding"] == "gateway->rules" and a["status"] == "OK"
     assert a["_llm_calls"][0].outcome == "rejected" and "INTENT_NOT_ALLOWED" in a["_llm_calls"][0].detail
 
 
 def test_gateway_down_falls_back_everywhere():
-    a = run(Q_BRANCH, gateway([503, 503, 503, 503]))
+    a = run(Q_UNSURE, gateway([503, 503, 503, 503]))
     assert a["status"] == "OK" and a["meta"]["understanding"] == "gateway->rules"
     assert a["meta"]["insight"] == "gateway->template"
     assert {c.outcome for c in a["_llm_calls"]} == {"error"}
 
 
 def test_wording_with_evidence_figures_is_used():
-    base = run(Q_BRANCH, OffClient())
+    base = run(Q_UNSURE, OffClient())
     first = base["numbers"][0]["display"]
-    llm = gateway([{"intent": "maturity_branch", "segments": ["Treasures(HK)"], "district": "TRE-D1", "ranking": True,
+    llm = gateway([{"intent": "wps_exposure", "segments": ["Treasures(HK)"], "district": "TRE-D1", "ranking": True,
                     "needs_clarification": False},
                    {"headline": f"The top branch has {first} of predicted maturity in the next 30 days.", "bullets": []}])
-    a = run(Q_BRANCH, llm)
+    a = run(Q_UNSURE, llm)
     assert a["meta"]["insight"] == "gateway" and first in a["headline"] and a["draft_headline"]
 
 
@@ -266,29 +268,29 @@ def test_wording_with_evidence_figures_is_used():
 def test_wording_with_new_figures_or_promises_is_rejected(text, problem):
     llm = gateway([{"intent": "maturity_branch", "segments": ["Treasures(HK)"], "ranking": True, "needs_clarification": False},
                    {"headline": text, "bullets": []}, {"headline": text, "bullets": []}])
-    a = run(Q_BRANCH, llm)
+    a = run(Q_UNSURE, llm)
     assert a["meta"]["insight"] == "gateway->template" and text not in a["headline"]
     assert [c.outcome for c in a["_llm_calls"]] == ["ok", "rejected", "rejected"]    # one retry, then the template
     assert problem in a["_llm_calls"][-1].detail
 
 
 def test_wording_retry_once_then_accepts():
-    base = run(Q_BRANCH, OffClient())
+    base = run(Q_UNSURE, OffClient())
     first = base["numbers"][0]["display"]
-    llm = gateway([{"intent": "maturity_branch", "segments": ["Treasures(HK)"], "ranking": True, "needs_clarification": False},
+    llm = gateway([{"intent": "wps_exposure", "segments": ["Treasures(HK)"], "ranking": True, "needs_clarification": False},
                    {"headline": "Central leads with HKD 999.9M.", "bullets": []},
                    {"headline": f"Central leads with {first}.", "bullets": []}])
-    a = run(Q_BRANCH, llm)
+    a = run(Q_UNSURE, llm)
     assert a["meta"]["insight"] == "gateway" and first in a["headline"]
 
 
 def test_llm_calls_are_audited_with_prompt_version(monkeypatch):
-    monkeypatch.setattr(appmod.S, "llm", gateway([{"intent": "outstanding_total", "segments": [], "ranking": False,
+    monkeypatch.setattr(appmod.S, "llm", gateway([{"intent": "maturity_branch", "segments": [], "ranking": False,
                                                    "needs_clarification": False}, 500, 500]))
-    a = client.post("/api/v1/ask", json={"question": "What is total outstanding ELI?"}).json()
+    a = client.post("/api/v1/ask", json={"question": Q_UNSURE}).json()
     rows = appmod.S.store._con.execute("SELECT step, prompt_version, outcome FROM llm_call WHERE turn_id = ?",
                                        (a["turn_id"],)).fetchall()
-    assert [tuple(r) for r in rows] == [("understand", "1.1.0", "ok"), ("write_answer", "1.0.0", "error")]
+    assert [tuple(r) for r in rows] == [("understand", "2.0.0", "ok"), ("write_answer", "1.0.0", "error")]
 
 
 def test_empty_auth_scheme_sends_key_alone(monkeypatch):
@@ -306,7 +308,7 @@ def test_empty_auth_scheme_sends_key_alone(monkeypatch):
 def test_model_unknown_does_not_override_a_rules_intent():
     llm = gateway([{"intent": "unknown", "segments": [], "ranking": False, "needs_clarification": True,
                     "clarification": "Which stock?"}, 500, 500, 500])
-    a = run("Where is Alibaba exposure?", llm)
+    a = run(Q_UNSURE, llm)
     assert a["intent"] == "wps_exposure" and a["status"] == "OK" and a["meta"]["understanding"] == "gateway"
     assert a["meta"]["provider"] == "Gemini" and a["meta"]["model"] == "gemini-test"
 

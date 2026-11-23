@@ -51,6 +51,14 @@ class Knowledge:
     def intent_ids(self) -> list[str]:
         return [i["id"] for i in self.intents["intents"]]
 
+    def intent(self, iid: str) -> dict:
+        return next((i for i in self.intents["intents"] if i["id"] == iid), {"id": iid, "label": iid.replace("_", " ")})
+
+    def refuse_hits(self, text: str) -> list[dict]:
+        """Requests the chatbot never carries out (act, personal data, advice), from intents.json 'refuse'."""
+        s = text.lower()
+        return [r for r in self.intents.get("refuse", []) if any(re.search(p, s) for p in r["patterns"])]
+
     def unsupported_hits(self, text: str) -> list[dict]:
         s = text.lower()
         return [c for c in self.glossary["concepts"]
@@ -104,6 +112,14 @@ def validate(k: Knowledge) -> list[str]:
             for v in c["values"]:
                 if v.get("district") not in districts:
                     out.append(f"branch {v['value']} names an unknown district")
+    for r in k.intents.get("refuse", []):
+        if not r.get("user_text") or not r.get("patterns"):
+            out.append(f"refuse rule {r.get('id', '?')} needs patterns and user_text")
+        for p in r.get("patterns", []):
+            try:
+                re.compile(p)
+            except re.error:
+                out.append(f"refuse rule {r.get('id', '?')} has a bad pattern")
     iids = [x["id"] for x in k.intents.get("intents", [])]
     if "unknown" not in iids or len(iids) != len(set(iids)) or "" in iids:
         out.append("intent list must be unique, non-empty and include 'unknown'")

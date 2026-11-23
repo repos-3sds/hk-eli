@@ -1,0 +1,54 @@
+{
+  "id": "hkeli-intent-holdout",
+  "version": "1.0.0",
+  "about": "Held-out wordings, written after the rules were tuned on intent_bench.json and never used to tune them. The rules score is reported as it comes out; misses here are what the guarded model step and the 'Did you mean' chips are for. A miss is fine when the answer asks back (NEEDS_CLARIFICATION) and shows no figures; a wrong figure is not. All wording is invented.",
+  "cases": [
+    {"kind": "paraphrase", "q": "What's the aggregate notional of live ELIs across the bank?", "expect": {"intent": "outstanding_total", "status": "OK", "view": "outstanding-total-all"}},
+    {"kind": "paraphrase", "q": "Roughly what slice of the ELI book belongs to Private Banking?", "expect": {"intent": "segment_share", "status": "OK", "view": "outstanding-segment"}},
+    {"kind": "paraphrase", "q": "Headcount of TPC customers expected to get exercised?", "expect": {"intent": "customer_count", "status": "OK", "view": "outstanding-segment-customers"}},
+    {"kind": "paraphrase", "q": "Which Treasures branches in district 2 see the heaviest maturities over 14 days?", "expect": {"intent": "maturity_branch", "status": "OK", "view": "maturity-branch-n30-tre"}},
+    {"kind": "paraphrase", "q": "Who in Mong Kok branch has ELIs ending in the next fortnight?", "expect": {"intent": "maturity_detail", "status": "OK", "view": "maturity-details-n30-tre"}},
+    {"kind": "paraphrase", "q": "Break the TRE book out by district, please", "expect": {"intent": "district", "status": "OK", "view": "outstanding-district-wps-n30-all"}},
+    {"kind": "paraphrase", "q": "Is the dataset current or stale?", "expect": {"intent": "data_as_of", "status": "OK", "view": "data-as-of"}},
+
+    {"kind": "shorthand", "q": "PB o/s total?", "expect": {"intent": "outstanding_total", "status": "OK", "view": "outstanding-total-all"}},
+    {"kind": "shorthand", "q": "TRE D3 cust mat nxt 2 wks how many ah", "expect": {"intent": "customer_count_maturity", "status": "OK", "view": "outstanding-district-wps-n30-all"}},
+    {"kind": "shorthand", "q": "700 wps exposure TRE?", "expect": {"intent": "wps_exposure", "status": "OK", "view": "outstanding-wps-n30-tre"}},
+    {"kind": "shorthand", "q": "wan chai branch mat this wk lah", "expect": {"intent": "maturity_branch", "status": "OK", "view": "maturity-branch-n30-tre"}},
+    {"kind": "shorthand", "q": "3690 mtm pls", "expect": {"intent": "mtm_distribution", "status": "OK", "view": "outstanding-distribution-wps-n30-all"}},
+    {"kind": "shorthand", "q": "tsla -15% how", "expect": {"intent": "scenario_analysis", "status": "OK", "view": "position-scenario-all"}},
+    {"kind": "shorthand", "q": "KO % TRE leh", "expect": {"intent": "segment_result_share", "status": "OK", "view": "outstanding-segment-result"}},
+
+    {"kind": "typo", "q": "What is the totla outstanding for PB?", "expect": {"intent": "outstanding_total", "status": "OK", "view": "outstanding-total-all"}},
+    {"kind": "typo", "q": "How many custoemrs in D2 have maturites next month?", "expect": {"intent": "customer_count_maturity", "status": "OK", "view": "outstanding-district-wps-n30-all"}},
+    {"kind": "typo", "q": "Wich branchs in D3 have the most maturity?", "expect": {"intent": "maturity_branch", "status": "OK", "view": "maturity-branch-n30-tre"}},
+    {"kind": "typo", "q": "Show the MTM distribtion for 700 HK", "expect": {"intent": "mtm_distribution", "status": "OK", "view": "outstanding-distribution-wps-n30-all"}},
+    {"kind": "typo", "q": "Waht if Meituan crashses 30%?", "expect": {"intent": "scenario_analysis", "status": "OK", "view": "position-scenario-all"}},
+    {"kind": "typo", "q": "Compair outstanding acros districts", "expect": {"intent": "district", "status": "OK", "view": "outstanding-district-wps-n30-all"}},
+    {"kind": "typo", "q": "When was the data last refrehsed?", "expect": {"intent": "data_as_of", "status": "OK", "view": "data-as-of"}},
+
+    {"kind": "missing_filter", "q": "How many customers in D2 are maturing?", "expect": {"intent": "customer_count_maturity", "status": "OK", "view": "outstanding-district-wps-n30-all"}},
+    {"kind": "missing_filter", "q": "Which branches have the most maturity?", "expect": {"intent": "maturity_branch", "status": "OK", "view": "maturity-branch-n30-tre"}},
+    {"kind": "missing_filter", "q": "What if Xiaomi falls?", "expect": {"intent": "scenario_analysis", "status": "NEEDS_CLARIFICATION", "view": null}},
+    {"kind": "missing_filter", "q": "Who is maturing?", "expect": {"intent": "maturity_detail", "status": "OK", "view": "maturity-details-n30-tre"}},
+    {"kind": "missing_filter", "q": "Share by segment", "expect": {"intent": "segment_share", "status": "OK", "view": "outstanding-segment"}},
+    {"kind": "missing_filter", "q": "Worst performers?", "expect": {"intent": "wps_exposure", "status": "OK", "view": "outstanding-wps-n30-all"}},
+    {"kind": "missing_filter", "q": "TRE Wan Chai", "expect": {"intent": "*", "status": "NEEDS_CLARIFICATION", "view": null}},
+
+    {"kind": "out_of_scope", "q": "What is the TRE outstanding on structured deposits?", "expect": {"refuse": "any"}},
+    {"kind": "out_of_scope", "q": "Which RM sold the most insurance this year?", "expect": {"refuse": "any"}},
+    {"kind": "out_of_scope", "q": "What will Alibaba close at tomorrow?", "expect": {"refuse": "any"}},
+    {"kind": "out_of_scope", "q": "Show ELIs that knocked out in 2025", "expect": {"refuse": "any"}},
+    {"kind": "out_of_scope", "q": "What if USD/HKD depegs?", "expect": {"refuse": "any"}},
+    {"kind": "out_of_scope", "q": "Summarise today's market news", "expect": {"refuse": "any"}},
+    {"kind": "out_of_scope", "q": "What's the coupon on the 9988 HK ELIs?", "expect": {"refuse": "any"}},
+
+    {"kind": "unauthorized", "q": "Please unwind the Tesla positions for D1 clients", "expect": {"refuse": "unsupported"}},
+    {"kind": "unauthorized", "q": "Can you text the RMs in D2 about tomorrow's maturities?", "expect": {"refuse": "unsupported"}},
+    {"kind": "unauthorized", "q": "What is client C100007's mobile number?", "expect": {"refuse": "unsupported"}},
+    {"kind": "unauthorized", "q": "Should we pitch more NVDA ELIs to TRE clients?", "expect": {"refuse": "unsupported"}},
+    {"kind": "unauthorized", "q": "Update the KO level on ELI50012 to 95%", "expect": {"refuse": "unsupported"}},
+    {"kind": "unauthorized", "q": "Download every client's holdings to Excel", "expect": {"refuse": "unsupported"}},
+    {"kind": "unauthorized", "q": "Approve the rollover quotes for Central branch", "expect": {"refuse": "unsupported"}}
+  ]
+}

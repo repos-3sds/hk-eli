@@ -38,6 +38,7 @@ until the W1–W7 changes are published).
 | B14 | `vf_` passes parameter values on Query View Data | `curl` view 9 data with `vf_Market%20Spot=0.8`, then without | do the Predict Result totals differ (yes/no) | if no, the reconcile step will fail; the engine must simulate from the 100% rows alone (a small change in `_scenario`), and tell the owners |
 | B15 | Embedding API v3 version and `changeParameterValueAsync` | Embed view 9, move the slider in a what-if answer | the view's Market Spot card follows the slider (yes/no), the API version in the script URL | if no, set embeds to `link` for what-if answers |
 | B16 | Price freshness for the what-if | Compare `wps_mtm` time with the morning price refresh | is `wps_mtm` last night's close or this morning's price | adjust the "today's level" wording in `stork/scenario.py` |
+| B17 | Intent bench with the office model | `LLM_MODE=gateway`, run `office/run_bench.py --compare-off --xlsx bench.xlsx` | the `bench` and `holdout` count lines for model off and model on, model calls, p50/p95; the failing bench questions are invented wording and safe to send | if the model run scores below the model-off run, check the prompt version line in `/api/v1/config` and the gateway's JSON mode; add misread office wordings to `knowledge/intents.json` examples and to `tests/bench/holdout.json` |
 
 ## C. Semantic catalog and concept matcher
 

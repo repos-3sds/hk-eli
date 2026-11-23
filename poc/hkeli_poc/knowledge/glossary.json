@@ -1,6 +1,6 @@
 {
   "id": "hkeli-glossary",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "about": "Business words to canonical concepts and Tableau filter values. Derived from the discovery transcripts (Concept Resolution, Filter Resolution, What is HK ELI). Synthetic values only: the office replaces districts, branches and tickers with the workbook's real value lists (see OFFICE.md, office check C3). Code reads this file; the model never decides a value that is not listed here.",
   "concepts": [
     {
@@ -334,7 +334,8 @@
         "\\bcontain",
         "basket (includes|has|with)",
         "\\blinked to\\b",
-        "any underlying"
+        "any underlying",
+        "\\bin (?:the|its|their) basket"
       ],
       "supported": false,
       "rule": "Needs an any-underlying view. Do not answer it with wps.",
@@ -371,6 +372,114 @@
         "trade date",
         "latest trade"
       ]
+    },
+    {
+      "id": "other_products",
+      "kind": "dimension",
+      "label": "Other products",
+      "terms": [
+        "bonds",
+        "mortgage",
+        "savings account",
+        "deposits",
+        "credit card",
+        "FX swaps",
+        "FX forwards",
+        "unit trusts",
+        "funds",
+        "insurance",
+        "loans",
+        "cash account"
+      ],
+      "patterns": [
+        "\\bbonds?\\b",
+        "\\bmortgages?\\b",
+        "\\bsavings\\b",
+        "\\bdeposits?\\b",
+        "\\bcredit cards?\\b",
+        "\\bfx (?:swaps?|forwards?|options?)\\b",
+        "\\bunit trusts?\\b",
+        "\\bmutual funds?\\b",
+        "\\binsurance\\b",
+        "\\bloans?\\b",
+        "\\bcash accounts?\\b"
+      ],
+      "supported": false,
+      "rule": "The chatbot covers the HK ELI book only.",
+      "user_text": "I only cover the HK ELI book. Other products are not in the HK_ELI views."
+    },
+    {
+      "id": "non_book_data",
+      "kind": "dimension",
+      "label": "Data outside the ELI views",
+      "terms": [
+        "credit score",
+        "foot traffic",
+        "house prices",
+        "earnings",
+        "weather",
+        "price history",
+        "index level",
+        "sales targets"
+      ],
+      "patterns": [
+        "\\bcredit scores?\\b",
+        "\\bfoot traffic\\b",
+        "\\bhouse prices?\\b",
+        "\\bproperty prices?\\b",
+        "\\bearnings\\b",
+        "\\bweather\\b",
+        "\\bprice history\\b",
+        "\\bhistorical prices?\\b",
+        "\\bhang seng\\b",
+        "\\bindex level\\b",
+        "\\bsales targets?\\b"
+      ],
+      "supported": false,
+      "rule": "Not carried by any HK_ELI view. Never answer it from another view.",
+      "user_text": "That isn't in the HK_ELI views, so there is no figure I can show for it."
+    },
+    {
+      "id": "matured_history",
+      "kind": "event",
+      "label": "Past maturities",
+      "terms": [
+        "matured last year",
+        "matured last month",
+        "past maturities"
+      ],
+      "patterns": [
+        "\\bmatured (?:last|in|during|over)\\b",
+        "\\bmatured\\b[^?]*\\blast (?:year|quarter|month|week)\\b",
+        "\\bpast maturities\\b"
+      ],
+      "supported": false,
+      "rule": "The views carry live ELI and predicted maturity ahead, not maturity history.",
+      "user_text": "The views cover live ELI and predicted maturity ahead, not ELI that already matured. I can show what is predicted to mature next."
+    },
+    {
+      "id": "non_stock_driver",
+      "kind": "parameter",
+      "label": "Moves other than stocks",
+      "terms": [
+        "interest rates",
+        "FX rate",
+        "oil price",
+        "inflation",
+        "HIBOR"
+      ],
+      "patterns": [
+        "\\binterest rates?\\b",
+        "\\brates? (?:rise|rises|fall|falls|go up|go down|hike|cut)",
+        "\\bhibor\\b",
+        "\\binflation\\b",
+        "\\boil prices?\\b",
+        "\\bfx rates?\\b",
+        "\\bexchange rates?\\b"
+      ],
+      "supported": false,
+      "rule": "What-ifs move one stock or the whole market spot. Rates, FX and macro drivers are not in the views.",
+      "user_text": "I can only simulate a move in one stock or in the whole market spot. Rates, FX and other drivers are not in the views."
     }
   ],
   "windows": {
