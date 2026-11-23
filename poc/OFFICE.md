@@ -71,7 +71,7 @@ agent renders, named by `TABLEAU_SECRET_ID_FILE`, `TABLEAU_SECRET_VALUE_FILE`, `
 ## 6. Prove it
 
 ```bash
-.venv/bin/python -m pytest -q -p no:cacheprovider     # expected: 111 passed
+.venv/bin/python -m pytest -q -p no:cacheprovider     # expected: 114 passed, 1 skipped
 .venv/bin/python office/smoke_test.py                 # expected: SMOKE PASS
 .venv/bin/python office/run_eval.py                   # expected: eval 20 of 20 pass (mock, model off)
 .venv/bin/python office/compare_matcher.py            # expected: eval 20/20 both ways; concepts 10 -> 15 of 15, broken: none

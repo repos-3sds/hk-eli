@@ -8,3 +8,5 @@ starlette==1.6.0
 uvicorn==0.52.4
 pydantic==2.13.4
 httpx==0.28.1
+# MariaDB store in production (DB_URL=mariadb://...); pure Python, imported only when DB_URL is set
+pymysql==1.2.3

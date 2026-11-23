@@ -10,7 +10,7 @@ only (pass/fail, counts, names of views or columns): never values, rows, host na
 - [ ] A2 `python3.12 -V` is 3.12.x and `uname -m` noted
 - [ ] A3 both preflights say every pinned package downloads (or FAIL lines sent back)
 - [ ] A4 `pip install --require-hashes` for both lock files, `pip check` clean, nothing built from source
-- [ ] A5 `pytest`: 111 passed
+- [ ] A5 `pytest`: 114 passed, 1 skipped (the MariaDB tests run when TEST_MARIADB_URL is set)
 - [ ] A6 `office/smoke_test.py`: SMOKE PASS
 - [ ] A7 `office/run_eval.py` (mock, model off): eval 20 of 20 pass
 - [ ] A8 `office/compare_matcher.py` (mock, model off, packaged catalog): eval 20 of 20 both ways, concepts 15 of 15 with the matcher on, broken: none
@@ -45,6 +45,7 @@ until the W1–W7 changes are published).
 | C3 | Generic aliases on concepts no view carries | the `single_word_aliases_on_no_view` count from C1 | the count | above about 20: read those aliases in the office and remove the generic ones from the merged copy |
 | C4 | Value lists in the real catalog | does the catalog list values for districts, branches, predicted result (yes/no each) | three yes/no | if no, keep B3 and B4 (glossary edits) as the source of values |
 | C5 | Is there a SQL copy of the ELI data (warehouse table or MariaDB) behind the Tableau extract | ask the data owner | yes/no, and the database type | yes: the later step (logical-query-mcp over MCP for questions outside the 12 views) becomes possible |
+| C7 | The store runs on the bank's MariaDB | give the app an empty database and a user with SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, INDEX, REFERENCES on it; first `TEST_MARIADB_URL=mariadb://user:pw@host:3306/<scratch db> .venv/bin/python -m pytest -q tests/test_store_mariadb.py` (it empties that database), then `DB_URL=mariadb://user@host:3306/<app db>` + `DB_PASSWORD_FILE` in `.env` and start | the pytest line, and `/readyz` showing `store: ok (mariadb, schema 2)` | a failing test name, or the MariaDB version (`SELECT VERSION()`); stay on SQLite until fixed |
 | C6 | Can logical-query-mcp itself run here | are MongoDB, Elasticsearch 8 and MariaDB available to us, and are mcp 2.3.0, fastapi, pymongo, elasticsearch 8.19.3, PyMySQL in JFrog | yes/no per item | all yes and C5 yes: plan the MCP step; otherwise stay with the in-process matcher |
 
 When a check changes a file in the office copy, note which file in the reply (not its contents), so the

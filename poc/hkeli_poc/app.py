@@ -42,7 +42,7 @@ from . import knowledge as KB
 from . import llm as LLM
 from . import prompts as PR
 from . import tableau_real as TR
-from .db import Store
+from .db import Store, open_store
 from .mock_tableau import InProcessMock
 from .mock_tableau import router as tableau_router
 from .stork.pipeline import answer
@@ -85,11 +85,12 @@ def startup() -> None:
     _log_setup(cfg.log_level)
     S.kb = KB.load(str(cfg.knowledge_dir))
     S.lib = PR.library(str(cfg.prompts_dir))
-    S.store = Store(cfg.db_path)
+    S.store = open_store(cfg.db_url, cfg.db_path, config.secret("DB_PASSWORD") if cfg.db_url else None)
     S.llm = LLM.client(cfg.llm)
     S.http = None
     log.info("started", extra={"extra": {"version": VERSION, "tableau": cfg.tableau_mode, "embed": cfg.tableau_embed,
-                                         "llm": cfg.llm.mode, "db_schema": S.store.version()}})
+                                         "llm": cfg.llm.mode, "db": S.store.backend,
+                                         "db_schema": S.store.version()}})
 
 
 @asynccontextmanager
@@ -392,7 +393,7 @@ def ready():
     checks = {}
     try:
         ensure_started()
-        checks["store"] = f"ok (schema {S.store.version()})" if S.store.ping() else "fail"
+        checks["store"] = f"ok ({S.store.backend}, schema {S.store.version()})" if S.store.ping() else "fail"
         checks["knowledge"] = f"ok ({S.kb.glossary['version']})"
         checks["prompts"] = "ok (" + ", ".join(f"{k} {p.version}" for k, p in S.lib.items()) + ")"
         ts = TR.settings()
