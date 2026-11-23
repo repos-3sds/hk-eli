@@ -14,7 +14,7 @@ text is rejected if it holds a figure that is not in that evidence.
 | Settings | `hkeli_poc/config.py`, `.env.example` | Every setting from the environment; secrets from Vault-rendered files (`<NAME>_FILE`) |
 | Pipeline | `hkeli_poc/stork/` | Pre-parse, understand, data date, route, plan check, compile filters, fetch, validate, word, compose |
 | Model adapter | `hkeli_poc/llm.py`, `stork/agent.py` | Gemini through the office model gateway: two structured calls, validated and audited, with rule and template fallbacks |
-| Store | `hkeli_poc/db.py` | SQLite: conversations, answers, model-call audit, feedback. Numbered migrations |
+| Store | `hkeli_poc/db.py` | SQLite on the laptop, MariaDB in production (`DB_URL=mariadb://user@host:3306/db`, password from `DB_PASSWORD_FILE`). Same functions, tables and numbered migrations: conversations, answers, model-call audit, feedback |
 | Knowledge base | `hkeli_poc/knowledge/` | Glossary (terms, concepts, allowed values), intent list, domain notes. Data, not code |
 | Semantic catalog | `hkeli_poc/catalog/`, `stork/concepts.py`, `stork/values.py` | Concepts, the views that carry them, glossary, standard calculations (logical-query-mcp shape). Concept matcher and value translation; the office merges its real catalog with `office/import_catalog.py` |
 | Prompt library | `hkeli_poc/prompts/` | Versioned prompts and Gemini response schemas; id, version and sha256 recorded per call |
@@ -35,7 +35,7 @@ python3.12 -m venv .venv
 .venv/bin/python -m pip install --no-cache-dir --require-hashes -r requirements.txt
 .venv/bin/python -m pip install --no-cache-dir --require-hashes -r requirements-dev.txt   # tests only
 .venv/bin/python -m pip check
-.venv/bin/python -m pytest -q -p no:cacheprovider               # 111 passed
+.venv/bin/python -m pytest -q -p no:cacheprovider               # 114 passed, 1 skipped
 cp .env.example .env                                              # fill in office values
 .venv/bin/python office/smoke_test.py                             # SMOKE PASS
 ./run.sh                                                          # http://127.0.0.1:8050, Ctrl+C to stop

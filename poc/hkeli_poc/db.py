@@ -1,8 +1,10 @@
-"""SQLite store (locked decision: SQLite for now; MariaDB later behind the same functions).
+"""The agent's store: SQLite on the laptop and in the office trial, MariaDB in production.
 
-Standard library only. The file lives under var/ (never shipped, created on first start).
-Schema changes are numbered migrations applied in order and recorded in schema_version, so an
-office copy upgrades in place and a MariaDB port has the same steps to follow.
+Same functions, same tables and the same numbered migrations for both. Pick the backend with
+DB_URL: unset (or sqlite) uses the DB_PATH file under var/ (standard library only, never shipped);
+`mariadb://user@host:3306/dbname` uses MariaDB through PyMySQL, with the password from
+DB_PASSWORD_FILE (the file a Vault agent renders) or DB_PASSWORD. Schema changes are numbered
+migrations applied in order and recorded in schema_version, so a copy upgrades in place.
 
 Tables
   conversation   one chat session per user (carry-forward scope lives here later)
@@ -16,11 +18,13 @@ stays on the laptop; nothing here is sent anywhere.
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 import threading
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import unquote, urlsplit
 
 MIGRATIONS: list[tuple[int, str]] = [
     (1, """
@@ -86,6 +90,76 @@ MIGRATIONS: list[tuple[int, str]] = [
     """),
 ]
 
+
+# The same schema for MariaDB: ids and indexed columns are VARCHAR (MariaDB can't index TEXT without a length),
+# times stay ISO-8601 strings so ordering and the API output match SQLite exactly. InnoDB, utf8mb4.
+_T = " ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+MARIADB_MIGRATIONS: list[tuple[int, str]] = [
+    (1, f"""
+    CREATE TABLE conversation (
+        id          VARCHAR(32) PRIMARY KEY,
+        user_id     VARCHAR(128) NOT NULL,
+        created_at  VARCHAR(32) NOT NULL,
+        updated_at  VARCHAR(32) NOT NULL,
+        INDEX ix_conversation_user (user_id, updated_at)
+    ){_T};
+
+    CREATE TABLE turn (
+        id              VARCHAR(32) PRIMARY KEY,
+        conversation_id VARCHAR(32) NOT NULL,
+        request_id      VARCHAR(64) NOT NULL,
+        user_id         VARCHAR(128) NOT NULL,
+        created_at      VARCHAR(32) NOT NULL,
+        question        TEXT NOT NULL,
+        site            VARCHAR(64),
+        intent          VARCHAR(64),
+        understanding   VARCHAR(32),
+        insight         VARCHAR(32),
+        view_record_id  VARCHAR(128),
+        filters_json    TEXT,
+        status          VARCHAR(32) NOT NULL,
+        reasons_json    TEXT,
+        headline        TEXT,
+        numbers_json    MEDIUMTEXT,
+        latency_ms      INT,
+        INDEX ix_turn_conv (conversation_id, created_at),
+        INDEX ix_turn_user (user_id, created_at),
+        INDEX ix_turn_status (status),
+        CONSTRAINT fk_turn_conv FOREIGN KEY (conversation_id) REFERENCES conversation(id)
+    ){_T};
+
+    CREATE TABLE llm_call (
+        id              VARCHAR(32) PRIMARY KEY,
+        turn_id         VARCHAR(32),
+        request_id      VARCHAR(64) NOT NULL,
+        created_at      VARCHAR(32) NOT NULL,
+        step            VARCHAR(32) NOT NULL,
+        prompt_id       VARCHAR(128) NOT NULL,
+        prompt_version  VARCHAR(32) NOT NULL,
+        prompt_sha256   CHAR(64) NOT NULL,
+        model           VARCHAR(128) NOT NULL,
+        latency_ms      INT,
+        outcome         VARCHAR(16) NOT NULL,
+        detail          VARCHAR(255),
+        INDEX ix_llm_turn (turn_id)
+    ){_T};
+
+    CREATE TABLE feedback (
+        id          VARCHAR(32) PRIMARY KEY,
+        turn_id     VARCHAR(32) NOT NULL,
+        user_id     VARCHAR(128) NOT NULL,
+        created_at  VARCHAR(32) NOT NULL,
+        rating      TINYINT NOT NULL CHECK (rating IN (-1, 1)),
+        comment     TEXT,
+        CONSTRAINT fk_feedback_turn FOREIGN KEY (turn_id) REFERENCES turn(id)
+    ){_T};
+    """),
+    (2, """
+    ALTER TABLE turn ADD COLUMN channel VARCHAR(16) NOT NULL DEFAULT 'chat';
+    CREATE INDEX ix_turn_user_channel ON turn(user_id, channel, created_at);
+    """),
+]
+
 CHANNELS = ("chat", "insights")
 
 
@@ -98,6 +172,11 @@ def new_id() -> str:
 
 
 class Store:
+    """SQLite backend. MariaDBStore below shares every query; only the connection and the DDL differ."""
+
+    backend = "sqlite"
+    migrations = MIGRATIONS
+
     def __init__(self, path: Path | str):
         self.path = str(path)
         if self.path != ":memory:":
@@ -111,44 +190,64 @@ class Store:
         self._con.execute("PRAGMA busy_timeout = 5000")
         self.migrate()
 
+    # --- the only backend-specific parts: run a statement, read rows as dicts
+    def _exec(self, sql: str, args: tuple | list = ()) -> None:
+        self._con.execute(sql, args)
+
+    def _rows(self, sql: str, args: tuple | list = ()) -> list[dict]:
+        return [dict(r) for r in self._con.execute(sql, args)]
+
+    def _one(self, sql: str, args: tuple | list = ()) -> dict | None:
+        rows = self._rows(sql, args)
+        return rows[0] if rows else None
+
+    def _begin(self) -> None:
+        self._exec("BEGIN")
+
+    def _commit(self) -> None:
+        self._exec("COMMIT")
+
+    def _rollback(self) -> None:
+        self._exec("ROLLBACK")
+
     # --- schema
     def migrate(self) -> int:
         with self._lock:
-            self._con.execute("CREATE TABLE IF NOT EXISTS schema_version (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)")
-            have = {r[0] for r in self._con.execute("SELECT version FROM schema_version")}
-            for v, sql in MIGRATIONS:
+            self._exec("CREATE TABLE IF NOT EXISTS schema_version (version INTEGER PRIMARY KEY, applied_at VARCHAR(32) NOT NULL)")
+            have = {r["version"] for r in self._rows("SELECT version FROM schema_version")}
+            for v, sql in self.migrations:
                 if v in have:
                     continue
-                self._con.execute("BEGIN")
+                self._begin()
                 try:
                     for stmt in [s for s in sql.split(";") if s.strip()]:
-                        self._con.execute(stmt)
-                    self._con.execute("INSERT INTO schema_version VALUES (?, ?)", (v, _now()))
-                    self._con.execute("COMMIT")
+                        self._exec(stmt)
+                    self._exec("INSERT INTO schema_version VALUES (?, ?)", (v, _now()))
+                    self._commit()
                 except Exception:
-                    self._con.execute("ROLLBACK")
+                    self._rollback()
                     raise
             return self.version()
 
     def version(self) -> int:
-        r = self._con.execute("SELECT COALESCE(MAX(version), 0) FROM schema_version").fetchone()
-        return int(r[0])
+        r = self._one("SELECT COALESCE(MAX(version), 0) AS v FROM schema_version")
+        return int(r["v"])
 
     def ping(self) -> bool:
-        self._con.execute("SELECT 1").fetchone()
+        self._one("SELECT 1 AS ok")
         return True
 
     # --- writes
     def conversation(self, user_id: str, conversation_id: str | None) -> str:
         with self._lock:
             if conversation_id:
-                r = self._con.execute("SELECT user_id FROM conversation WHERE id = ?", (conversation_id,)).fetchone()
+                r = self._one("SELECT user_id FROM conversation WHERE id = ?", (conversation_id,))
                 if r and r["user_id"] == user_id:
-                    self._con.execute("UPDATE conversation SET updated_at = ? WHERE id = ?", (_now(), conversation_id))
+                    self._exec("UPDATE conversation SET updated_at = ? WHERE id = ?", (_now(), conversation_id))
                     return conversation_id
             cid = new_id()
             now = _now()
-            self._con.execute("INSERT INTO conversation VALUES (?, ?, ?, ?)", (cid, user_id, now, now))
+            self._exec("INSERT INTO conversation VALUES (?, ?, ?, ?)", (cid, user_id, now, now))
             return cid
 
     def record_turn(self, *, conversation_id: str, request_id: str, user_id: str, answer: dict, latency_ms: int,
@@ -157,7 +256,7 @@ class Store:
         ev = (answer.get("evidence") or [{}])[0]
         meta = answer.get("meta") or {}
         with self._lock:
-            self._con.execute(
+            self._exec(
                 "INSERT INTO turn (id, conversation_id, request_id, user_id, created_at, question, site, intent, understanding,"
                 " insight, view_record_id, filters_json, status, reasons_json, headline, numbers_json, latency_ms, channel)"
                 " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
@@ -172,18 +271,18 @@ class Store:
     def record_llm_calls(self, turn_id: str | None, request_id: str, calls: list[dict]) -> None:
         with self._lock:
             for c in calls:
-                self._con.execute(
+                self._exec(
                     "INSERT INTO llm_call VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
                     (new_id(), turn_id, request_id, _now(), c["step"], c["prompt_id"], c["prompt_version"],
                      c["prompt_sha256"], c["model"], c.get("latency_ms"), c["outcome"], c.get("detail")))
 
     def add_feedback(self, turn_id: str, user_id: str, rating: int, comment: str | None) -> str | None:
         with self._lock:
-            r = self._con.execute("SELECT user_id FROM turn WHERE id = ?", (turn_id,)).fetchone()
+            r = self._one("SELECT user_id FROM turn WHERE id = ?", (turn_id,))
             if not r or r["user_id"] != user_id:
                 return None
             fid = new_id()
-            self._con.execute("INSERT INTO feedback VALUES (?,?,?,?,?,?)", (fid, turn_id, user_id, _now(), rating, comment))
+            self._exec("INSERT INTO feedback VALUES (?,?,?,?,?,?)", (fid, turn_id, user_id, _now(), rating, comment))
             return fid
 
     # --- reads
@@ -196,12 +295,96 @@ class Store:
             q += " AND conversation_id = ?"
             args.append(conversation_id)
         q += " ORDER BY created_at DESC LIMIT ?"
-        args.append(limit)
-        return [dict(r) for r in self._con.execute(q, args)]
+        args.append(int(limit))
+        with self._lock:
+            return self._rows(q, args)
 
     def counts(self) -> dict:
-        return {t: self._con.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]  # noqa: S608 - fixed table names
-                for t in ("conversation", "turn", "llm_call", "feedback")}
+        with self._lock:
+            return {t: int(self._one(f"SELECT COUNT(*) AS n FROM {t}")["n"])  # noqa: S608 - fixed table names
+                    for t in ("conversation", "turn", "llm_call", "feedback")}
+
+    def describe(self) -> str:
+        """Where the store is, without secrets: for /health and logs."""
+        return f"sqlite:{self.path}"
 
     def close(self) -> None:
         self._con.close()
+
+
+class MariaDBStore(Store):
+    """MariaDB backend (production). PyMySQL is imported only here, so the laptop never needs it."""
+
+    backend = "mariadb"
+    migrations = MARIADB_MIGRATIONS
+    _QMARK = re.compile(r"\?")
+
+    def __init__(self, url: str, password: str | None = None, connect_timeout: float = 5.0):
+        import pymysql  # noqa: PLC0415 - optional dependency, production only
+        import pymysql.cursors  # noqa: PLC0415
+
+        u = urlsplit(url)
+        if u.scheme not in ("mariadb", "mysql") or not u.hostname or not u.path.strip("/"):
+            raise ValueError("DB_URL must look like mariadb://user@host:3306/dbname")
+        self.path = f"mariadb://{u.username or ''}@{u.hostname}:{u.port or 3306}/{u.path.strip('/')}"
+        self._pymysql = pymysql
+        self._kw = dict(host=u.hostname, port=u.port or 3306, user=unquote(u.username or ""),
+                        password=password if password is not None else unquote(u.password or ""),
+                        database=u.path.strip("/"), charset="utf8mb4", autocommit=True,
+                        connect_timeout=connect_timeout, cursorclass=pymysql.cursors.DictCursor,
+                        init_command="SET SESSION sql_mode='STRICT_ALL_TABLES,NO_ZERO_DATE,ONLY_FULL_GROUP_BY'")
+        self._lock = threading.Lock()
+        self._con = pymysql.connect(**self._kw)
+        self.migrate()
+
+    def _sql(self, sql: str) -> str:
+        # our queries use ? placeholders and contain no literal '?' or '%'
+        return self._QMARK.sub("%s", sql)
+
+    def _alive(self) -> None:
+        """Reconnect once if the server dropped the connection (idle timeout, failover)."""
+        try:
+            self._con.ping()
+        except self._pymysql.err.Error:
+            self._con = self._pymysql.connect(**self._kw)
+
+    def _cursor(self):
+        self._alive()
+        return self._con.cursor()
+
+    def _exec(self, sql: str, args: tuple | list = ()) -> None:
+        with self._cursor() as cur:
+            cur.execute(self._sql(sql), tuple(args) or None)
+
+    def _rows(self, sql: str, args: tuple | list = ()) -> list[dict]:
+        with self._cursor() as cur:
+            cur.execute(self._sql(sql), tuple(args) or None)
+            return list(cur.fetchall())
+
+    def _begin(self) -> None:
+        self._alive()
+        self._con.begin()
+
+    def _commit(self) -> None:
+        self._con.commit()
+
+    def _rollback(self) -> None:
+        self._con.rollback()
+
+    def describe(self) -> str:
+        return self.path
+
+    def drop_all(self) -> None:
+        """Tests only: remove every table this store created."""
+        with self._lock:
+            self._exec("SET FOREIGN_KEY_CHECKS = 0")
+            for t in ("feedback", "llm_call", "turn", "conversation", "schema_version"):
+                self._exec(f"DROP TABLE IF EXISTS {t}")  # noqa: S608 - fixed table names
+            self._exec("SET FOREIGN_KEY_CHECKS = 1")
+
+
+def open_store(db_url: str | None, db_path: Path | str, password: str | None = None) -> Store:
+    """DB_URL set to mariadb://... gives MariaDB; otherwise the SQLite file at DB_PATH."""
+    if db_url and not db_url.startswith("sqlite"):
+        return MariaDBStore(db_url, password)
+    return Store(db_path)

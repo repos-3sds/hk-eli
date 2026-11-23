@@ -56,7 +56,7 @@ hashes). Evaluation set: 20 questions, 20 pass in rules mode.
 | D1 | Critical | There was no database: no record of questions and answers, no model-call audit, no feedback, nowhere to keep a conversation. | Fixed: `db.py`, standard library `sqlite3`, WAL, numbered migrations in `schema_version`. Tables `conversation`, `turn` (question, intent, view, filters, status, figures, timings, which path answered), `llm_call` (prompt id, version, sha256, model, latency, outcome; no prompt or answer text), `feedback`. A user can only read and rate their own answers |
 | D2 | Medium | Follow-up carry-forward (Filter Resolution §18) is not implemented; follow-ups are full questions. | Open: the conversation table is in place for it |
 | D3 | Low | No retention rule for stored questions. | Open: office decision (questions are internal data; the file never leaves the laptop) |
-| D4 | Low | MariaDB later (bank standard). | Open: all SQL sits in `db.py` behind plain functions; migrations port one to one |
+| D4 | Low | MariaDB later (bank standard). | Fixed (23 Nov): `MariaDBStore` in `db.py` with its own migrations (VARCHAR keys, InnoDB, utf8mb4), chosen by `DB_URL`, password from Vault via `DB_PASSWORD_FILE`, reconnects after idle timeouts. Same tests run on SQLite and MariaDB 10.11 (`tests/test_store_mariadb.py`). Office check C7 |
 
 ## 4. Agent configuration
 
