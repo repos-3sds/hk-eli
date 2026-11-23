@@ -50,6 +50,7 @@ class Intent:
     district: str | None = None
     branch: str | None = None
     wps: str | None = None
+    wps_list: list[str] = field(default_factory=list)       # several stocks asked at once, in the order asked
     result: str | None = None
     window_days: int | None = None
     on_date: str | None = None
@@ -71,7 +72,9 @@ class Intent:
             bits.append(self.district.replace("TRE-", ""))
         if self.branch:
             bits.append(self.branch)
-        if self.wps:
+        if len(self.wps_list) > 1 and not self.shock:
+            bits.append("WPS " + ", ".join(self.wps_list))
+        elif self.wps:
             bits.append(f"WPS {self.wps}")
         if self.result:
             bits.append(f"predicted {self.result}")
@@ -90,6 +93,57 @@ class Intent:
         return " · ".join(bits)
 
 
+# A ticker typed with its exchange code: "NVDA UW", "AMD UQ", "700 HK", "9988.HK".
+_TICKER_RE = re.compile(r"\b([A-Za-z]{1,5}|\d{3,4})(?:\s+|\.)(UW|UQ|UN|US|UA|HK)\b", re.I)
+# Bloomberg codes that all mean a US listing; the book keeps one code per stock.
+_US_CODES = {"UW", "UQ", "UN", "US", "UA"}
+
+
+def find_tickers(q: str, s: str, kb) -> dict:
+    """Every stock the question names, in the order asked, as the book spells it.
+
+    tickers: book tickers ("AMD UW"), no repeats. swaps: a typed exchange code the book lists under another
+    ("AMD UQ" -> "AMD UW"). unknown: a ticker typed with an exchange code that is not in the book.
+    """
+    book = sorted(set(kb.ticker_aliases.values()))
+    by_base = {t.split()[0].upper(): t for t in book}
+    hits: list[tuple[int, str]] = []
+    swaps: list[dict] = []
+    unknown: list[str] = []
+    for m in _TICKER_RE.finditer(q):
+        raw_base, raw_code = m.group(1), m.group(2)
+        base, code = raw_base.upper(), raw_code.upper()
+        if base.isdigit() != (code == "HK"):
+            continue                                   # "in HK", "700 UW": not a ticker
+        if base.isdigit():
+            base = str(int(base))
+        typed = f"{base} {code}"
+        t = by_base.get(base)
+        if t is None:
+            # only something that is clearly a ticker ("MSFT UW", "1299 HK"), never "tell us" or "in HK"
+            if base.isdigit() or (raw_base.isupper() and raw_code.isupper() and code in ("UW", "UQ", "UN")):
+                unknown.append(typed)
+                hits.append((m.start(), typed))   # kept, so the answer says "no live ELI" instead of dropping it
+            continue
+        if t != typed and (code in _US_CODES) == (t.split()[1] in _US_CODES):
+            swaps.append({"from": typed, "to": t})
+        hits.append((m.start(), t))
+    # a bare HK code ("9988 mtm dist?") counts only when it is a ticker the glossary knows
+    for m in re.finditer(r"(?<![\d.%-])\b(\d{3,4})\b(?!\s*(?:%|days?|weeks?|months?|bn|b\b|m\b|k\b|\.?\s?hk))", s):
+        t = f"{int(m.group(1))} HK"
+        if t in book:
+            hits.append((m.start(), t))
+    for alias, t in kb.ticker_aliases.items():
+        for m in re.finditer(rf"\b{re.escape(alias)}\b", s):
+            hits.append((m.start(), t))
+    out: list[str] = []
+    for _pos, t in sorted(hits):
+        if t not in out:
+            out.append(t)
+    return {"tickers": out, "swaps": [w for i, w in enumerate(swaps) if w not in swaps[:i]],
+            "unknown": [u for i, u in enumerate(unknown) if u not in unknown[:i]]}
+
+
 def preparse(q: str, today: date) -> dict:
     """Deterministic hints from the glossary. These are facts the model may not override."""
     kb = _kb()
@@ -105,18 +159,15 @@ def preparse(q: str, today: date) -> dict:
     for b in kb.branches:
         if b.lower() in s:
             hints["branch"] = b
-    m = re.search(r"\b(\d{3,4})\s*(?:\.?\s?hk)\b", s)
-    if m:
-        hints["wps"] = f"{int(m.group(1))} HK"
-    else:
-        # a bare stock code ("9988 mtm dist?") counts only when it is a ticker the glossary knows
-        known = set(kb.ticker_aliases.values())
-        m = re.search(r"(?<![\d.%-])\b(\d{3,4})\b(?!\s*(?:%|days?|weeks?|months?|bn|b\b|m\b|k\b))", s)
-        if m and f"{int(m.group(1))} HK" in known:
-            hints["wps"] = f"{int(m.group(1))} HK"
-    for alias, t in kb.ticker_aliases.items():
-        if re.search(rf"\b{alias}\b", s):
-            hints["wps"] = t
+    found = find_tickers(q, s, kb)
+    if found["tickers"]:
+        hints["wps"] = found["tickers"][0]          # one stock: the old single-stock reading
+    if len(found["tickers"]) > 1:
+        hints["wps_list"] = found["tickers"]        # several: every one, in the order asked
+    if found["swaps"]:
+        hints["ticker_swaps"] = found["swaps"]
+    if found["unknown"]:
+        hints["tickers_unknown"] = found["unknown"]
     for pat, val in kb.value_patterns("predict_result"):
         if re.search(pat, s):
             hints["result"] = val
@@ -393,7 +444,7 @@ def understand(q: str, today: date) -> Intent:
     h = preparse(q, today)
     s = h["text"]
     it = Intent(question=q, segments=h["segments"], district=h.get("district"), branch=h.get("branch"),
-                wps=h.get("wps"), result=h.get("result"), window_days=h.get("window_days"),
+                wps=h.get("wps"), wps_list=list(h.get("wps_list") or []), result=h.get("result"), window_days=h.get("window_days"),
                 on_date=h.get("on_date"), ranking=h["ranking"], hints=h)
     kb = _kb()
     it.unsupported = [{"id": r["id"], "label": r["label"], "rule": "refuse", "user_text": r["user_text"]}
@@ -424,6 +475,10 @@ def understand(q: str, today: date) -> Intent:
 
     it.candidates = _rule_hits(s, it)
     it.confidence = _confidence(it.candidates, s)
+    if len(it.wps_list) > 1 and (not it.candidates or re.search(r"\boverview\b|\bsummary\b|\bcompare\b|\bsnapshot\b", s)):
+        # several stocks and no sharper reading ("overview of NVDA, AMD, ..."): one row per stock
+        it.candidates, it.confidence = ["wps_exposure", *[c for c in it.candidates if c != "wps_exposure"]], "high"
+        it.assumptions.append("Read as an overview of each stock: outstanding ELI where it is the worst-performing stock.")
     if it.candidates:
         it.intent = it.candidates[0]
         it.grain = grain_for(it)

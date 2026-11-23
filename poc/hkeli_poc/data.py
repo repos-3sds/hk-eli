@@ -35,6 +35,10 @@ TICKERS = {
     "1211 HK": 0.95, "NVDA UW": 1.09, "INTC UW": 0.97, "TSLA UW": 0.90,
     "AAPL UW": 1.02, "AMD UW": 0.99,
 }
+# Added 2026-11-23 (Hawk asked for an overview of these). Their deals are a separate, separately seeded batch
+# appended after the original book, so every original deal, position and figure stays exactly as it was.
+NEW_TICKERS = {"GOOGL UW": 0.96, "APP UW": 0.84, "SNDK UW": 1.06}
+NEW_DEALS = 150
 CCY = [("HKD", 1.0, 0.50), ("USD", 7.8, 0.35), ("CNH", 1.08, 0.10), ("JPY", 0.052, 0.05)]
 
 NORMAL_BUSINESS_DATE = date(2026, 11, 18)
@@ -61,7 +65,16 @@ def _pick(rng: random.Random, weighted):
 def _generate(business_date: date, seed: int = 42) -> list[dict]:
     rng = random.Random(seed)
     bd = business_date
+    customers = _customers(rng)
+    rows: list[dict] = []
+    _deals(rng, bd, customers, TICKERS, range(1250), rows)
+    # The added stocks: their own RNG, deal numbers after the original ones, baskets only of the new stocks,
+    # so no original stock's exposure or what-if changes; book totals, shares and ranks do.
+    _deals(random.Random(seed + 1), bd, customers, NEW_TICKERS, range(1250, 1250 + NEW_DEALS), rows)
+    return rows
 
+
+def _customers(rng: random.Random) -> list[dict]:
     # Customers (cif) with segment and, for TRE, district / branch / RM.
     customers = []
     for i in range(560):
@@ -78,17 +91,19 @@ def _generate(business_date: date, seed: int = 42) -> list[dict]:
         else:
             cust.update(rm_name=f"RM {seg[:2].upper()}-{rng.randint(1, 6)}")
         customers.append(cust)
+    return customers
 
-    rows = []
-    pos_n = 0
+
+def _deals(rng: random.Random, bd: date, customers: list[dict], tickers: dict, deal_ns: range, rows: list[dict]) -> None:
+    pos_n = len(rows)
     start = bd - timedelta(days=330)
-    for deal_n in range(1250):
+    for deal_n in deal_ns:
         trade_date = start + timedelta(days=rng.randint(0, 330))
         tenor_m = rng.choices([1, 2, 3, 6, 9, 12], weights=[8, 10, 20, 35, 15, 12])[0]
         maturity = trade_date + timedelta(days=int(tenor_m * 30.4))
         n_under = rng.choices([1, 2], weights=[55, 45])[0]
-        unders = rng.sample(list(TICKERS), n_under)
-        perf = {t: TICKERS[t] * rng.gauss(1.0, 0.07) * 100 for t in unders}
+        unders = rng.sample(list(tickers), n_under)
+        perf = {t: tickers[t] * rng.gauss(1.0, 0.07) * 100 for t in unders}
         wps = min(perf, key=perf.get)
         wps_mtm = round(perf[wps], 1)
         strike = rng.choice([75, 78, 80, 82, 85, 88, 90])
@@ -139,7 +154,6 @@ def _generate(business_date: date, seed: int = 42) -> list[dict]:
                 "has_knocked_in": knocked_in,
                 **cust,
             })
-    return rows
 
 
 @lru_cache(maxsize=4)
