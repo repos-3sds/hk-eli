@@ -14,6 +14,8 @@ npm start          # http://localhost:4200; /api/stork and /tableau go to the ag
 npm test
 ```
 
+**Web component:** `npm run build:element` turns the same source into one file, `dist/web-component/hk-eli-chatbot.js`, for embedding in Digimarkets as `<hk-eli-chatbot>`. GitHub Actions builds it on every change to `web/`. See [WEB-COMPONENT.md](WEB-COMPONENT.md).
+
 Runtime config is `public/config/app-config.json` (`gatewayBaseUrl`, `requestTimeoutMs`, `timeZone`, `asOfDate`, `marketHolidays`).
 
 | Folder | What's there |

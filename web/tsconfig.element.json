@@ -1,0 +1,16 @@
+/* Web component build (npm run build:element): the standalone app's sources plus src/elements. */
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./out-tsc/element",
+    "resolveJsonModule": true,
+    "types": []
+  },
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "src/**/*.spec.ts",
+    "src/main.ts"
+  ]
+}

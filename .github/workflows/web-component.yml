@@ -1,0 +1,73 @@
+# Builds the HK ELI Chatbot web component (<hk-eli-chatbot>) whenever the widget UI changes.
+# The standalone app (used for the UAT demo) is built and tested in the same run, so a change that breaks either
+# one fails here. The bundle is kept as a run artifact named hk-eli-chatbot-web-component.
+name: Web component
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web/**'
+      - '.github/workflows/web-component.yml'
+  pull_request:
+    paths:
+      - 'web/**'
+      - '.github/workflows/web-component.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-component-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - uses: actions/setup-node@v4.4.0
+        with:
+          node-version: '22.12.0'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install (lock file only)
+        run: npm ci --no-audit --no-fund
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build script tests
+        run: npm run test:scripts
+
+      - name: Build the standalone app (UAT demo)
+        run: npm run build
+
+      - name: Build the web component
+        run: npm run build:element
+
+      - name: Smoke test the bundle
+        run: npm run smoke:element
+
+      - name: Summary
+        run: |
+          {
+            echo "### <hk-eli-chatbot> web component"
+            echo '```json'
+            cat dist/web-component/manifest.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4.6.2
+        with:
+          name: hk-eli-chatbot-web-component
+          path: web/dist/web-component/
+          if-no-files-found: error
+          retention-days: 30

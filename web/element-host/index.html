@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Host test page · &lt;hk-eli-chatbot&gt;</title>
+  <!--
+    Stand-in for a Digimarkets page that embeds the HK ELI Chatbot web component. It deliberately uses its own
+    fonts and some loud global CSS ("Noisy host CSS") to show the widget's Shadow DOM keeps both apart.
+    Served by `npm run serve:element` (http://localhost:4300), which proxies /api/stork to the agent on :8050.
+    Query options: ?role=wms|pm|tsm&tab=today|chat|library&api=/api/stork&noisy=1
+  -->
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body { display: flex; flex-direction: column; background: #10151f; color: #c9d1e0; font: 13px/1.4 Georgia, 'Times New Roman', serif; }
+    .host-bar { display: flex; align-items: center; gap: 16px; height: 44px; padding: 0 16px; background: #05080f; border-bottom: 1px solid #263044; }
+    .host-bar strong { color: #fff; letter-spacing: .04em; }
+    .host-bar .note { color: #8a94a8; font-style: italic; }
+    .host-bar label, .host-bar select { font: inherit; color: inherit; }
+    .host-bar select { background: #18202e; border: 1px solid #263044; border-radius: 4px; padding: 2px 6px; }
+    .host-bar .spacer { flex: 1; }
+    .grid { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 12px; padding: 12px; }
+    hk-eli-chatbot { height: 100%; min-height: 560px; }
+    .side { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+    .panel { border: 1px solid #263044; border-radius: 6px; background: #151c29; padding: 12px; }
+    .panel h2 { margin: 0 0 8px; font-size: 13px; color: #fff; }
+    .panel p { margin: 0 0 6px; }
+    #log { flex: 1; overflow: auto; font: 12px/1.5 ui-monospace, Menlo, Consolas, monospace; white-space: pre-wrap; margin: 0; }
+    code { font: 12px ui-monospace, Menlo, Consolas, monospace; color: #9fd0ff; }
+    /* Loud host styles. If any of this showed up inside the widget, the isolation would be broken. */
+    body.noisy button { background: hotpink !important; color: #000 !important; border-radius: 0 !important; }
+    body.noisy p, body.noisy h1, body.noisy a { color: lime !important; text-transform: uppercase; }
+    body.noisy * { font-family: 'Comic Sans MS', cursive; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } .side { display: none; } }
+  </style>
+</head>
+<body>
+  <header class="host-bar">
+    <strong>HOST PAGE</strong>
+    <span class="note">stand-in for Digimarkets, for testing the web component</span>
+    <span class="spacer"></span>
+    <label>Role
+      <select id="role" aria-label="Role attribute">
+        <option value="wms">GFM WMS</option>
+        <option value="pm">CBG PM</option>
+        <option value="tsm">CBG TSM</option>
+      </select>
+    </label>
+    <label><input type="checkbox" id="noisy"> Noisy host CSS</label>
+  </header>
+
+  <div class="grid">
+    <hk-eli-chatbot id="widget" api-base-url="/api/stork" role="wms"></hk-eli-chatbot>
+
+    <aside class="side">
+      <section class="panel">
+        <h2>Embed</h2>
+        <p><code>&lt;script src="hk-eli-chatbot.js"&gt;&lt;/script&gt;</code></p>
+        <p><code>&lt;hk-eli-chatbot api-base-url="/api/stork" role="wms"&gt;</code></p>
+        <p>Role changes apply in place. Other attributes restart the widget.</p>
+      </section>
+      <section class="panel" style="flex:1;display:flex;flex-direction:column;min-height:0">
+        <h2>Events from the widget</h2>
+        <pre id="log" aria-live="polite"></pre>
+      </section>
+    </aside>
+  </div>
+
+  <script>
+    (function () {
+      var q = new URLSearchParams(location.search);
+      var el = document.getElementById('widget');
+      var log = document.getElementById('log');
+      var write = function (line) { log.textContent += new Date().toLocaleTimeString() + '  ' + line + '\n'; };
+      if (q.get('api')) el.setAttribute('api-base-url', q.get('api'));
+      if (q.get('tab')) el.setAttribute('start-tab', q.get('tab'));
+      if (q.get('role')) el.setAttribute('role', q.get('role'));
+      if (q.get('noisy')) { document.body.classList.add('noisy'); document.getElementById('noisy').checked = true; }
+      document.getElementById('role').value = el.getAttribute('role');
+      document.getElementById('role').addEventListener('change', function (e) { el.setAttribute('role', e.target.value); write('role -> ' + e.target.value); });
+      document.getElementById('noisy').addEventListener('change', function (e) { document.body.classList.toggle('noisy', e.target.checked); });
+      // SSO hand-off: the host gives the widget a way to get the user's token. Demo value only.
+      el.accessTokenProvider = function () { return 'demo-token-from-host'; };
+      document.addEventListener('hk-eli-ready', function (e) { write('hk-eli-ready ' + e.detail.version); });
+      document.addEventListener('hk-eli-error', function (e) { write('hk-eli-error ' + e.detail.message); });
+    })();
+  </script>
+  <script src="hk-eli-chatbot.js"></script>
+</body>
+</html>

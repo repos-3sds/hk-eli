@@ -54,6 +54,29 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
+            },
+            "element": {
+              "browser": "src/elements/main.ts",
+              "tsConfig": "tsconfig.element.json",
+              "index": false,
+              "assets": [],
+              "outputPath": "dist/element-raw",
+              "outputHashing": "none",
+              "optimization": true,
+              "sourceMap": false,
+              "extractLicenses": true,
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "1.2MB",
+                  "maximumError": "2MB"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "8kB",
+                  "maximumError": "10kB"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"
