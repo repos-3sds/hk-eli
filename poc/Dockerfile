@@ -7,6 +7,9 @@ ARG PYTHON_IMAGE=python:3.12.12-slim-bookworm
 
 FROM ${PYTHON_IMAGE} AS deps
 ARG PIP_INDEX_URL=https://pypi.org/simple
+# Optional: the office Stork SDK for LLM_MODE=stork, e.g. --build-arg STORK_SDK="ada_genai==<version>".
+# It comes only from the bank's index (PIP_INDEX_URL); it is not on public PyPI.
+ARG STORK_SDK=""
 ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 WORKDIR /app
 COPY requirements.txt .
@@ -15,7 +18,8 @@ COPY requirements.txt .
 RUN --mount=type=secret,id=ca,required=false \
     python -m venv /opt/venv \
  && if [ -s /run/secrets/ca ]; then export PIP_CERT=/run/secrets/ca; fi \
- && /opt/venv/bin/pip install --index-url "${PIP_INDEX_URL}" --require-hashes --no-deps -r requirements.txt
+ && /opt/venv/bin/pip install --index-url "${PIP_INDEX_URL}" --require-hashes --no-deps -r requirements.txt \
+ && if [ -n "${STORK_SDK}" ]; then /opt/venv/bin/pip install --index-url "${PIP_INDEX_URL}" "${STORK_SDK}"; fi
 
 FROM ${PYTHON_IMAGE}
 LABEL org.opencontainers.image.title="hk-eli-backend" \

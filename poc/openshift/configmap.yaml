@@ -19,9 +19,12 @@ data:
   # TABLEAU_SERVER: https://<tableau-server>
   # TABLEAU_SITE: <site-content-url>
   # TABLEAU_USER: <tableau-username>
-  # off = rules and templates only (no model). gateway = Gemini through the approved model gateway.
+  # stork = Gemini through the office Stork API (image built with STORK_SDK; ONE_BANK_ID and
+  #         ONE_BANK_PASSWORD in the Secret). off = rules and templates only, figures unchanged.
   LLM_MODE: "off"
+  # LLM_MODEL: gemini-3.5-flash
+  # SSL_CERT_FILE: /etc/pki/tls/certs/ca-bundle.crt
+  # gateway mode only:
   # LLM_GATEWAY_URL: https://<model-gateway-host>
   # LLM_GATEWAY_PATH: /v1/models/{model}:generateContent
-  # LLM_MODEL: gemini-2.5-flash
   # LLM_AUTH_HEADER: Authorization

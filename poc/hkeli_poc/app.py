@@ -22,6 +22,7 @@ API (v1, JSON):
 from __future__ import annotations
 
 import hmac
+import importlib.util
 import json
 import logging
 import re
@@ -415,7 +416,11 @@ def ready():
         checks["prompts"] = "ok (" + ", ".join(f"{k} {p.version}" for k, p in S.lib.items()) + ")"
         ts = TR.settings()
         checks["tableau"] = "ok (real, settings present)" if ts else "ok (mock)"
-        checks["llm"] = f"ok ({config.get().llm.mode})"
+        mode = config.get().llm.mode
+        if mode == "stork" and importlib.util.find_spec("ada_genai") is None:
+            checks["llm"] = "warn (stork: ada_genai not installed, answers fall back to rules and templates)"
+        else:
+            checks["llm"] = f"ok ({mode})"
     except Exception as e:  # report the failing check by name, never a secret
         checks["error"] = type(e).__name__ + ": " + str(e)[:200]
         return JSONResponse({"ready": False, "checks": checks}, status_code=503)

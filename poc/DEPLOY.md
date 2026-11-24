@@ -63,13 +63,13 @@ All settings are environment variables (full list with comments: `.env.example`)
 | Variable | UAT value | Meaning |
 | --- | --- | --- |
 | `TABLEAU_MODE` | `mock` | `real` reads the bank's Tableau server (then set `TABLEAU_SERVER`, `TABLEAU_SITE`, `TABLEAU_USER` and the Connected App secret) |
-| `LLM_MODE` | `off` | `gateway` lets Gemini word the answers (set `LLM_GATEWAY_URL`, `LLM_API_KEY` in the Secret). Figures come from data either way |
+| `LLM_MODE` | `off` | `stork` lets Gemini word the answers through the Stork API: build with `--build-arg STORK_SDK="ada_genai==<version>"` and put `ONE_BANK_ID`, `ONE_BANK_PASSWORD` in the Secret (optionally `SSL_CERT_FILE`). No URL is needed. Figures come from data either way |
 | `DEMO_TODAY` | `2026-11-19` | business day of the fictional book; empty in real mode |
 | `DEFAULT_USER` | `uat.user` | name stored with history while there is no login |
 | `DB_PATH` | `/app/var/hkeli.sqlite` | conversation store on the PVC |
 | `TRUST_EDGE_HEADERS` | `false` | `true` only once the Java edge (SSO) sits in front |
 
-Secrets (`LLM_API_KEY`, `TABLEAU_SECRET_ID`, `TABLEAU_SECRET_VALUE`) come from the `hk-eli-backend` Secret,
+Secrets (`ONE_BANK_ID`, `ONE_BANK_PASSWORD`, `TABLEAU_SECRET_ID`, `TABLEAU_SECRET_VALUE`) come from the `hk-eli-backend` Secret,
 or from Vault-rendered files via `<NAME>_FILE`. They are never in the image or the ConfigMap.
 
 ## Known limits for UAT
