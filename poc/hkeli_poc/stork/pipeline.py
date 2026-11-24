@@ -63,7 +63,9 @@ def _idx(cols, name):
 
 
 def answer(question: str, http, site: str, scenario: str | None = None, user: str = "demo.user",
-           llm=None, lib: dict | None = None, kb: KB.Knowledge | None = None, on_step=None) -> dict:
+           llm=None, lib: dict | None = None, kb: KB.Knowledge | None = None, on_step=None,
+           word: bool = True) -> dict:
+    """word=False leaves the template text in place (the Dify flow words the answer and Python grades it)."""
     cfg = config.get()
     today = demo_today()
     llm = llm or OffClient()
@@ -239,7 +241,10 @@ def answer(question: str, http, site: str, scenario: str | None = None, user: st
         _one_of_several(it, out, moved=it.wps)
     if out["status"] in ("OK",):
         _finish(out)
-        out["meta"]["insight"] = agent.word(out, llm, lib, kb, calls)
+        if word:
+            out["meta"]["insight"] = agent.word(out, llm, lib, kb, calls)
+        else:
+            out["meta"]["insight"], out["_word_step"] = "template", True   # the Dify flow words it, Python grades
     tr.add("Write answer", {"mode": out["meta"]["insight"], "numbers": len(out["numbers"])})
     if pl.view and out["status"] not in ("UNSUPPORTED", "VALIDATION_FAILED", "SYSTEM_ERROR"):
         out["embeds"] = _embeds(site, it, reg, pl, anchor, anchor_known, scenario)

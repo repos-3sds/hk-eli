@@ -48,6 +48,10 @@ from .db import Store
 from .mock_tableau import InProcessMock
 from .mock_tableau import router as tableau_router
 from .stork.pipeline import answer
+from .flow import run as flow_run
+from .flow import tools as flow_tools
+from .flow import context as flow_context
+from .flow.dify import DifyClient, DifyError, LocalDify
 from .workbook import SITES, public_catalog
 
 STATIC = Path(__file__).parent / "static"
@@ -63,6 +67,7 @@ class State:
     llm = None
     kb: KB.Knowledge | None = None
     lib: dict | None = None
+    dify = None
 
 
 S = State()
@@ -216,10 +221,10 @@ def _real_embed(a: dict) -> dict:
     return a
 
 
-def run(question: str, site: str, scenario: str | None, user: str = "demo.user", on_step=None):
+def run(question: str, site: str, scenario: str | None, user: str = "demo.user", on_step=None, llm=None, word: bool = True):
     ensure_started()
     s = TR.settings()
-    kw = dict(user=user, llm=S.llm, lib=S.lib, kb=S.kb, on_step=on_step)
+    kw = dict(user=user, llm=llm or S.llm, lib=S.lib, kb=S.kb, on_step=on_step, word=word)
     if s:  # real Tableau: one workbook, whose contract is set by TABLEAU_CATALOG; no scenarios
         a = _real_embed(answer(question, tableau_http(), s.catalog, **kw))
     else:
@@ -234,9 +239,41 @@ def run(question: str, site: str, scenario: str | None, user: str = "demo.user",
     return a
 
 
-def _ask(body: Ask, user: str, rid: str, on_step=None) -> dict:
+# ---------------------------------------------------------------- Dify flow (ORCHESTRATOR=dify | local)
+def _flow_answer_fn(t, llm):
+    """The `answer` tool's body: the deterministic pipeline as the asking user, model wording left to Dify."""
+    return run(t.question, t.site, t.scenario, user=t.user, llm=llm, word=False)
+
+
+def flow_engine():
+    """local: the Chatflow's graph in this process (model = LLM_MODE). dify: the real Dify Service API."""
+    cfg = config.get()
+    if cfg.orchestrator == "dify":
+        if S.dify is None:
+            S.dify = DifyClient(cfg.dify_base_url, cfg.dify_api_key, timeout_s=cfg.dify_timeout_s)
+        return S.dify
+    return LocalDify(S.llm, _flow_answer_fn, S.lib, S.kb)
+
+
+def _flow(body: Ask, user: str, on_step=None, on_token=None) -> dict:
+    a = None
+    for kind, data in flow_run.ask(body.question.strip(), user, body.site, body.scenario, uuid.uuid4().hex,
+                                   flow_engine(), S.lib, S.kb):
+        if kind == "stage" and on_step:
+            on_step(data)
+        elif kind == "token" and on_token:
+            on_token(data)
+        elif kind == "answer":
+            a = data
+    return a
+
+
+def _ask(body: Ask, user: str, rid: str, on_step=None, on_token=None) -> dict:
     t0 = time.perf_counter()
-    a = run(body.question.strip(), body.site, body.scenario, user=user, on_step=on_step)
+    if config.get().orchestrator == "native":
+        a = run(body.question.strip(), body.site, body.scenario, user=user, on_step=on_step)
+    else:
+        a = _flow(body, user, on_step=on_step, on_token=on_token)
     calls = [c.as_row() for c in a.pop("_llm_calls", [])]
     ms = round((time.perf_counter() - t0) * 1000)
     conv = S.store.conversation(user, body.conversation_id)
@@ -257,7 +294,12 @@ def ask(body: Ask, request: Request):
     ensure_started()
     if body.site not in SITES:
         raise HTTPException(400, "Unknown site")
-    return _ask(body, current_user(request), request.state.request_id)
+    try:
+        return _ask(body, current_user(request), request.state.request_id)
+    except DifyError as e:
+        log.warning("dify failed", extra={"extra": {"request_id": request.state.request_id, "code": e.code}})
+        return JSONResponse({"status": "SYSTEM_ERROR", "error": "The assistant service is not reachable right now.",
+                             "code": "DIFY_" + e.code, "request_id": request.state.request_id}, status_code=503)
 
 
 STAGE_LABEL = {"Pre-parse": "Reading the question", "Concepts": "Matching catalog terms",
@@ -273,6 +315,7 @@ def ask_stream(body: Ask, request: Request):
     """Same answer as /api/v1/ask, streamed as Server-Sent Events.
 
     event: stage   data: {"n", "name", "label", "ms"}   one per pipeline step, as it finishes
+    event: token   data: {"text", "state": "checking"}   Dify flow only: the draft headline so far, not yet graded
     event: answer  data: <the full answer object>       last event on success
     event: error   data: {"status": "SYSTEM_ERROR", "request_id"}
     """
@@ -285,8 +328,14 @@ def ask_stream(body: Ask, request: Request):
 
     def work():
         try:
-            a = _ask(body, user, rid, on_step=lambda st: q.put(("stage", {**st, "label": STAGE_LABEL.get(st["name"], st["name"])})))
+            a = _ask(body, user, rid,
+                     on_step=lambda st: q.put(("stage", {**st, "label": st.get("label") or STAGE_LABEL.get(st["name"], st["name"])})),
+                     on_token=lambda tk: q.put(("token", tk)))
             q.put(("answer", a))
+        except DifyError as e:
+            log.warning("dify failed", extra={"extra": {"request_id": rid, "code": e.code}})
+            q.put(("error", {"status": "SYSTEM_ERROR", "error": "The assistant service is not reachable right now.",
+                             "code": "DIFY_" + e.code, "request_id": rid}))
         except Exception:  # same envelope as the JSON endpoint, no internals
             log.exception("stream failed", extra={"extra": {"request_id": rid}})
             q.put(("error", {"status": "SYSTEM_ERROR", "error": "Something went wrong on our side.", "request_id": rid}))
@@ -304,6 +353,61 @@ def ask_stream(body: Ask, request: Request):
 
     return StreamingResponse(events(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"})
+
+
+# ---------------------------------------------------------------- tools the Dify Chatflow calls
+class ToolReq(BaseModel):
+    request_id: str = Field(min_length=8, max_length=64)
+    model_text: str | None = Field(default=None, max_length=20000)
+
+
+def _tool_auth(request: Request) -> None:
+    """Dify sends `Authorization: Bearer <DIFY_TOOL_KEY>`. The request id itself is a one-off random handle,
+    valid for five minutes and only while that question is being answered."""
+    key = config.get().dify_tool_key
+    got = request.headers.get("Authorization", "")
+    if not key or not hmac.compare_digest(got.encode(), f"Bearer {key}".encode()):
+        raise HTTPException(401, "Tool key required")
+
+
+def _tool(fn):
+    try:
+        return fn()
+    except flow_tools.ToolError as e:
+        return JSONResponse({"error": e.code}, status_code=e.status)
+
+
+@app.post("/tools/context", tags=["dify-tools"])
+def tool_context(body: ToolReq, request: Request):
+    """Stage 1 output: rules reading and, when the rules are unsure, the `understand` prompt for Dify's model."""
+    ensure_started()
+    _tool_auth(request)
+    return _tool(lambda: flow_context.package(flow_tools.turn(body.request_id)))
+
+
+@app.post("/tools/answer", tags=["dify-tools"])
+def tool_answer(body: ToolReq, request: Request):
+    """Fetch from Tableau as the asking user, validate and compose. Returns the `write_answer` prompt when the
+    answer may be worded, else the final headline. Rows and figures stay here."""
+    ensure_started()
+    _tool_auth(request)
+    return _tool(lambda: flow_tools.answer(body.request_id, body.model_text, _flow_answer_fn, S.lib, S.kb,
+                                           model="dify"))
+
+
+@app.post("/tools/reword", tags=["dify-tools"])
+def tool_reword(body: ToolReq, request: Request):
+    """The `write_answer` prompt again with the problems the figure check found (one rewrite)."""
+    ensure_started()
+    _tool_auth(request)
+    return _tool(lambda: flow_tools.reword(body.request_id))
+
+
+@app.get("/tools/openapi.json", tags=["dify-tools"])
+def tool_openapi(request: Request):
+    """OpenAPI 3 schema for Dify's custom tool provider (Tools > Custom > Create)."""
+    base = config.get().dify_tool_base_url or str(request.base_url).rstrip("/")
+    return flow_tools.openapi(base)
 
 
 class Feedback(BaseModel):
