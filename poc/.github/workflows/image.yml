@@ -1,0 +1,57 @@
+# Tests the agent, builds the image and (on main or a v* tag) pushes it to GHCR.
+# Pull it into the bank registry for OpenShift: ghcr.io/<owner>/hk-eli-backend:<tag>
+name: api-image
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+permissions:
+  contents: read
+  packages: write
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.6.0
+        with: {python-version: "3.12.12"}
+      - run: python -m pip install --require-hashes -r requirements-dev.txt
+      - run: python -m pytest -q
+  image:
+    needs: test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: docker/setup-buildx-action@v3.11.1
+      - uses: docker/metadata-action@v5.8.0
+        id: meta
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/hk-eli-backend
+          tags: |
+            type=sha,format=short
+            type=ref,event=tag
+            type=raw,value=latest,enable={{is_default_branch}}
+      - uses: docker/login-action@v3.5.0
+        if: github.event_name != 'pull_request'
+        with: {registry: ghcr.io, username: "${{ github.actor }}", password: "${{ secrets.GITHUB_TOKEN }}"}
+      - uses: docker/build-push-action@v6.18.0
+        with:
+          context: .
+          load: true
+          tags: hk-eli-backend:ci
+      - name: Smoke test the image (random UID, read-only root, like OpenShift)
+        run: |
+          docker run -d --name api --user 1000770000:0 --read-only --tmpfs /tmp --tmpfs /app/var -p 8080:8080 hk-eli-backend:ci
+          for i in $(seq 1 30); do curl -fs localhost:8080/readyz && break; sleep 1; done
+          curl -fs localhost:8080/readyz
+          curl -fs -X POST localhost:8080/api/v1/ask -H 'content-type: application/json' \
+               -d '{"question":"Which clients have ELIs maturing this week?"}' | grep -q '"status":"OK"'
+          docker rm -f api
+      - uses: docker/build-push-action@v6.18.0
+        if: github.event_name != 'pull_request'
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}

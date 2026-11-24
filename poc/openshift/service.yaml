@@ -1,0 +1,11 @@
+# Internal only: the web service reaches the agent at http://hk-eli-backend:8080. No Route by design;
+# add route.yaml from this folder only if UAT wants to call the API directly (Swagger at /api/docs).
+apiVersion: v1
+kind: Service
+metadata:
+  name: hk-eli-backend
+  labels: {app.kubernetes.io/name: hk-eli-backend, app.kubernetes.io/part-of: hk-eli-chatbot}
+spec:
+  selector: {app.kubernetes.io/name: hk-eli-backend}
+  ports:
+    - {name: http, port: 8080, targetPort: http}

@@ -1,0 +1,57 @@
+# Rendered at start by the nginx image (envsubst, API_URL only). Listens on 8080 as a non-root user.
+server {
+    listen       8080;
+    server_name  _;
+    root         /usr/share/nginx/html;
+    server_tokens off;
+    client_max_body_size 1m;
+
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy no-referrer always;
+    add_header X-Frame-Options SAMEORIGIN always;
+
+    # Liveness/readiness of this container only (does not call the agent).
+    location = /healthz { access_log off; default_type application/json; return 200 '{"ok":true}'; }
+
+    # The agent's API. The widget calls /api/stork/...; the agent serves /api/...
+    location /api/stork/ {
+        proxy_pass         ${API_URL}/api/;
+        proxy_http_version 1.1;
+        proxy_set_header   Host $proxy_host;
+        proxy_set_header   X-Request-Id $request_id;
+        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_set_header   Connection "";
+        # Live answers stream as server-sent events: pass them through as they come.
+        proxy_buffering    off;
+        proxy_cache        off;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 120s;
+        error_page 502 504 = @agent_down;
+    }
+
+    # The agent cannot be reached: answer in the agent's own error shape so the widget shows its error state.
+    location @agent_down {
+        default_type application/json;
+        add_header Cache-Control "no-store" always;
+        return 503 '{"status":"SYSTEM_ERROR","error":"The HK ELI agent is not reachable right now. Try again in a minute."}';
+    }
+
+    # Mock Tableau view pages served by the agent; the widget frames them from this origin.
+    location /tableau/ {
+        proxy_pass         ${API_URL}/tableau/;
+        proxy_http_version 1.1;
+        proxy_set_header   Host $proxy_host;
+        proxy_set_header   Connection "";
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 60s;
+    }
+
+    # Runtime settings and the page itself are never cached; hashed bundles are cached for a year.
+    location = /config/app-config.json { add_header Cache-Control "no-store" always; }
+    location = /index.html { add_header Cache-Control "no-cache" always; add_header X-Content-Type-Options nosniff always; }
+    location ~* \.(?:js|css|woff2?|svg|png|ico)$ { expires 1y; add_header Cache-Control "public, immutable" always; try_files $uri =404; }
+
+    # Single-page app: unknown paths fall back to the app.
+    location / { try_files $uri $uri/ /index.html; }
+}

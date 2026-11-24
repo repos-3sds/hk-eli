@@ -61,7 +61,7 @@ outside the office (commands are at the top of each `.in` file) and re-run the t
 |---|---|---|
 | `TABLEAU_MODE` | `mock` (synthetic HK_ELI workbook, no network) / `real` (office Tableau server) | `mock` |
 | `TABLEAU_EMBED` | `embed` (live view in the side pane) / `link` (open the view on the server) / `off` | `embed` |
-| `LLM_MODE` | `off` (rules and templates) / `gateway` (Gemini through the office gateway) | `off` |
+| `LLM_MODE` | `stork` (Gemini through the office Stork API: `ONE_BANK_ID`, `ONE_BANK_PASSWORD`, SDK `ada_genai`) / `off` (rules and templates) / `gateway` (Gemini REST through an HTTPS gateway) | `off` |
 | `TRUST_EDGE_HEADERS` | `true` behind the Java edge (needs `EDGE_SHARED_TOKEN`) / `false` laptop demo | `false` |
 
 Each answer says how it was produced (`meta.understanding`: rules, gateway, or gateway->rules when the model

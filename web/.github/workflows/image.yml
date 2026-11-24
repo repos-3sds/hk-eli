@@ -1,0 +1,58 @@
+# Tests the widget, builds the nginx image and (on main or a v* tag) pushes it to GHCR.
+# Pull it into the bank registry for OpenShift: ghcr.io/<owner>/hk-eli-frontend:<tag>
+name: web-image
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+permissions:
+  contents: read
+  packages: write
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-node@v4.4.0
+        with: {node-version: "22.21.1", cache: npm}
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+  image:
+    needs: test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: docker/setup-buildx-action@v3.11.1
+      - uses: docker/metadata-action@v5.8.0
+        id: meta
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/hk-eli-frontend
+          tags: |
+            type=sha,format=short
+            type=ref,event=tag
+            type=raw,value=latest,enable={{is_default_branch}}
+      - uses: docker/login-action@v3.5.0
+        if: github.event_name != 'pull_request'
+        with: {registry: ghcr.io, username: "${{ github.actor }}", password: "${{ secrets.GITHUB_TOKEN }}"}
+      - uses: docker/build-push-action@v6.18.0
+        with:
+          context: .
+          load: true
+          tags: hk-eli-frontend:ci
+      - name: Smoke test the image (random UID, like OpenShift)
+        run: |
+          docker run -d --name web --user 1000770000:0 -e API_URL=http://127.0.0.1:9 -p 8081:8080 hk-eli-frontend:ci
+          for i in $(seq 1 20); do curl -fs localhost:8081/healthz && break; sleep 1; done
+          curl -fs localhost:8081/ | grep -q '<eli-root'
+          curl -fs localhost:8081/config/app-config.json | grep -q '"gatewayBaseUrl": "/api/stork"'
+          # Agent unreachable: nginx answers in the agent's error shape (the widget shows its error state).
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST localhost:8081/api/stork/v1/ask -d '{}')" = 503
+          docker rm -f web
+      - uses: docker/build-push-action@v6.18.0
+        if: github.event_name != 'pull_request'
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}

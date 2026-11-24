@@ -91,7 +91,7 @@ def _path(name: str, default: Path) -> Path:
 
 @dataclass(frozen=True)
 class LLMSettings:
-    mode: str                   # off | gateway
+    mode: str                   # off | gateway | stork
     gateway_url: str | None     # base URL of the approved model gateway (placeholder in .env.example)
     path_template: str          # appended to gateway_url; {model} is replaced
     model: str
@@ -104,9 +104,13 @@ class LLMSettings:
     ca_bundle: str | None = None
     provider: str = "Gemini"    # label shown in answers (meta.provider)
 
+    stork_user: str | None = field(repr=False, default=None)      # LLM_MODE=stork: ONE_BANK_ID
+    stork_password: str | None = field(repr=False, default=None)  # LLM_MODE=stork: ONE_BANK_PASSWORD
+    ssl_cert_file: str | None = None                               # LLM_MODE=stork: SSL_CERT_FILE
+
     @property
     def enabled(self) -> bool:
-        return self.mode == "gateway"
+        return self.mode in ("gateway", "stork")
 
 
 @dataclass(frozen=True)
@@ -135,6 +139,11 @@ class Settings:
         return datetime.now(ZoneInfo(self.timezone)).date()
 
 
+def allow_public_bind() -> bool:
+    """True only in a container (OpenShift), where the pod must listen on 0.0.0.0 for its Service."""
+    return _bool("ALLOW_PUBLIC_BIND", False)
+
+
 # Mock data is built around this business day; real mode uses the clock.
 MOCK_DEMO_TODAY = "2026-11-19"
 
@@ -152,12 +161,12 @@ def load() -> Settings:
     except Exception:
         raise ConfigError("APP_TIMEZONE is not a known time zone") from None
 
-    llm_mode = _choice("LLM_MODE", "off", ("off", "gateway"))
+    llm_mode = _choice("LLM_MODE", "off", ("off", "gateway", "stork"))
     llm = LLMSettings(
         mode=llm_mode,
         gateway_url=(_env("LLM_GATEWAY_URL") or "").rstrip("/") or None,
         path_template=_env("LLM_GATEWAY_PATH", "/v1/models/{model}:generateContent"),
-        model=_env("LLM_MODEL", "gemini-2.5-flash"),
+        model=_env("LLM_MODEL", "gemini-3.5-flash" if llm_mode == "stork" else "gemini-2.5-flash"),
         api_key=secret("LLM_API_KEY"),
         auth_header=_env("LLM_AUTH_HEADER", "Authorization"),
         # Set but empty means "no scheme": the key is sent alone (e.g. LLM_AUTH_HEADER=x-goog-api-key).
@@ -167,10 +176,16 @@ def load() -> Settings:
         temperature=_float("LLM_TEMPERATURE", 0.0, 0, 1),
         ca_bundle=_env("LLM_CA_BUNDLE"),
         provider=_env("LLM_PROVIDER_LABEL", "Gemini"),
+        # Stork (the office's private Gemini SDK). Both spellings are accepted for the two credentials.
+        stork_user=secret("ONE_BANK_ID") or secret("One_Bank_ID"),
+        stork_password=secret("ONE_BANK_PASSWORD") or secret("One_BANK_PASSWORD"),
+        ssl_cert_file=_env("SSL_CERT_FILE"),
     )
-    if llm.enabled and not llm.gateway_url:
-        raise ConfigError("LLM_MODE=gateway needs LLM_GATEWAY_URL")
-    if llm.enabled and not llm.gateway_url.startswith("https://") and not llm.gateway_url.startswith("http://127.0.0.1"):
+    if llm_mode == "stork" and not (llm.stork_user and llm.stork_password):
+        raise ConfigError("LLM_MODE=stork needs ONE_BANK_ID and ONE_BANK_PASSWORD (or use LLM_MODE=off for a first run)")
+    if llm_mode == "gateway" and not llm.gateway_url:
+        raise ConfigError("LLM_MODE=gateway needs LLM_GATEWAY_URL (for Stork use LLM_MODE=stork; for a first run use LLM_MODE=off)")
+    if llm_mode == "gateway" and not llm.gateway_url.startswith("https://") and not llm.gateway_url.startswith("http://127.0.0.1"):
         raise ConfigError("LLM_GATEWAY_URL must use https (TLS verification stays on)")
 
     trust = _bool("TRUST_EDGE_HEADERS", False)

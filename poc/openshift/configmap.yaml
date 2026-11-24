@@ -1,0 +1,30 @@
+# Settings for the agent in UAT. Change values here (or with `oc set env`), never in the image.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hk-eli-backend
+  labels: {app.kubernetes.io/name: hk-eli-backend, app.kubernetes.io/part-of: hk-eli-chatbot}
+data:
+  LOG_LEVEL: info
+  APP_TIMEZONE: Asia/Hong_Kong
+  # Fictional demo book is built around this business day. Leave empty with TABLEAU_MODE=real.
+  DEMO_TODAY: "2026-11-19"
+  DB_PATH: /app/var/hkeli.sqlite
+  # No login for UAT: every call is made as DEFAULT_USER. Behind the future Java edge set TRUST_EDGE_HEADERS=true.
+  TRUST_EDGE_HEADERS: "false"
+  DEFAULT_USER: uat.user
+  # mock = built-in fictional HK_ELI workbook, no network. real = the bank's Tableau server (fill TABLEAU_* below).
+  TABLEAU_MODE: mock
+  TABLEAU_EMBED: embed
+  # TABLEAU_SERVER: https://<tableau-server>
+  # TABLEAU_SITE: <site-content-url>
+  # TABLEAU_USER: <tableau-username>
+  # stork = Gemini through the office Stork API (image built with STORK_SDK; ONE_BANK_ID and
+  #         ONE_BANK_PASSWORD in the Secret). off = rules and templates only, figures unchanged.
+  LLM_MODE: "off"
+  # LLM_MODEL: gemini-3.5-flash
+  # SSL_CERT_FILE: /etc/pki/tls/certs/ca-bundle.crt
+  # gateway mode only:
+  # LLM_GATEWAY_URL: https://<model-gateway-host>
+  # LLM_GATEWAY_PATH: /v1/models/{model}:generateContent
+  # LLM_AUTH_HEADER: Authorization

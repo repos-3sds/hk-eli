@@ -1,0 +1,11 @@
+# Holds the SQLite store (conversations, history, feedback, model-call audit). Swap for emptyDir if UAT
+# does not need history to survive a restart.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hk-eli-backend-var
+  labels: {app.kubernetes.io/name: hk-eli-backend, app.kubernetes.io/part-of: hk-eli-chatbot}
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests: {storage: 1Gi}
