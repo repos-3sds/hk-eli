@@ -108,7 +108,7 @@ def split_text(text: str) -> tuple[str, list[str]]:
 def grade(t: Turn, text: str, banned: list[str]) -> list[str]:
     if not text.strip():
         return ["EMPTY"]
-    return agent.check_wording(text, allowed(t), banned)
+    return agent.check_wording(text, allowed(t), banned) + agent.label_problems(text, evidence(t))
 
 
 def ask(question: str, user: str, site: str, scenario: str | None, request_id: str, engine, lib: dict,
@@ -140,7 +140,8 @@ def ask(question: str, user: str, site: str, scenario: str | None, request_id: s
             attempts = 2
             fix = ("Your previous answer was rejected by the figure check (" + ", ".join(sorted(set(problems)))[:300]
                    + "). Rewrite it using only figures from the context or from tool results, exactly as written, "
-                   "and none of the banned phrases.")
+                   "none of the banned phrases, and name a predicted result (knock-out, knock-in, expiry) only when "
+                   "the figure is for that result.")
             text, end2, n = yield from _drain(engine, inputs, fix, user, end["conversation_id"], t0, n)
             end = {**end, **{k: v for k, v in end2.items() if v}}
             problems = grade(t, text, banned)

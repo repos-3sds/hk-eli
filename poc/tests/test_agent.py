@@ -229,3 +229,24 @@ def test_vague_question_without_a_fetch_keeps_the_clarification(env):
 def test_comparisons_by_segment_get_the_segment_view(q, env):
     a = appmod.run(q, "proposed", None, llm=agentic.Replay("rules", None, None), word=False)
     assert a["intent"] == "segment_share" and a["status"] == "OK"
+
+
+def test_label_check_catches_maturities_called_knock_outs(env):
+    from hkeli_poc.stork import agent as AG
+    a = appmod.run("How much TRE ELI is predicted to mature in the next 7 days?", "proposed", None,
+                   llm=agentic.Replay("rules", None, None), word=False)
+    assert AG.label_problems("HKD 175.6M of TRE ELI is predicted to knock out in the next 7 days.", [a]) == \
+        ["LABEL_NOT_IN_DATA:KO"]
+    assert AG.label_problems(a["headline"], [a]) == []
+    ko = appmod.run("How much TRE ELI is predicted to knock out in the next 30 days?", "proposed", None,
+                    llm=agentic.Replay("rules", None, None), word=False)
+    assert AG.label_problems("This is predicted to knock out.", [ko]) == []
+
+
+def test_agent_mislabel_gets_a_rewrite(env):
+    def say(c, q, x):
+        return c["template_answer"] if "rejected" in q else c["template_answer"].replace("mature", "knock out")
+    eng = FakeAgent(say)
+    _, a = run("How much TRE ELI is predicted to mature in the next 7 days?", eng, env)
+    assert a["meta"]["agent"]["attempts"] == 2 and a["meta"]["insight"] == "agent"
+    assert "LABEL_NOT_IN_DATA:KO" in eng.calls[1]["query"]

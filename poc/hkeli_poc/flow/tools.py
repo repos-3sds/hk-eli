@@ -105,7 +105,8 @@ def _word_inputs(t: Turn, problems: list[str] | None = None) -> dict:
     sys_txt += "\n\nReturn one JSON object only, no code fences. JSON schema:\n" + json.dumps(schema, separators=(",", ":"))
     if problems:
         user_txt += ("\n\nYour previous text was rejected by the figure check: " + ", ".join(sorted(set(problems)))
-                     + ". Use only the figures given above, exactly as written, and none of the banned phrases.")
+                     + ". Use only the figures given above, exactly as written, none of the banned phrases, and name a predicted "
+                     "result (knock-out, knock-in, expiry) only when the figures are for that result.")
     return {"word_system": sys_txt, "word_user": user_txt}
 
 

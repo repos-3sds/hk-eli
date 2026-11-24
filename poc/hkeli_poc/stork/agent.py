@@ -228,6 +228,28 @@ def check_wording(text: str, allowed: set[str], banned: list[str]) -> list[str]:
     return problems
 
 
+RESULT_TERMS = {   # predicted results a figure can be about; wording may name one only if the data does
+    "KO": re.compile(r"knock[- ]?outs?|knocked[- ]out|\bKO\b", re.I),
+    "KI": re.compile(r"knock[- ]?ins?|knocked[- ]in|\bKI\b", re.I),
+    "EXP": re.compile(r"\bexpir(?:y|ies|es|ed)\b|\bEXP\b", re.I),
+}
+
+
+def label_problems(text: str, outs: list[dict]) -> list[str]:
+    """A right number with the wrong label (e.g. all maturities called knock-outs). A result term may appear only
+    when one of the answers the text is based on carries that result: as its filter, in scope, caveats,
+    assumptions, figures or table."""
+    corpus = []
+    for o in outs:
+        corpus += [str((o.get("slots") or {}).get("result") or ""), o.get("scope", ""), o.get("headline", "")]
+        corpus += [c["text"] for c in o.get("caveats", [])] + list(o.get("assumptions") or [])
+        corpus += [f"{n.get('id', '')} {n.get('measure', '')} {n.get('display', '')}" for n in o.get("numbers", [])]
+        tbl = o.get("table") or {}
+        corpus += [str(c) for c in tbl.get("columns", [])] + [str(c) for r in tbl.get("rows", []) for c in r]
+    blob = " ".join(corpus)
+    return [f"LABEL_NOT_IN_DATA:{k}" for k, rx in RESULT_TERMS.items() if rx.search(text) and not rx.search(blob)]
+
+
 def word(out: dict, llm, lib: dict, kb: KB.Knowledge, calls: list) -> str:
     """Returns the insight mode for meta. Changes out['headline'] / out['bullets'] only when checks pass."""
     if not getattr(llm, "enabled", False):
@@ -293,7 +315,9 @@ def grade_wording(out: dict, raw: dict, allowed: set[str] | None, banned: list[s
     bullets = [str(b).strip() for b in (raw.get("bullets") or []) if str(b).strip()][:3]
     if not head:
         return ["EMPTY"]
-    return check_wording(" ".join([head] + bullets), allowed if allowed is not None else evidence_figures(out), banned)
+    text = " ".join([head] + bullets)
+    return (check_wording(text, allowed if allowed is not None else evidence_figures(out), banned)
+            + label_problems(text, [out]))
 
 
 def apply_wording(out: dict, raw: dict) -> None:
@@ -305,4 +329,4 @@ def apply_wording(out: dict, raw: dict) -> None:
 
 
 __all__ = ["interpret", "decide", "needs_model", "word", "understand_prompt", "word_prompt", "word_values",
-           "wordable", "grade_wording", "apply_wording", "merge_intent", "check_wording", "evidence_figures", "understand_schema"]
+           "wordable", "grade_wording", "label_problems", "apply_wording", "merge_intent", "check_wording", "evidence_figures", "understand_schema"]
