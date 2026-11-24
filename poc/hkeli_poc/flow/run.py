@@ -39,7 +39,7 @@ def ask(question: str, user: str, site: str, scenario: str | None, request_id: s
     """
     t0 = time.perf_counter()
     t = C.build(request_id, user, question, site, scenario, lib, kb)
-    yield ("stage", {"n": 1, "name": "Context", "label": "Reading the question", "ms": 0.0})
+    yield ("stage", {"n": 1, "name": "Assemble", "label": "Reading the question", "ms": 0.0})
     try:
         inputs = {"request_id": request_id, "mode": "answer"}
         gen = _drain(engine, inputs, question, user, conversation_id, t0, 1, worded=True)

@@ -132,6 +132,8 @@ def test_events_stream_stages_then_a_checking_draft_then_the_answer(env):
     kinds = [k for k, _ in ev]
     assert kinds[0] == "stage" and kinds[-1] == "answer"
     labels = [d["label"] for k, d in ev if k == "stage"]
+    names = [d["name"] for k, d in ev if k == "stage"]
+    assert len(names) == len(set(names)), names       # each stage shows once
     assert labels[:2] == ["Reading the question", "Planning the steps"]
     assert "Querying the view as you" in labels and "Checking the figures" in labels
     drafts = [d for k, d in ev if k == "token"]
