@@ -3,7 +3,8 @@
 \*Will be part of Ask-MIRA in future
 
 Date: 24 Nov 2026. Branch `claude/project-thread-aibrnw` of repos-3sds/hk-eli, draft PR #26.
-All data is from the fictional mock workbook. No keys or secrets appear in this file.
+Runs 1 to 3 used the fictional mock workbook. Run 4 used Hawk's Tableau Cloud trial, which holds the same
+fictional HK_ELI workbook (synthetic data). No keys or secrets appear in this file.
 
 ## 1. Why
 
@@ -134,6 +135,18 @@ Set up, each step approved by Hawk:
 
 Then `scripts/compare_dify.py` ran 8 questions through both apps, three times, fixing what each run found.
 
+### Live on Hawk's Tableau Cloud trial (Run 4)
+
+8. Pointed the :8051 agent at the trial: `TABLEAU_MODE=real`, `TABLEAU_CATALOG=proposed`, signed in through the
+   Connected App "hk-eli-poc" (Direct Trust JWT, as the trial user). The secret id and value live only in
+   owner-only files under `~/.config/hk-eli/`. Dify settings unchanged; :8050 and :4210 untouched.
+9. `scripts/check_tableau.py` first, then the same 8 questions.
+
+Sign-in at first failed with 401, error 10084. Everything else checked out (app enabled, client id, secret id,
+user a Site Administrator Creator, token claims, clock). The cause was the pasted secret value: one paste was
+wrong, the next held page text (97 characters). A real value is one 44-character string; `wc -c` on the file
+is the quick check.
+
 ## 7. Results
 
 ### Run 1 (first live run)
@@ -172,6 +185,39 @@ appear only when the data carries that result), and the agent leads with the fet
 
 No wrong labels or refusals in any final answer. Every final answer passed the figure check.
 
+### Run 4 (Hawk's Tableau Cloud trial, same code as Run 3)
+
+Connection check: sign-in OK; 13 views matched the proposed contract and 11 return data with the expected
+columns. Two gaps, used only by what-if questions: `ALL_outstanding_simulation_n30d` and
+`TRE_outstanding_simulation_n30d` have no "Predictive Result" column, and the `ALL_position_scenario` sheet is
+not published.
+
+Every answer is OK_WITH_WARNING with STALE_DATA: the trial data is as of 18 Nov (refreshed 19 Nov 06:12), six
+days old on the run date. That is the right behaviour. Figures differ from the mock because the trial holds a
+different snapshot of the synthetic data; every figure below comes from Tableau.
+
+| Question | Trial (both apps) | Mock (Run 3) |
+| --- | --- | --- |
+| Total outstanding | HKD 2.46B | HKD 2.82B |
+| Treasures maturing next week | 42 customers, 47 positions, HKD 129.2M | 54 / 59 / HKD 175.6M |
+| TRE maturing in 30 days | 124 customers, 160 positions, HKD 427.0M | 138 / 185 / HKD 509.7M |
+| Concentration by underlying | 9988 HK, HKD 386.0M, 15.7% | 13.7% of HKD 2.82B |
+| Treasures vs TPC | HKD 1.20B (48.7%) vs HKD 287.8M (11.7%) | HKD 1.38B vs HKD 322.4M |
+| NVDA advice | Declined by code in both | Same |
+
+Agent tool calls: eli_ask on the top-10 question; eli_views then eli_ask twice on "anything to worry about";
+eli_ask on "knock out this week". One rewrite (concentration). No problems left in any final answer.
+
+Two findings:
+- **Chatflow, "predicted to knock out this week"**: it again called the whole HKD 129.2M "predicted to knock
+  out", but that is every predicted maturity in 7 days. The result-label check from Run 2 did not catch it on
+  real data, so it needs another look. The Agent labelled it correctly ("predicted to mature in the next 7
+  days, largest 24 Nov at HKD 43.5M").
+- **Agent, "anything to worry about"**: now leads with concentration (9988 HK) rather than maturities.
+  Reasonable, but thinner than in the mock run.
+
+Results on the Mac: `~/Documents/hk-eli-dify/compare-tableau.md` and `compare-tableau.json`.
+
 ### What the comparison shows
 
 - **Agent**: faster when the context pack covers the question (about 4 to 5 s against 6 to 8 s), tighter
@@ -199,9 +245,12 @@ No wrong labels or refusals in any final answer. Every final answer passed the f
 1. **Top N clients across the whole book**: no view ranks clients by total notional. Needs a new Tableau
    worksheet (proposed ask W9).
 2. Chatflow on vague questions: suggest follow-up questions.
-3. Chatflow on "knock out this week": sometimes answers, sometimes asks. Rules can make it consistent.
+3. Chatflow on "knock out this week": sometimes answers, sometimes asks, and on the trial data it labelled all
+   7-day maturities as knock-outs. Tighten the result-label check and make the rules consistent.
 4. Follow-up questions across turns (see 8).
-5. For the bank: port the tool service to Flask, the store to Elasticsearch, secrets to ENAAS, and the widget to
+5. Trial workbook gaps (what-if only): add "Predictive Result" to the two outstanding-simulation views and
+   publish `ALL_position_scenario`.
+6. For the bank: port the tool service to Flask, the store to Elasticsearch, secrets to ENAAS, and the widget to
    Lit; agree where Dify runs, which Gemini route it uses, and the firewall from Python to Tableau (TMTB).
 
 ## 10. How to reproduce
@@ -215,5 +264,9 @@ DIFY_API_KEY_FILE=... DIFY_AGENT_API_KEY_FILE=... DIFY_TOOL_KEY_FILE=... \
 DIFY_TOOL_BASE_URL=http://host.docker.internal:8051 ./run.sh
 python scripts/compare_dify.py --base http://127.0.0.1:8051 --out compare.md
 ```
+
+For Tableau (Run 4), add `TABLEAU_MODE=real TABLEAU_CATALOG=proposed` and the Connected App settings
+(server, site, client id, user, secret id and value as files), run `python scripts/check_tableau.py`, then the
+same comparison with `--out compare-tableau.md`.
 
 Tests: `python -m pytest -q` (316 pass).
