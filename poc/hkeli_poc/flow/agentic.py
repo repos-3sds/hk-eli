@@ -38,7 +38,15 @@ def pack(a: dict, rows: int = 10) -> dict:
                   "rows_total": len(tbl.get("rows", []))},
         "caveats": [c["text"] for c in a.get("caveats", [])],
         "assumptions": list(a.get("assumptions") or []),
+        "table_shown_to_user": bool(tbl.get("rows")),   # the widget shows the full table, real names, beside the text
+        "readings": [{"label": o.get("label", ""), "question": o.get("question", "")}
+                     for o in ((a.get("clarify") or {}).get("options") or [])][:5],
     }
+
+
+def resolvable(a: dict) -> bool:
+    """A question our rules read several ways: the agent may pick a reading and fetch it with eli_ask."""
+    return a.get("status") == "NEEDS_CLARIFICATION" and bool((a.get("clarify") or {}).get("options"))
 
 
 def evidence(t: Turn) -> list[dict]:
@@ -116,7 +124,7 @@ def ask(question: str, user: str, site: str, scenario: str | None, request_id: s
     yield ("stage", {"n": 2, "name": "Context", "label": "Querying the view as you", "ms": ms()})
     a, n = t.draft, 2
     try:
-        if not agent.wordable(a):        # refusal, clarification, nothing found: code answers
+        if not (agent.wordable(a) or resolvable(a)):   # refusal, nothing found, value to pick: code answers
             a["meta"]["orchestrator"] = "dify-agent"
             a["meta"]["insight"] = "template"
             yield ("answer", a)
@@ -136,6 +144,16 @@ def ask(question: str, user: str, site: str, scenario: str | None, request_id: s
             text, end2, n = yield from _drain(engine, inputs, fix, user, end["conversation_id"], t0, n)
             end = {**end, **{k: v for k, v in end2.items() if v}}
             problems = grade(t, text, banned)
+        if not agent.wordable(a):
+            # the agent picked a reading: the last answer it fetched becomes the base, the clarification goes
+            done = [e for e in evidence(t)[1:] if agent.wordable(e)]
+            if done and not problems:
+                a = {**done[-1], "meta": {**done[-1].get("meta", {}), **{k: v for k, v in a["meta"].items()
+                                                                          if k in ("request_id",)}}}
+                a["question"] = question
+                a["assumptions"] = list(a.get("assumptions") or []) + ["Read as: " + done[-1].get("question", "")]
+            else:
+                problems = problems or ["NO_READING_FETCHED"]
         if problems:
             a["meta"]["insight"] = "agent->template"
             a["meta"]["agent_problems"] = sorted(set(problems))[:10]

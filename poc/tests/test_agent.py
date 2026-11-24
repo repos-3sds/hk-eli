@@ -196,3 +196,36 @@ def test_agent_dsl_is_an_agent_app():
     assert "{{request_id}}" in d["model_config"]["pre_prompt"] and "{{context}}" in d["model_config"]["pre_prompt"]
     names = [list(f.values())[0]["variable"] for f in d["model_config"]["user_input_form"]]
     assert names == ["request_id", "context"]
+
+
+def test_agent_resolves_a_vague_question_by_fetching_a_reading(env):
+    q = "What is predicted to knock out this week?"
+    seen = {}
+
+    class Picker(FakeAgent):
+        def chat(self, inputs, query, user, conversation_id=None):
+            ctx = json.loads(inputs["context"])
+            seen["ctx"] = ctx
+            pick = ctx["readings"][0]["question"]
+            yield {"event": "agent_thought", "id": "t1", "tool": "eli_ask", "tool_input": ""}
+            res, _ = mcp_call("eli_ask", {"request_id": inputs["request_id"], "question": pick})
+            text = res["template_answer"] + "\n- Read as: " + pick
+            yield {"event": "message", "answer": text}
+            yield {"event": "message_end", "conversation_id": "c", "message_id": "m"}
+
+    _, a = run(q, Picker(None), env)
+    assert seen["ctx"]["status"] == "NEEDS_CLARIFICATION" and seen["ctx"]["readings"]
+    assert a["status"] == "OK" and a["meta"]["insight"] == "agent" and a["numbers"]
+    assert any(x.startswith("Read as: ") for x in a["assumptions"])
+
+
+def test_vague_question_without_a_fetch_keeps_the_clarification(env):
+    _, a = run("What is predicted to knock out this week?", FakeAgent(lambda c, q, x: "Which do you mean?"), env)
+    assert a["status"] == "NEEDS_CLARIFICATION" and a["meta"]["insight"] == "agent->template"
+
+
+@pytest.mark.parametrize("q", ["Compare outstanding ELI for Treasures and Treasures Private Client",
+                               "TRE vs TPC outstanding", "Outstanding ELI by segment"])
+def test_comparisons_by_segment_get_the_segment_view(q, env):
+    a = appmod.run(q, "proposed", None, llm=agentic.Replay("rules", None, None), word=False)
+    assert a["intent"] == "segment_share" and a["status"] == "OK"
