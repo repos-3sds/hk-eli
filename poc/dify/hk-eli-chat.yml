@@ -268,7 +268,7 @@ workflow:
           desc: "Gemini words or reads; on failure it returns empty text and the tools fall back."
           model:
             provider: "langgenius/gemini/google"
-            name: "gemini-2.5-flash"
+            name: "gemini-3.5-flash"
             mode: "chat"
             completion_params:
               temperature: 0
@@ -528,7 +528,7 @@ workflow:
           desc: "Gemini words or reads; on failure it returns empty text and the tools fall back."
           model:
             provider: "langgenius/gemini/google"
-            name: "gemini-2.5-flash"
+            name: "gemini-3.5-flash"
             mode: "chat"
             completion_params:
               temperature: 0
@@ -740,7 +740,7 @@ workflow:
           desc: "Gemini words or reads; on failure it returns empty text and the tools fall back."
           model:
             provider: "langgenius/gemini/google"
-            name: "gemini-2.5-flash"
+            name: "gemini-3.5-flash"
             mode: "chat"
             completion_params:
               temperature: 0

@@ -22,7 +22,7 @@ model_config:
     prompt: null
   model:
     provider: "langgenius/gemini/google"
-    name: "gemini-2.5-flash"
+    name: "gemini-3.5-flash"
     mode: "chat"
     completion_params:
       temperature: 0

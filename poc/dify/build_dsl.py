@@ -28,7 +28,7 @@ OUT = Path(__file__).with_name("hk-eli-chat.yml")
 
 DSL_VERSION = "0.3.0"          # Dify 1.x imports older minor versions with a warning, never a hard stop
 PROVIDER = "langgenius/gemini/google"
-MODEL = "gemini-2.5-flash"
+MODEL = "gemini-3.5-flash"   # 2.5 flash is closed to new keys (Gemini 400, 2026-11-24)
 PLUGIN = "langgenius/gemini"   # marketplace plugin Dify offers to install on import
 
 
