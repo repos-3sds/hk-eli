@@ -293,3 +293,33 @@ def test_dsl_graph_is_sound():
     # Dify only ever calls our tool endpoints
     assert {n["url"].split("#}}")[1] for n in nodes.values() if n["type"] == "http-request"} == \
         {"/tools/context", "/tools/answer", "/tools/reword"}
+
+
+class WordDown(Honest):
+    """Reads fine, but the wording model fails (as with a bad key in Dify's model provider)."""
+    def generate_json(self, system, user, schema):
+        if _is_word(system, schema):
+            from hkeli_poc.llm import LLMError
+            raise LLMError("API_KEY_INVALID")
+        return super().generate_json(system, user, schema)
+
+
+def test_word_model_down_keeps_the_template_without_a_rewrite(env):
+    """Dify ends such a run as partial-succeeded with empty text: that is the fail branch, not an outage."""
+    class Partial(LocalDify):
+        calls = 0
+
+        def chat(self, inputs, query, user, conversation_id=None):
+            Partial.calls += 1
+            yield from super().chat(inputs, query, user, conversation_id)
+            yield {"event": "workflow_finished", "status": "partial-succeeded", "error": None}
+
+    q = "What is total outstanding ELI?"
+    engine = Partial(WordDown(), appmod._flow_answer_fn, env.lib, env.kb)
+    a = None
+    for kind, data in flow_run.ask(q, "demo.user", "proposed", None, "req-worddown-1", engine, env.lib, env.kb):
+        if kind == "answer":
+            a = data
+    assert a["status"] == "OK" and a["meta"]["insight"] == "gateway->template"
+    assert a["headline"] == native(q, None)["headline"]
+    assert Partial.calls == 1

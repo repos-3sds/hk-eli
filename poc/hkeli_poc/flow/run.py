@@ -52,7 +52,9 @@ def ask(question: str, user: str, site: str, scenario: str | None, request_id: s
             yield ("stage", {"n": n, "name": "Grade", "label": "Checking the figures",
                              "ms": round((time.perf_counter() - t0) * 1000, 1)})
             problems = G.grade(t, text, lib, getattr(engine, "model", "dify"), attempt=1)
-            if problems:
+            if problems and not text.strip():
+                G.give_up(t)        # the model wrote nothing (down or misconfigured): a rewrite won't help
+            elif problems:
                 text, end = yield from _drain(engine, {"request_id": request_id, "mode": "reword"}, question, user,
                                               conversation_id, t0, n, worded=True)
                 problems = G.grade(t, text, lib, getattr(engine, "model", "dify"), attempt=2)
@@ -86,6 +88,8 @@ def _drain(engine, inputs, query, user, conv, t0, n0, worded):
             end = ev
         elif k == "error":
             raise DifyError(ev.get("code", "DIFY_ERROR"), ev.get("message", ""))
-        elif k == "workflow_finished" and ev.get("status") not in (None, "succeeded"):
+        elif k == "workflow_finished" and ev.get("status") not in (None, "succeeded", "partial-succeeded"):
+            # partial-succeeded = a node failed and took its fail branch (an LLM node returns empty text):
+            # that is our designed fallback, not an outage
             raise DifyError("WORKFLOW_" + str(ev.get("status")).upper(), ev.get("error") or "")
     return text, {"n": n, **end}
