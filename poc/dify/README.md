@@ -65,3 +65,30 @@ If Dify is down or its key is wrong, the stream sends an `error` event with code
 `DIFY_TIMEOUT` or `DIFY_HTTP_401`, and `/api/v1/ask` returns 503. If a tool call fails, the Read node stops
 the run with `ELI_TOOL_<status>` and the same error path applies. If an LLM node fails it returns empty text:
 the answer tool then uses the rules reading, and the word step falls back to the template.
+
+## The Agent variant (to compare)
+
+`hk-eli-agent.yml` is Dify's **Agent** app type (agent-chat, function calling on Gemini). Our code still does
+the context engineering first: it reads the question, picks the view and filters, fetches as the user, checks
+the figures and masks client and position ids. That context pack goes to the agent with the question. The
+agent writes the answer and decides by itself when to call our MCP tools for more:
+
+| MCP tool | What it does |
+| --- | --- |
+| `eli_ask` | One more data question, answered by code from the views as the same user (at most 4 per question) |
+| `eli_views` | Which views exist, what each covers |
+
+Python then grades the agent's text against every figure it was given (the pack plus each tool result), asks
+once for a rewrite in the same conversation, and otherwise keeps the template answer. Refusals,
+clarifications and empty results are answered by code and never reach the agent.
+
+Set it up:
+
+1. Studio > Import DSL file > `hk-eli-agent.yml` (app "HK ELI Agent").
+2. Tools > MCP > Add MCP server: URL `http://host.docker.internal:8051/mcp`, name `HK ELI tools`,
+   server identifier `hk-eli`, header `Authorization: Bearer <DIFY_TOOL_KEY>`. It lists `eli_ask` and `eli_views`.
+3. In the HK ELI Agent app, Tools > Add > HK ELI tools > both tools. Publish, then create its API key.
+4. Run the agent with `DIFY_AGENT_API_KEY_FILE` as well as `DIFY_API_KEY_FILE`. `ORCHESTRATOR=dify` keeps the
+   Chatflow as the default; `ORCHESTRATOR=dify_agent` makes the Agent the default. Each question can also pick
+   with `"engine": "chatflow"` or `"engine": "agent"` in the request body.
+5. Compare: `python scripts/compare_dify.py --base http://127.0.0.1:8051 --out compare.md`.

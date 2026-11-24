@@ -35,7 +35,7 @@ from typing import Literal
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -51,6 +51,8 @@ from .stork.pipeline import answer
 from .flow import run as flow_run
 from .flow import tools as flow_tools
 from .flow import context as flow_context
+from .flow import agentic as flow_agentic
+from .flow import mcp as flow_mcp
 from .flow.dify import DifyClient, DifyError, LocalDify
 from .workbook import SITES, public_catalog
 
@@ -68,6 +70,7 @@ class State:
     kb: KB.Knowledge | None = None
     lib: dict | None = None
     dify = None
+    dify_agent = None
 
 
 S = State()
@@ -199,6 +202,9 @@ class Ask(BaseModel):
     site: str = "proposed"
     scenario: str | None = Field(default=None, max_length=20)
     conversation_id: str | None = Field(default=None, max_length=64)
+    # Dify only: run this question through the Chatflow or the Agent app (for side-by-side comparison).
+    # Ignored when ORCHESTRATOR=native, and when the chosen app has no key.
+    engine: Literal["chatflow", "agent"] | None = None
     # "insights" = background questions a screen asks on its own (e.g. Today). Stored for audit, left out of history.
     channel: Literal["chat", "insights"] = "chat"
 
@@ -248,17 +254,42 @@ def _flow_answer_fn(t, llm):
 def flow_engine():
     """local: the Chatflow's graph in this process (model = LLM_MODE). dify: the real Dify Service API."""
     cfg = config.get()
-    if cfg.orchestrator == "dify":
+    if cfg.orchestrator == "dify" or (cfg.orchestrator == "dify_agent" and cfg.dify_api_key):
         if S.dify is None:
             S.dify = DifyClient(cfg.dify_base_url, cfg.dify_api_key, timeout_s=cfg.dify_timeout_s)
         return S.dify
     return LocalDify(S.llm, _flow_answer_fn, S.lib, S.kb)
 
 
+def agent_engine():
+    """The Dify Agent app (agent-chat): our context pack in, MCP tools for more, Python grades its text."""
+    cfg = config.get()
+    if S.dify_agent is None:
+        S.dify_agent = DifyClient(cfg.dify_base_url, cfg.dify_agent_api_key, timeout_s=cfg.dify_timeout_s)
+    return S.dify_agent
+
+
+def _mode(body: Ask) -> str:
+    """native | flow | agent for this question."""
+    cfg = config.get()
+    if cfg.orchestrator == "native":
+        return "native"
+    if body.engine == "agent" and cfg.dify_base_url and cfg.dify_agent_api_key:
+        return "agent"
+    if body.engine == "chatflow" and (cfg.orchestrator in ("local", "dify") or cfg.dify_api_key):
+        return "flow"
+    return "agent" if cfg.orchestrator == "dify_agent" else "flow"
+
+
 def _flow(body: Ask, user: str, on_step=None, on_token=None) -> dict:
     a = None
-    for kind, data in flow_run.ask(body.question.strip(), user, body.site, body.scenario, uuid.uuid4().hex,
-                                   flow_engine(), S.lib, S.kb):
+    if _mode(body) == "agent":
+        events = flow_agentic.ask(body.question.strip(), user, body.site, body.scenario, uuid.uuid4().hex,
+                                  agent_engine(), S.lib, _flow_answer_fn)
+    else:
+        events = flow_run.ask(body.question.strip(), user, body.site, body.scenario, uuid.uuid4().hex,
+                              flow_engine(), S.lib, S.kb)
+    for kind, data in events:
         if kind == "stage" and on_step:
             on_step(data)
         elif kind == "token" and on_token:
@@ -270,7 +301,7 @@ def _flow(body: Ask, user: str, on_step=None, on_token=None) -> dict:
 
 def _ask(body: Ask, user: str, rid: str, on_step=None, on_token=None) -> dict:
     t0 = time.perf_counter()
-    if config.get().orchestrator == "native":
+    if _mode(body) == "native":
         a = run(body.question.strip(), body.site, body.scenario, user=user, on_step=on_step)
     else:
         a = _flow(body, user, on_step=on_step, on_token=on_token)
@@ -401,6 +432,34 @@ def tool_reword(body: ToolReq, request: Request):
     ensure_started()
     _tool_auth(request)
     return _tool(lambda: flow_tools.reword(body.request_id))
+
+
+@app.post("/mcp", tags=["dify-tools"])
+async def mcp_endpoint(request: Request):
+    """MCP server (Streamable HTTP, JSON responses) for the Dify Agent app: eli_ask and eli_views."""
+    ensure_started()
+    _tool_auth(request)
+    try:
+        msg = json.loads(await request.body())
+    except ValueError:
+        return JSONResponse({"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "Parse error"}},
+                            status_code=400)
+    if isinstance(msg, list):
+        out = [r for r in (await _mcp_one(m) for m in msg) if r is not None]
+        return JSONResponse(out) if out else Response(status_code=202)
+    r = await _mcp_one(msg)
+    return JSONResponse(r) if r is not None else Response(status_code=202)
+
+
+async def _mcp_one(m):
+    import anyio   # the tools run the (blocking) pipeline
+    return await anyio.to_thread.run_sync(flow_mcp.handle, m, _flow_answer_fn)
+
+
+@app.get("/mcp", include_in_schema=False)
+def mcp_get():
+    """No server-initiated stream: every reply comes back on the POST."""
+    return Response(status_code=405, headers={"Allow": "POST"})
 
 
 @app.get("/tools/openapi.json", tags=["dify-tools"])

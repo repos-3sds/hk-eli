@@ -45,6 +45,9 @@ def parse_sse(lines: Iterator[str]) -> Iterator[dict]:
                    "node_type": (ev.get("data") or {}).get("node_type", "")}
         elif kind in ("message", "agent_message"):
             yield {"event": "message", "answer": ev.get("answer", "")}
+        elif kind == "agent_thought":
+            yield {"event": "agent_thought", "id": ev.get("id"), "tool": ev.get("tool") or "",
+                   "tool_input": ev.get("tool_input") or ""}
         elif kind == "message_replace":
             yield {"event": "message_replace", "answer": ev.get("answer", "")}
         elif kind == "message_end":

@@ -206,6 +206,71 @@ def dsl() -> dict:
     }
 
 
+AGENT_OUT = Path(__file__).with_name("hk-eli-agent.yml")
+
+AGENT_PROMPT = """You are the HK ELI Chatbot for the bank's GFM WMS specialists and CBG product and treasury sales managers.
+They run the Hong Kong equity-linked investment (ELI) business and can see all trades.
+
+Our code has already read the question, picked the Tableau view and filters, fetched the data as this user and
+checked the figures. You get that as CONTEXT (JSON): figures, up to 10 rows (client and position ids hidden),
+scope, data freshness (as_of), caveats, and template_answer, a plain sentence that is already correct.
+
+Request id: {{request_id}}
+
+CONTEXT:
+{{context}}
+
+How to answer:
+1. Answer from CONTEXT. Lead with the answer in one or two sentences, then up to five short bullets.
+2. Use only figures that appear in CONTEXT or in a tool result, written exactly as given (same units and rounding).
+   Never add, subtract, average or estimate figures yourself. If a figure you need is missing, call a tool.
+3. Tools (pass the request id above every time):
+   - eli_ask: one more specific data question, answered by code from the views, when CONTEXT does not cover
+     what the user asked (another segment, period, underlying, or a comparison). At most 3 calls.
+   - eli_views: which views exist, if you are unsure the data can answer it.
+4. Say which data it is (scope) and when (as_of). Keep the caveats that matter.
+5. Insight, not advice: never say buy, sell, recommend, should, or predict prices. Describe what the data shows.
+6. Never guess client names or ids; they are hidden on purpose.
+7. Plain English, no tables, no code blocks."""
+
+
+def agent_dsl() -> dict:
+    """Dify's "Agent" app type (agent-chat, function calling on Gemini). Its MCP tools are added in Dify after
+    import (Tools > MCP > hk-eli), because Dify ties them to the server it registered, not to this file."""
+    return {
+        "app": {"name": "HK ELI Agent", "mode": "agent-chat", "icon": "🧭", "icon_background": "#0B1F33",
+                "description": "Agent variant of the HK ELI Chatbot, for comparison with the Chatflow. Code builds the "
+                               "context (view, filters, figures); the agent answers and may call HK ELI MCP tools; code "
+                               "grades every figure. *Will be part of Ask-MIRA in future",
+                "use_icon_as_answer_icon": False},
+        "kind": "app",
+        "version": DSL_VERSION,
+        "dependencies": [{"current_identifier": None, "type": "marketplace",
+                          "value": {"marketplace_plugin_unique_identifier": PLUGIN}}],
+        "model_config": {
+            "agent_mode": {"enabled": True, "max_iteration": 5, "strategy": "function_call", "tools": [],
+                           "prompt": None},
+            "model": {"provider": PROVIDER, "name": MODEL, "mode": "chat", "completion_params": {"temperature": 0}},
+            "pre_prompt": AGENT_PROMPT,
+            "prompt_type": "simple",
+            "user_input_form": [
+                {"text-input": {"variable": "request_id", "label": "request_id", "required": True,
+                                "max_length": 64, "default": ""}},
+                {"paragraph": {"variable": "context", "label": "context", "required": True, "max_length": 30000,
+                               "default": ""}}],
+            "opening_statement": "", "suggested_questions": [],
+            "suggested_questions_after_answer": {"enabled": False},
+            "speech_to_text": {"enabled": False}, "text_to_speech": {"enabled": False},
+            "retriever_resource": {"enabled": False}, "annotation_reply": {"enabled": False},
+            "more_like_this": {"enabled": False}, "sensitive_word_avoidance": {"enabled": False},
+            "file_upload": {"image": {"enabled": False, "number_limits": 3, "transfer_methods": ["local_file"]}},
+            "dataset_configs": {"retrieval_model": "multiple", "datasets": {"datasets": []}},
+            "dataset_query_variable": "",
+            "chat_prompt_config": {}, "completion_prompt_config": {},
+        },
+    }
+
+
 # --- a small YAML writer (no PyYAML in the pinned requirements) -------------------------------------------
 
 def _scalar(v) -> str:
@@ -226,7 +291,7 @@ def _yaml(v, ind: int = 0) -> list[str]:
             return [pad + "{}"]
         for k, x in v.items():
             if isinstance(x, str) and "\n" in x:
-                out.append(f"{pad}{k}: |")
+                out.append(f"{pad}{k}: |" if x.endswith("\n") and not x.endswith("\n\n") else f"{pad}{k}: |-")
                 out += [(pad + "  " + ln) if ln else "" for ln in x.rstrip("\n").split("\n")]
             elif isinstance(x, (dict, list)) and x:
                 out.append(f"{pad}{k}:")
@@ -253,9 +318,16 @@ def render() -> str:
     return head + "\n".join(_yaml(dsl())) + "\n"
 
 
+def render_agent() -> str:
+    head = "# HK ELI Agent (Dify Agent app) for Dify 1.16. Generated by dify/build_dsl.py; edit that file, not this one.\n"
+    return head + "\n".join(_yaml(agent_dsl())) + "\n"
+
+
 if __name__ == "__main__":
-    text = render()
+    files = {OUT: render(), AGENT_OUT: render_agent()}
     if "--check" in sys.argv:
-        sys.exit(0 if OUT.exists() and OUT.read_text() == text else "hk-eli-chat.yml is out of date: run python dify/build_dsl.py")
-    OUT.write_text(text)
-    print(f"wrote {OUT} ({len(text.splitlines())} lines)")
+        stale = [p.name for p, t in files.items() if not p.exists() or p.read_text() != t]
+        sys.exit(f"out of date: {', '.join(stale)}: run python dify/build_dsl.py" if stale else 0)
+    for p, t in files.items():
+        p.write_text(t)
+        print(f"wrote {p} ({len(t.splitlines())} lines)")
