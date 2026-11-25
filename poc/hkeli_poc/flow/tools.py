@@ -117,7 +117,8 @@ def openapi(base_url: str) -> dict:
         props.update(extra or {})
         return {"post": {"operationId": op_id, "summary": summary,
                          "requestBody": {"required": True, "content": {"application/json": {"schema": {
-                             "type": "object", "required": ["request_id"], "properties": props}}}},
+                             "type": "object", "required": ["request_id", *[k for k in (extra or {}) if k != "model_text"]],
+                             "properties": props}}}},
                          "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {
                              "type": "object", "properties": out or {}}}}}}}}
     s = {"type": "string"}
@@ -134,5 +135,13 @@ def openapi(base_url: str) -> dict:
                                 out={"status": s, "headline": s, "wordable": s, "word_system": s, "word_user": s}),
             "/tools/reword": op("eli_reword", "The wording prompt again with the problems the figure check found",
                                 out={"status": s, "headline": s, "word_system": s, "word_user": s}),
+            # the Agent app's two tools, for a Dify where MCP is not available (same behaviour as /mcp)
+            "/tools/eli_ask": op("eli_ask", "Answer one more HK ELI data question from the Tableau views, as the asking "
+                                 "user. Code picks the view, filters and figures. Use only when the context does not "
+                                 "cover the question; one specific question per call.",
+                                 {"question": {"type": "string", "description": "One specific data question"}},
+                                 out={"status": s, "template_answer": s, "figures": {"type": "array", "items": {"type": "object"}}}),
+            "/tools/eli_views": op("eli_views", "List the HK ELI Tableau views: what each covers and its grain",
+                                   out={"views": {"type": "array", "items": {"type": "object"}}}),
         },
     }

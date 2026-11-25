@@ -250,7 +250,7 @@ Results on the Mac: `~/Documents/hk-eli-dify/compare-tableau.md` and `compare-ta
 2. Chatflow on vague questions: suggest follow-up questions.
 3. Chatflow on "knock out this week": sometimes answers, sometimes asks, and on the trial data it labelled all
    7-day maturities as knock-outs. Tighten the result-label check and make the rules consistent.
-4. Follow-up questions across turns (see 8).
+4. ~~Follow-up questions across turns~~: built 25 Nov, see section 11. Needs the live rerun on the Mac.
 5. Trial workbook gaps (what-if only): add "Predictive Result" to the two outstanding-simulation views and
    publish `ALL_position_scenario`. Reconcile the trial totals with the mock (see Run 4).
    On the Mac every question runs as one Tableau user (a site administrator), so per-user row-level security
@@ -275,3 +275,40 @@ For Tableau (Run 4), add `TABLEAU_MODE=real TABLEAU_CATALOG=proposed` and the Co
 same comparison with `--out compare-tableau.md`.
 
 Tests: `python -m pytest -q` (316 pass).
+
+
+## 11. Conversation threads (25 Nov 2026)
+
+A live 8-turn thread on the trial showed neither app carried a thread: the conversation id was never passed
+on, and nothing read earlier turns. Turn 4 ("which clients are those?" after "only Wan Chai") listed all 124
+TRE customers instead of the Wan Chai ones, with a normal status.
+
+**Design: Python owns the thread, not model memory** (`hkeli_poc/stork/thread.py`). Before any data call,
+code reads each message against the thread and writes the standalone question the pipeline answers. All
+three paths (native, Chatflow, Agent) get the same standalone question, so the comparison stays fair.
+
+| Stage | Example | What happens |
+| --- | --- | --- |
+| New topic | "What is total outstanding ELI?" | Nothing carried (except a standing focus) |
+| Refine | "and for the next 30 days?", "only Wan Chai" | Keep everything, replace only the kind named |
+| Drill | "which clients are those?" | New measure, same scope |
+| Go back | "go back to the first question" | Restores a saved topic |
+| Standing focus | "focus on TRE in D1 from now on" / "clear the focus" | Applied to every later question until cleared |
+| Pick | "the second one" | Answers the clarification option |
+| Can't carry | "what about TPC instead?" on a maturity topic | Says maturity covers TRE only; changes nothing |
+
+Rules: every carried value is shown ("Continuing: TRE · Wan Chai · next 30 days") with a "Start a new topic"
+chip; a value that would be lost on the way is said, never dropped; a refusal, clarification or error leaves
+the topic where it was; at most one clarification for the same message, then the best-supported reading,
+labelled "Read as". The state (topic, first topic, last 10 topics, standing focus, last 6 turns) is saved
+with each answer in our store, per user and per conversation, so it is the same size at turn 5 or 50,
+survives a restart, and one user can't read another's. Old figures are never reused: every turn fetches again
+as the user. The Agent also gets the resolved question, what was carried and the last 6 turns in its context
+pack, for wording only.
+
+Tests (`tests/test_thread.py`, 22): the 8-turn thread turn by turn, the Wan Chai drill matching the
+stand-alone figures, threads of 5, 10, 20 and 50 turns with no drift, isolation, restart, the focus, go back,
+pick, no repeated clarification, and the Chatflow path. 338 tests pass in total.
+
+The Agent's two tools are now also REST custom tools (`/tools/eli_ask`, `/tools/eli_views`, in
+`/tools/openapi.json`), for a Dify where MCP is off.

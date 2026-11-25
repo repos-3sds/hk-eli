@@ -44,6 +44,20 @@ def pack(a: dict, rows: int = 10) -> dict:
     }
 
 
+def conversation(thread: dict) -> dict:
+    """The thread as code resolved it: the question as read, what was carried, and the last few turns.
+
+    Code already turned the user's message into the standalone question the figures answer, so the agent never
+    has to guess what "those" or "and for TPC?" means. Earlier headlines are there for wording only: their
+    figures are not in the evidence, so the grade rejects any that are repeated.
+    """
+    return {"read_as": thread.get("read_as", ""), "carried_from_earlier": list(thread.get("carried") or []),
+            "earlier_turns": [{"asked": t.get("asked", ""), "read_as": t.get("read_as", ""),
+                               "answer": t.get("headline", "")} for t in (thread.get("recent") or [])[-6:]],
+            "note": ("The question was resolved by code using the earlier turns. Answer read_as. Say what was carried "
+                     "in a short phrase. Use figures only from this context or your tools, never from earlier answers.")}
+
+
 def resolvable(a: dict) -> bool:
     """A question our rules read several ways: the agent may pick a reading and fetch it with eli_ask."""
     return a.get("status") == "NEEDS_CLARIFICATION" and bool((a.get("clarify") or {}).get("options"))
@@ -112,7 +126,7 @@ def grade(t: Turn, text: str, banned: list[str]) -> list[str]:
 
 
 def ask(question: str, user: str, site: str, scenario: str | None, request_id: str, engine, lib: dict,
-        answer_fn, conversation_id: str | None = None) -> Iterator[tuple[str, dict]]:
+        answer_fn, conversation_id: str | None = None, thread: dict | None = None) -> Iterator[tuple[str, dict]]:
     """Yields ("stage"|"token", data) then ("answer", answer). Raises DifyError if Dify fails first."""
     t0 = time.perf_counter()
 
@@ -129,7 +143,10 @@ def ask(question: str, user: str, site: str, scenario: str | None, request_id: s
             a["meta"]["insight"] = "template"
             yield ("answer", a)
             return
-        inputs = {"request_id": request_id, "context": json.dumps(pack(a), separators=(",", ":"))}
+        p = pack(a)
+        if thread:
+            p["conversation"] = conversation(thread)
+        inputs = {"request_id": request_id, "context": json.dumps(p, separators=(",", ":"))}
         banned = lib["write_answer"].banned
         text, end, n = yield from _drain(engine, inputs, question, user, conversation_id, t0, n)
         n += 1

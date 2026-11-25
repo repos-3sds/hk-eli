@@ -47,7 +47,8 @@ from . import tableau_real as TR
 from .db import Store
 from .mock_tableau import InProcessMock
 from .mock_tableau import router as tableau_router
-from .stork.pipeline import answer
+from .stork.pipeline import answer, demo_today
+from .stork import thread as TH
 from .flow import run as flow_run
 from .flow import tools as flow_tools
 from .flow import context as flow_context
@@ -281,13 +282,15 @@ def _mode(body: Ask) -> str:
     return "agent" if cfg.orchestrator == "dify_agent" else "flow"
 
 
-def _flow(body: Ask, user: str, on_step=None, on_token=None) -> dict:
+def _flow(body: Ask, user: str, on_step=None, on_token=None, question: str | None = None,
+          thread: dict | None = None) -> dict:
     a = None
+    q = (question or body.question).strip()
     if _mode(body) == "agent":
-        events = flow_agentic.ask(body.question.strip(), user, body.site, body.scenario, uuid.uuid4().hex,
-                                  agent_engine(), S.lib, _flow_answer_fn)
+        events = flow_agentic.ask(q, user, body.site, body.scenario, uuid.uuid4().hex,
+                                  agent_engine(), S.lib, _flow_answer_fn, thread=thread)
     else:
-        events = flow_run.ask(body.question.strip(), user, body.site, body.scenario, uuid.uuid4().hex,
+        events = flow_run.ask(q, user, body.site, body.scenario, uuid.uuid4().hex,
                               flow_engine(), S.lib, S.kb)
     for kind, data in events:
         if kind == "stage" and on_step:
@@ -299,15 +302,62 @@ def _flow(body: Ask, user: str, on_step=None, on_token=None) -> dict:
     return a
 
 
+def _thread_state(user: str, conv: str) -> dict | None:
+    """The thread state saved with this conversation's last answer (per user; None for a new thread)."""
+    turns = S.store.conversation_answers(user, conv) or []
+    for t in reversed(turns):
+        if t.get("channel", "chat") == "chat" and t.get("answer") and t["answer"].get("thread"):
+            return t["answer"]["thread"]
+    return None
+
+
+def _code_reply(body: Ask, r) -> dict:
+    """A turn the thread logic answers itself: setting or clearing the focus, or a scope no view carries."""
+    rep = r.reply
+    blocked = rep.get("code") == "SCOPE_NOT_AVAILABLE"
+    return {"question": body.question, "site": body.site, "scenario": body.scenario,
+            "status": "UNSUPPORTED" if blocked else "OK", "reasons": [rep.get("code", "THREAD_SCOPE")],
+            "caveats": [{"code": rep["code"], "level": "block", "text": rep["headline"]}] if blocked else [],
+            "headline": rep["headline"], "bullets": [], "table": None, "chart": None, "numbers": [], "evidence": [],
+            "embed": None, "embeds": [], "followups": [f for f in rep.get("followups", []) if f], "as_of": None,
+            "scope": "", "assumptions": [], "intent": "thread", "trace": [],
+            "meta": {"understanding": "thread", "insight": "template", "orchestrator": "code"}}
+
+
+def _answer_once(body: Ask, user: str, question: str, on_step, on_token, thread: dict | None) -> dict:
+    if _mode(body) == "native":
+        return run(question, body.site, body.scenario, user=user, on_step=on_step)
+    return _flow(body, user, on_step=on_step, on_token=on_token, question=question, thread=thread)
+
+
 def _ask(body: Ask, user: str, rid: str, on_step=None, on_token=None) -> dict:
     t0 = time.perf_counter()
-    if _mode(body) == "native":
-        a = run(body.question.strip(), body.site, body.scenario, user=user, on_step=on_step)
+    conv = S.store.conversation(user, body.conversation_id)
+    chat = body.channel == "chat"
+    r = TH.resolve(body.question.strip(), _thread_state(user, conv) if chat else None, demo_today())
+    if r.reply:
+        a = _code_reply(body, r)
     else:
-        a = _flow(body, user, on_step=on_step, on_token=on_token)
+        ctx = {"read_as": r.question, "carried": r.carried, "recent": r.state.get("recent", [])} if chat else None
+        a = _answer_once(body, user, r.question, on_step, on_token, ctx)
+        pend = r.state.get("clarify") or {}
+        if (a.get("status") == "NEEDS_CLARIFICATION" and pend.get("for") == r.asked and pend.get("count", 0) >= 1
+                and (a.get("clarify") or {}).get("options")):
+            # asked the same thing again after a clarification: no second round, take the best-supported reading
+            pick = a["clarify"]["options"][0]
+            r.question, r.stage, r.frame = pick["question"], "pick", TH._frame(pick["question"], demo_today())
+            r.note = f"Read as: {pick['question']}"
+            a = _answer_once(body, user, r.question, on_step, on_token, ctx)
+    a["question"] = body.question
+    if r.note:
+        a["assumptions"] = [r.note, *[x for x in (a.get("assumptions") or []) if x != r.note]]
+    if chat:
+        a["thread"] = TH.advance(r, a)
+        a["thread_view"] = TH.view(r)
+        if a["thread_view"]["carried"] or a["thread_view"]["focus"]:
+            a["followups"] = [*(a.get("followups") or [])[:4], "Start a new topic"]
     calls = [c.as_row() for c in a.pop("_llm_calls", [])]
     ms = round((time.perf_counter() - t0) * 1000)
-    conv = S.store.conversation(user, body.conversation_id)
     tid = S.store.record_turn(conversation_id=conv, request_id=rid, user_id=user, answer=a, latency_ms=ms,
                               channel=body.channel)
     S.store.record_llm_calls(tid, rid, calls)
@@ -460,6 +510,29 @@ async def _mcp_one(m):
 def mcp_get():
     """No server-initiated stream: every reply comes back on the POST."""
     return Response(status_code=405, headers={"Allow": "POST"})
+
+
+class AskToolReq(BaseModel):
+    request_id: str = Field(min_length=8, max_length=64)
+    question: str = Field(min_length=2, max_length=500)
+
+
+@app.post("/tools/eli_ask", tags=["dify-tools"])
+def tool_eli_ask(body: AskToolReq, request: Request):
+    """The Agent's `eli_ask` as a REST custom tool (same as the MCP tool), for a Dify without MCP."""
+    ensure_started()
+    _tool_auth(request)
+    out = flow_mcp.call("eli_ask", body.model_dump(), _flow_answer_fn)
+    return JSONResponse(out, status_code=404 if out.get("error") == "UNKNOWN_REQUEST" else 200)
+
+
+@app.post("/tools/eli_views", tags=["dify-tools"])
+def tool_eli_views(body: ToolReq, request: Request):
+    """The Agent's `eli_views` as a REST custom tool."""
+    ensure_started()
+    _tool_auth(request)
+    out = flow_mcp.call("eli_views", {"request_id": body.request_id}, _flow_answer_fn)
+    return JSONResponse(out, status_code=404 if out.get("error") == "UNKNOWN_REQUEST" else 200)
 
 
 @app.get("/tools/openapi.json", tags=["dify-tools"])

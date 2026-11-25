@@ -223,7 +223,7 @@ def test_tool_endpoints_need_the_tool_key(monkeypatch):
     r = c.post("/tools/context", json={"request_id": "abcdefgh1"}, headers={"Authorization": "Bearer tool-secret"})
     assert r.status_code == 404 and r.json() == {"error": "UNKNOWN_REQUEST"}
     spec = c.get("/tools/openapi.json").json()
-    assert set(spec["paths"]) == {"/tools/context", "/tools/answer", "/tools/reword"}
+    assert set(spec["paths"]) == {"/tools/context", "/tools/answer", "/tools/reword", "/tools/eli_ask", "/tools/eli_views"}
 
 
 def test_tool_answer_over_http_runs_the_pipeline(monkeypatch, env):
