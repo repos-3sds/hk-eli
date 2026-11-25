@@ -193,8 +193,11 @@ columns. Two gaps, used only by what-if questions: `ALL_outstanding_simulation_n
 not published.
 
 Every answer is OK_WITH_WARNING with STALE_DATA: the trial data is as of 18 Nov (refreshed 19 Nov 06:12), six
-days old on the run date. That is the right behaviour. Figures differ from the mock because the trial holds a
-different snapshot of the synthetic data; every figure below comes from Tableau.
+days old on the run date. That is the right behaviour. Every figure below comes from Tableau, but the totals
+are **not yet reconciled** with the mock: 9988 HK is HKD 386.0M in both, yet the total is HKD 2.46B against
+HKD 2.82B, and the sheets matched the mock when uploaded on 20 Nov. Rows may be missing or filtered on the
+trial, or we may read a view wrongly. Compare the trial and the mock view by view before relying on these
+figures.
 
 | Question | Trial (both apps) | Mock (Run 3) |
 | --- | --- | --- |
@@ -249,7 +252,9 @@ Results on the Mac: `~/Documents/hk-eli-dify/compare-tableau.md` and `compare-ta
    7-day maturities as knock-outs. Tighten the result-label check and make the rules consistent.
 4. Follow-up questions across turns (see 8).
 5. Trial workbook gaps (what-if only): add "Predictive Result" to the two outstanding-simulation views and
-   publish `ALL_position_scenario`.
+   publish `ALL_position_scenario`. Reconcile the trial totals with the mock (see Run 4).
+   On the Mac every question runs as one Tableau user (a site administrator), so per-user row-level security
+   is designed in but not yet tested.
 6. For the bank: port the tool service to Flask, the store to Elasticsearch, secrets to ENAAS, and the widget to
    Lit; agree where Dify runs, which Gemini route it uses, and the firewall from Python to Tableau (TMTB).
 
