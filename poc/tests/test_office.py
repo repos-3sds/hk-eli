@@ -143,7 +143,7 @@ def test_health_ready_config_and_headers():
     r = client.get("/readyz").json()
     assert r["ready"] and set(r["checks"]) == {"store", "knowledge", "prompts", "tableau", "llm"}
     c = client.get("/api/v1/config").json()
-    assert c["llm_mode"] == "off" and c["prompts"] == {"understand": "2.0.0", "write_answer": "1.0.0"}
+    assert c["llm_mode"] == "off" and c["prompts"] == {"understand": "2.0.0", "write_answer": "2.0.0"}
     page = client.get("/")
     csp = page.headers["Content-Security-Policy"]
     assert "default-src 'self'" in csp and "http" not in csp
@@ -290,7 +290,7 @@ def test_llm_calls_are_audited_with_prompt_version(monkeypatch):
     a = client.post("/api/v1/ask", json={"question": Q_UNSURE}).json()
     rows = appmod.S.store._con.execute("SELECT step, prompt_version, outcome FROM llm_call WHERE turn_id = ?",
                                        (a["turn_id"],)).fetchall()
-    assert [tuple(r) for r in rows] == [("understand", "2.0.0", "ok"), ("write_answer", "1.0.0", "error")]
+    assert [tuple(r) for r in rows] == [("understand", "2.0.0", "ok"), ("write_answer", "2.0.0", "error")]
 
 
 def test_empty_auth_scheme_sends_key_alone(monkeypatch):

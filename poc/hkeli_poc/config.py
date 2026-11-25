@@ -132,6 +132,16 @@ class Settings:
     llm: LLMSettings | None = None
     catalog_path: Path | None = None   # office: the merged real catalog (office/import_catalog.py); None = packaged synthetic one
     concept_matcher: bool = True        # catalog concept matcher and value translation (logical-query-mcp rules)
+    # Dify flow: native = today's in-process pipeline; local = the Chatflow's graph run in this process;
+    # dify = Python builds the context, Dify (Service API) processes, fetches through /tools/* and streams,
+    # Python grades and reflects.
+    orchestrator: str = "native"
+    dify_base_url: str | None = None
+    dify_api_key: str | None = field(repr=False, default=None)
+    dify_agent_api_key: str | None = field(repr=False, default=None)   # the Dify Agent app (agent-chat)
+    dify_tool_key: str | None = field(repr=False, default=None)
+    dify_tool_base_url: str | None = None
+    dify_timeout_s: float = 90.0
 
     def today(self) -> date:
         if self.demo_today:
@@ -188,6 +198,15 @@ def load() -> Settings:
     if llm_mode == "gateway" and not llm.gateway_url.startswith("https://") and not llm.gateway_url.startswith("http://127.0.0.1"):
         raise ConfigError("LLM_GATEWAY_URL must use https (TLS verification stays on)")
 
+    orchestrator = _choice("ORCHESTRATOR", "native", ("native", "local", "dify", "dify_agent"))
+    dify_base_url = (_env("DIFY_BASE_URL") or "").rstrip("/") or None
+    dify_api_key = secret("DIFY_API_KEY")
+    dify_agent_api_key = secret("DIFY_AGENT_API_KEY")
+    if orchestrator == "dify" and not (dify_base_url and dify_api_key):
+        raise ConfigError("ORCHESTRATOR=dify needs DIFY_BASE_URL and DIFY_API_KEY (or DIFY_API_KEY_FILE)")
+    if orchestrator == "dify_agent" and not (dify_base_url and dify_agent_api_key):
+        raise ConfigError("ORCHESTRATOR=dify_agent needs DIFY_BASE_URL and DIFY_AGENT_API_KEY (or DIFY_AGENT_API_KEY_FILE)")
+
     trust = _bool("TRUST_EDGE_HEADERS", False)
     edge_token = secret("EDGE_SHARED_TOKEN")
     if trust and not edge_token:
@@ -209,6 +228,13 @@ def load() -> Settings:
         edge_token=edge_token,
         default_user=_env("DEFAULT_USER", "demo.user"),
         llm=llm,
+        orchestrator=orchestrator,
+        dify_base_url=dify_base_url,
+        dify_api_key=dify_api_key,
+        dify_agent_api_key=dify_agent_api_key,
+        dify_tool_key=secret("DIFY_TOOL_KEY"),
+        dify_tool_base_url=(_env("DIFY_TOOL_BASE_URL") or "").rstrip("/") or None,
+        dify_timeout_s=_float("DIFY_TIMEOUT_S", 90.0, 5, 600),
         catalog_path=_path("CATALOG_PATH", Path("")) if _env("CATALOG_PATH") else None,
         concept_matcher=_bool("CONCEPT_MATCHER", True),
     )

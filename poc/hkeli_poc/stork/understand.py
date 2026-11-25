@@ -407,7 +407,8 @@ def _rule_hits(s: str, it: Intent) -> list[str]:
         hits.append("customer_count_maturity")
     elif customers:
         hits.append("customer_count")
-    if re.search(r"\bshare\b|percent|%|proportion|portion|fraction|\bratio\b|\bsplit\b", s):
+    if re.search(r"\bshare\b|percent|%|proportion|portion|fraction|\bratio\b|\bsplit\b|\b(by|per|each) segments?\b", s) or (
+            len(it.segments) > 1 and re.search(r"\bcompare|\bversus\b|\bvs\b|against\b|\beach\b", s)):
         hits.append("segment_result_share" if it.result else "segment_share")
     if re.search(r"distribution|\bmtm\b|histogram|spread across|\bbins?\b", s):
         hits.append("mtm_distribution")

@@ -60,18 +60,8 @@ def interpret(question: str, today: date, llm, lib: dict, kb: KB.Knowledge, call
     call = _call("understand", pr, llm)
     t0 = time.perf_counter()
     try:
-        hints = {k: v for k, v in base.hints.items()
-                 if v and k not in ("unsupported", "concepts", "gaps", "clarify", "text", "corrections")}
-        values = dict(question=question, today=today.isoformat(), hints_json=json.dumps(hints),
-                      intents_json=json.dumps([{k: i[k] for k in ("id", "grain", "label", "example") if k in i}
-                                               for i in kb.intents["intents"]]),
-                      glossary_json=json.dumps(_glossary_for_prompt(kb)))
-        if "examples_json" in pr.inputs:
-            values["examples_json"] = json.dumps([[e, i["id"]] for i in kb.intents["intents"] for e in i.get("examples", [])])
-        if "rule_reading" in pr.inputs:
-            values["rule_reading"] = ", ".join(base.candidates) or "nothing"
-        sys_txt, user_txt = pr.render(**values)
-        raw = llm.generate_json(sys_txt, user_txt, understand_schema(pr, kb))
+        sys_txt, user_txt, schema = understand_prompt(base, question, today, lib, kb)
+        raw = llm.generate_json(sys_txt, user_txt, schema)
         merged, problems = merge_intent(base, raw, kb, today)
         call.latency_ms = round((time.perf_counter() - t0) * 1000)
     except LLMError as e:
@@ -87,6 +77,24 @@ def interpret(question: str, today: date, llm, lib: dict, kb: KB.Knowledge, call
         return base
     calls.append(call)
     return decide(base, merged, raw, kb)
+
+
+def understand_prompt(base: Intent, question: str, today: date, lib: dict, kb: KB.Knowledge) -> tuple[str, str, dict]:
+    """The rendered `understand` prompt (system, user, JSON schema): what any model runner receives,
+    whether this process calls the model or hands the prompt to Dify."""
+    pr = lib["understand"]
+    hints = {k: v for k, v in base.hints.items()
+             if v and k not in ("unsupported", "concepts", "gaps", "clarify", "text", "corrections")}
+    values = dict(question=question, today=today.isoformat(), hints_json=json.dumps(hints),
+                  intents_json=json.dumps([{k: i[k] for k in ("id", "grain", "label", "example") if k in i}
+                                           for i in kb.intents["intents"]]),
+                  glossary_json=json.dumps(_glossary_for_prompt(kb)))
+    if "examples_json" in pr.inputs:
+        values["examples_json"] = json.dumps([[e, i["id"]] for i in kb.intents["intents"] for e in i.get("examples", [])])
+    if "rule_reading" in pr.inputs:
+        values["rule_reading"] = ", ".join(base.candidates) or "nothing"
+    sys_txt, user_txt = pr.render(**values)
+    return sys_txt, user_txt, understand_schema(pr, kb)
 
 
 def decide(base: Intent, merged: Intent, raw: dict, kb: KB.Knowledge) -> Intent:
@@ -220,6 +228,28 @@ def check_wording(text: str, allowed: set[str], banned: list[str]) -> list[str]:
     return problems
 
 
+RESULT_TERMS = {   # predicted results a figure can be about; wording may name one only if the data does
+    "KO": re.compile(r"knock[- ]?outs?|knocked[- ]out|\bKO\b", re.I),
+    "KI": re.compile(r"knock[- ]?ins?|knocked[- ]in|\bKI\b", re.I),
+    "EXP": re.compile(r"\bexpir(?:y|ies|es|ed)\b|\bEXP\b", re.I),
+}
+
+
+def label_problems(text: str, outs: list[dict]) -> list[str]:
+    """A right number with the wrong label (e.g. all maturities called knock-outs). A result term may appear only
+    when one of the answers the text is based on carries that result: as its filter, in scope, caveats,
+    assumptions, figures or table."""
+    corpus = []
+    for o in outs:
+        corpus += [str((o.get("slots") or {}).get("result") or ""), o.get("scope", ""), o.get("headline", "")]
+        corpus += [c["text"] for c in o.get("caveats", [])] + list(o.get("assumptions") or [])
+        corpus += [f"{n.get('id', '')} {n.get('measure', '')} {n.get('display', '')}" for n in o.get("numbers", [])]
+        tbl = o.get("table") or {}
+        corpus += [str(c) for c in tbl.get("columns", [])] + [str(c) for r in tbl.get("rows", []) for c in r]
+    blob = " ".join(corpus)
+    return [f"LABEL_NOT_IN_DATA:{k}" for k, rx in RESULT_TERMS.items() if rx.search(text) and not rx.search(blob)]
+
+
 def word(out: dict, llm, lib: dict, kb: KB.Knowledge, calls: list) -> str:
     """Returns the insight mode for meta. Changes out['headline'] / out['bullets'] only when checks pass."""
     if not getattr(llm, "enabled", False):
@@ -227,15 +257,7 @@ def word(out: dict, llm, lib: dict, kb: KB.Knowledge, calls: list) -> str:
     if out["status"] not in ("OK", "OK_WITH_WARNING") or not out.get("numbers"):
         return "template"
     pr = lib["write_answer"]
-    tbl = out.get("table") or {}
-    values = dict(
-        question=out["question"], scope=out.get("scope", ""), view_label=(out.get("evidence") or [{}])[0].get("view", ""),
-        as_of=json.dumps(out.get("as_of") or {}),
-        numbers_json=json.dumps([{k: n[k] for k in ("id", "display", "measure")} for n in out["numbers"]]),
-        table_json=json.dumps({"columns": tbl.get("columns", []), "rows": tbl.get("rows", [])[:10]}),
-        caveats_json=json.dumps([c["text"] for c in out.get("caveats", [])]),
-        assumptions_json=json.dumps(out.get("assumptions") or []),
-        draft_headline=out.get("headline", ""), domain_md=kb.domain_md)
+    values = word_values(out, kb)
     allowed = evidence_figures(out)
     # Spec (C13, EH 26): one retry when the text fails the number check, then the template.
     for _attempt in (1, 2):
@@ -250,19 +272,61 @@ def word(out: dict, llm, lib: dict, kb: KB.Knowledge, calls: list) -> str:
             calls.append(call)
             return "gateway->template"      # the adapter already retried transport errors
         call.latency_ms = round((time.perf_counter() - t0) * 1000)
-        head = str(raw.get("headline") or "").strip()
-        bullets = [str(b).strip() for b in (raw.get("bullets") or []) if str(b).strip()][:3]
-        problems = ["EMPTY"] if not head else check_wording(" ".join([head] + bullets), allowed, pr.banned)
+        problems = grade_wording(out, raw, allowed, pr.banned)
         if problems:
             call.outcome, call.detail = "rejected", ",".join(sorted(set(problems)))[:200]
             calls.append(call)
             continue
         calls.append(call)
-        out["draft_headline"] = out["headline"]
-        out["headline"] = head
-        out["bullets"] = bullets + [b for b in out.get("bullets", []) if b not in bullets]
+        apply_wording(out, raw)
         return "gateway"
     return "gateway->template"
 
 
-__all__ = ["interpret", "decide", "needs_model", "word", "merge_intent", "check_wording", "evidence_figures", "understand_schema"]
+def wordable(out: dict) -> bool:
+    """The model words an answer only when it is OK and has checked figures; everything else keeps the template."""
+    return out.get("status") in ("OK", "OK_WITH_WARNING") and bool(out.get("numbers"))
+
+
+def word_values(out: dict, kb: KB.Knowledge) -> dict:
+    """Inputs of the `write_answer` prompt: validated figures, the first table rows, caveats and the draft."""
+    tbl = out.get("table") or {}
+    return dict(
+        question=out["question"], scope=out.get("scope", ""), view_label=(out.get("evidence") or [{}])[0].get("view", ""),
+        as_of=json.dumps(out.get("as_of") or {}),
+        numbers_json=json.dumps([{k: n[k] for k in ("id", "display", "measure")} for n in out["numbers"]]),
+        table_json=json.dumps({"columns": tbl.get("columns", []), "rows": tbl.get("rows", [])[:10]}),
+        caveats_json=json.dumps([c["text"] for c in out.get("caveats", [])]),
+        assumptions_json=json.dumps(out.get("assumptions") or []),
+        draft_headline=out.get("headline", ""), domain_md=kb.domain_md)
+
+
+def word_prompt(out: dict, lib: dict, kb: KB.Knowledge) -> tuple[str, str, dict]:
+    pr = lib["write_answer"]
+    sys_txt, user_txt = pr.render(**word_values(out, kb))
+    return sys_txt, user_txt, PR.fill_enums(pr.schema, {})
+
+
+def grade_wording(out: dict, raw: dict, allowed: set[str] | None, banned: list[str]) -> list[str]:
+    """Problems with a model's {headline, bullets}: empty, a figure not in the evidence, or a banned phrase."""
+    if not isinstance(raw, dict):
+        return ["NOT_JSON"]
+    head = str(raw.get("headline") or "").strip()
+    bullets = [str(b).strip() for b in (raw.get("bullets") or []) if str(b).strip()][:3]
+    if not head:
+        return ["EMPTY"]
+    text = " ".join([head] + bullets)
+    return (check_wording(text, allowed if allowed is not None else evidence_figures(out), banned)
+            + label_problems(text, [out]))
+
+
+def apply_wording(out: dict, raw: dict) -> None:
+    head = str(raw.get("headline") or "").strip()
+    bullets = [str(b).strip() for b in (raw.get("bullets") or []) if str(b).strip()][:3]
+    out["draft_headline"] = out["headline"]
+    out["headline"] = head
+    out["bullets"] = bullets + [b for b in out.get("bullets", []) if b not in bullets]
+
+
+__all__ = ["interpret", "decide", "needs_model", "word", "understand_prompt", "word_prompt", "word_values",
+           "wordable", "grade_wording", "label_problems", "apply_wording", "merge_intent", "check_wording", "evidence_figures", "understand_schema"]

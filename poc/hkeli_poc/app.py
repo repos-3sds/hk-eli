@@ -35,7 +35,7 @@ from typing import Literal
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -47,7 +47,14 @@ from . import tableau_real as TR
 from .db import Store
 from .mock_tableau import InProcessMock
 from .mock_tableau import router as tableau_router
-from .stork.pipeline import answer
+from .stork.pipeline import answer, demo_today
+from .stork import thread as TH
+from .flow import run as flow_run
+from .flow import tools as flow_tools
+from .flow import context as flow_context
+from .flow import agentic as flow_agentic
+from .flow import mcp as flow_mcp
+from .flow.dify import DifyClient, DifyError, LocalDify
 from .workbook import SITES, public_catalog
 
 STATIC = Path(__file__).parent / "static"
@@ -63,6 +70,8 @@ class State:
     llm = None
     kb: KB.Knowledge | None = None
     lib: dict | None = None
+    dify = None
+    dify_agent = None
 
 
 S = State()
@@ -194,6 +203,9 @@ class Ask(BaseModel):
     site: str = "proposed"
     scenario: str | None = Field(default=None, max_length=20)
     conversation_id: str | None = Field(default=None, max_length=64)
+    # Dify only: run this question through the Chatflow or the Agent app (for side-by-side comparison).
+    # Ignored when ORCHESTRATOR=native, and when the chosen app has no key.
+    engine: Literal["chatflow", "agent"] | None = None
     # "insights" = background questions a screen asks on its own (e.g. Today). Stored for audit, left out of history.
     channel: Literal["chat", "insights"] = "chat"
 
@@ -216,10 +228,10 @@ def _real_embed(a: dict) -> dict:
     return a
 
 
-def run(question: str, site: str, scenario: str | None, user: str = "demo.user", on_step=None):
+def run(question: str, site: str, scenario: str | None, user: str = "demo.user", on_step=None, llm=None, word: bool = True):
     ensure_started()
     s = TR.settings()
-    kw = dict(user=user, llm=S.llm, lib=S.lib, kb=S.kb, on_step=on_step)
+    kw = dict(user=user, llm=llm or S.llm, lib=S.lib, kb=S.kb, on_step=on_step, word=word)
     if s:  # real Tableau: one workbook, whose contract is set by TABLEAU_CATALOG; no scenarios
         a = _real_embed(answer(question, tableau_http(), s.catalog, **kw))
     else:
@@ -234,12 +246,118 @@ def run(question: str, site: str, scenario: str | None, user: str = "demo.user",
     return a
 
 
-def _ask(body: Ask, user: str, rid: str, on_step=None) -> dict:
+# ---------------------------------------------------------------- Dify flow (ORCHESTRATOR=dify | local)
+def _flow_answer_fn(t, llm):
+    """The `answer` tool's body: the deterministic pipeline as the asking user, model wording left to Dify."""
+    return run(t.question, t.site, t.scenario, user=t.user, llm=llm, word=False)
+
+
+def flow_engine():
+    """local: the Chatflow's graph in this process (model = LLM_MODE). dify: the real Dify Service API."""
+    cfg = config.get()
+    if cfg.orchestrator == "dify" or (cfg.orchestrator == "dify_agent" and cfg.dify_api_key):
+        if S.dify is None:
+            S.dify = DifyClient(cfg.dify_base_url, cfg.dify_api_key, timeout_s=cfg.dify_timeout_s)
+        return S.dify
+    return LocalDify(S.llm, _flow_answer_fn, S.lib, S.kb)
+
+
+def agent_engine():
+    """The Dify Agent app (agent-chat): our context pack in, MCP tools for more, Python grades its text."""
+    cfg = config.get()
+    if S.dify_agent is None:
+        S.dify_agent = DifyClient(cfg.dify_base_url, cfg.dify_agent_api_key, timeout_s=cfg.dify_timeout_s)
+    return S.dify_agent
+
+
+def _mode(body: Ask) -> str:
+    """native | flow | agent for this question."""
+    cfg = config.get()
+    if cfg.orchestrator == "native":
+        return "native"
+    if body.engine == "agent" and cfg.dify_base_url and cfg.dify_agent_api_key:
+        return "agent"
+    if body.engine == "chatflow" and (cfg.orchestrator in ("local", "dify") or cfg.dify_api_key):
+        return "flow"
+    return "agent" if cfg.orchestrator == "dify_agent" else "flow"
+
+
+def _flow(body: Ask, user: str, on_step=None, on_token=None, question: str | None = None,
+          thread: dict | None = None) -> dict:
+    a = None
+    q = (question or body.question).strip()
+    if _mode(body) == "agent":
+        events = flow_agentic.ask(q, user, body.site, body.scenario, uuid.uuid4().hex,
+                                  agent_engine(), S.lib, _flow_answer_fn, thread=thread)
+    else:
+        events = flow_run.ask(q, user, body.site, body.scenario, uuid.uuid4().hex,
+                              flow_engine(), S.lib, S.kb)
+    for kind, data in events:
+        if kind == "stage" and on_step:
+            on_step(data)
+        elif kind == "token" and on_token:
+            on_token(data)
+        elif kind == "answer":
+            a = data
+    return a
+
+
+def _thread_state(user: str, conv: str) -> dict | None:
+    """The thread state saved with this conversation's last answer (per user; None for a new thread)."""
+    turns = S.store.conversation_answers(user, conv) or []
+    for t in reversed(turns):
+        if t.get("channel", "chat") == "chat" and t.get("answer") and t["answer"].get("thread"):
+            return t["answer"]["thread"]
+    return None
+
+
+def _code_reply(body: Ask, r) -> dict:
+    """A turn the thread logic answers itself: setting or clearing the focus, or a scope no view carries."""
+    rep = r.reply
+    blocked = rep.get("code") == "SCOPE_NOT_AVAILABLE"
+    return {"question": body.question, "site": body.site, "scenario": body.scenario,
+            "status": "UNSUPPORTED" if blocked else "OK", "reasons": [rep.get("code", "THREAD_SCOPE")],
+            "caveats": [{"code": rep["code"], "level": "block", "text": rep["headline"]}] if blocked else [],
+            "headline": rep["headline"], "bullets": [], "table": None, "chart": None, "numbers": [], "evidence": [],
+            "embed": None, "embeds": [], "followups": [f for f in rep.get("followups", []) if f], "as_of": None,
+            "scope": "", "assumptions": [], "intent": "thread", "trace": [],
+            "meta": {"understanding": "thread", "insight": "template", "orchestrator": "code"}}
+
+
+def _answer_once(body: Ask, user: str, question: str, on_step, on_token, thread: dict | None) -> dict:
+    if _mode(body) == "native":
+        return run(question, body.site, body.scenario, user=user, on_step=on_step)
+    return _flow(body, user, on_step=on_step, on_token=on_token, question=question, thread=thread)
+
+
+def _ask(body: Ask, user: str, rid: str, on_step=None, on_token=None) -> dict:
     t0 = time.perf_counter()
-    a = run(body.question.strip(), body.site, body.scenario, user=user, on_step=on_step)
+    conv = S.store.conversation(user, body.conversation_id)
+    chat = body.channel == "chat"
+    r = TH.resolve(body.question.strip(), _thread_state(user, conv) if chat else None, demo_today())
+    if r.reply:
+        a = _code_reply(body, r)
+    else:
+        ctx = {"read_as": r.question, "carried": r.carried, "recent": r.state.get("recent", [])} if chat else None
+        a = _answer_once(body, user, r.question, on_step, on_token, ctx)
+        pend = r.state.get("clarify") or {}
+        if (a.get("status") == "NEEDS_CLARIFICATION" and pend.get("for") == r.asked and pend.get("count", 0) >= 1
+                and (a.get("clarify") or {}).get("options")):
+            # asked the same thing again after a clarification: no second round, take the best-supported reading
+            pick = a["clarify"]["options"][0]
+            r.question, r.stage, r.frame = pick["question"], "pick", TH._frame(pick["question"], demo_today())
+            r.note = f"Read as: {pick['question']}"
+            a = _answer_once(body, user, r.question, on_step, on_token, ctx)
+    a["question"] = body.question
+    if r.note:
+        a["assumptions"] = [r.note, *[x for x in (a.get("assumptions") or []) if x != r.note]]
+    if chat:
+        a["thread"] = TH.advance(r, a)
+        a["thread_view"] = TH.view(r)
+        if a["thread_view"]["carried"] or a["thread_view"]["focus"]:
+            a["followups"] = [*(a.get("followups") or [])[:4], "Start a new topic"]
     calls = [c.as_row() for c in a.pop("_llm_calls", [])]
     ms = round((time.perf_counter() - t0) * 1000)
-    conv = S.store.conversation(user, body.conversation_id)
     tid = S.store.record_turn(conversation_id=conv, request_id=rid, user_id=user, answer=a, latency_ms=ms,
                               channel=body.channel)
     S.store.record_llm_calls(tid, rid, calls)
@@ -257,7 +375,12 @@ def ask(body: Ask, request: Request):
     ensure_started()
     if body.site not in SITES:
         raise HTTPException(400, "Unknown site")
-    return _ask(body, current_user(request), request.state.request_id)
+    try:
+        return _ask(body, current_user(request), request.state.request_id)
+    except DifyError as e:
+        log.warning("dify failed", extra={"extra": {"request_id": request.state.request_id, "code": e.code}})
+        return JSONResponse({"status": "SYSTEM_ERROR", "error": "The assistant service is not reachable right now.",
+                             "code": "DIFY_" + e.code, "request_id": request.state.request_id}, status_code=503)
 
 
 STAGE_LABEL = {"Pre-parse": "Reading the question", "Concepts": "Matching catalog terms",
@@ -273,6 +396,7 @@ def ask_stream(body: Ask, request: Request):
     """Same answer as /api/v1/ask, streamed as Server-Sent Events.
 
     event: stage   data: {"n", "name", "label", "ms"}   one per pipeline step, as it finishes
+    event: token   data: {"text", "state": "checking"}   Dify flow only: the draft headline so far, not yet graded
     event: answer  data: <the full answer object>       last event on success
     event: error   data: {"status": "SYSTEM_ERROR", "request_id"}
     """
@@ -285,8 +409,14 @@ def ask_stream(body: Ask, request: Request):
 
     def work():
         try:
-            a = _ask(body, user, rid, on_step=lambda st: q.put(("stage", {**st, "label": STAGE_LABEL.get(st["name"], st["name"])})))
+            a = _ask(body, user, rid,
+                     on_step=lambda st: q.put(("stage", {**st, "label": st.get("label") or STAGE_LABEL.get(st["name"], st["name"])})),
+                     on_token=lambda tk: q.put(("token", tk)))
             q.put(("answer", a))
+        except DifyError as e:
+            log.warning("dify failed", extra={"extra": {"request_id": rid, "code": e.code}})
+            q.put(("error", {"status": "SYSTEM_ERROR", "error": "The assistant service is not reachable right now.",
+                             "code": "DIFY_" + e.code, "request_id": rid}))
         except Exception:  # same envelope as the JSON endpoint, no internals
             log.exception("stream failed", extra={"extra": {"request_id": rid}})
             q.put(("error", {"status": "SYSTEM_ERROR", "error": "Something went wrong on our side.", "request_id": rid}))
@@ -304,6 +434,112 @@ def ask_stream(body: Ask, request: Request):
 
     return StreamingResponse(events(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"})
+
+
+# ---------------------------------------------------------------- tools the Dify Chatflow calls
+class ToolReq(BaseModel):
+    request_id: str = Field(min_length=8, max_length=64)
+    model_text: str | None = Field(default=None, max_length=20000)
+
+
+def _tool_auth(request: Request) -> None:
+    """Dify sends `Authorization: Bearer <DIFY_TOOL_KEY>`. The request id itself is a one-off random handle,
+    valid for five minutes and only while that question is being answered."""
+    key = config.get().dify_tool_key
+    got = request.headers.get("Authorization", "")
+    if not key or not hmac.compare_digest(got.encode(), f"Bearer {key}".encode()):
+        raise HTTPException(401, "Tool key required")
+
+
+def _tool(fn):
+    try:
+        return fn()
+    except flow_tools.ToolError as e:
+        return JSONResponse({"error": e.code}, status_code=e.status)
+
+
+@app.post("/tools/context", tags=["dify-tools"])
+def tool_context(body: ToolReq, request: Request):
+    """Stage 1 output: rules reading and, when the rules are unsure, the `understand` prompt for Dify's model."""
+    ensure_started()
+    _tool_auth(request)
+    return _tool(lambda: flow_context.package(flow_tools.turn(body.request_id)))
+
+
+@app.post("/tools/answer", tags=["dify-tools"])
+def tool_answer(body: ToolReq, request: Request):
+    """Fetch from Tableau as the asking user, validate and compose. Returns the `write_answer` prompt when the
+    answer may be worded, else the final headline. Rows and figures stay here."""
+    ensure_started()
+    _tool_auth(request)
+    return _tool(lambda: flow_tools.answer(body.request_id, body.model_text, _flow_answer_fn, S.lib, S.kb,
+                                           model="dify"))
+
+
+@app.post("/tools/reword", tags=["dify-tools"])
+def tool_reword(body: ToolReq, request: Request):
+    """The `write_answer` prompt again with the problems the figure check found (one rewrite)."""
+    ensure_started()
+    _tool_auth(request)
+    return _tool(lambda: flow_tools.reword(body.request_id))
+
+
+@app.post("/mcp", tags=["dify-tools"])
+async def mcp_endpoint(request: Request):
+    """MCP server (Streamable HTTP, JSON responses) for the Dify Agent app: eli_ask and eli_views."""
+    ensure_started()
+    _tool_auth(request)
+    try:
+        msg = json.loads(await request.body())
+    except ValueError:
+        return JSONResponse({"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "Parse error"}},
+                            status_code=400)
+    if isinstance(msg, list):
+        out = [r for r in (await _mcp_one(m) for m in msg) if r is not None]
+        return JSONResponse(out) if out else Response(status_code=202)
+    r = await _mcp_one(msg)
+    return JSONResponse(r) if r is not None else Response(status_code=202)
+
+
+async def _mcp_one(m):
+    import anyio   # the tools run the (blocking) pipeline
+    return await anyio.to_thread.run_sync(flow_mcp.handle, m, _flow_answer_fn)
+
+
+@app.get("/mcp", include_in_schema=False)
+def mcp_get():
+    """No server-initiated stream: every reply comes back on the POST."""
+    return Response(status_code=405, headers={"Allow": "POST"})
+
+
+class AskToolReq(BaseModel):
+    request_id: str = Field(min_length=8, max_length=64)
+    question: str = Field(min_length=2, max_length=500)
+
+
+@app.post("/tools/eli_ask", tags=["dify-tools"])
+def tool_eli_ask(body: AskToolReq, request: Request):
+    """The Agent's `eli_ask` as a REST custom tool (same as the MCP tool), for a Dify without MCP."""
+    ensure_started()
+    _tool_auth(request)
+    out = flow_mcp.call("eli_ask", body.model_dump(), _flow_answer_fn)
+    return JSONResponse(out, status_code=404 if out.get("error") == "UNKNOWN_REQUEST" else 200)
+
+
+@app.post("/tools/eli_views", tags=["dify-tools"])
+def tool_eli_views(body: ToolReq, request: Request):
+    """The Agent's `eli_views` as a REST custom tool."""
+    ensure_started()
+    _tool_auth(request)
+    out = flow_mcp.call("eli_views", {"request_id": body.request_id}, _flow_answer_fn)
+    return JSONResponse(out, status_code=404 if out.get("error") == "UNKNOWN_REQUEST" else 200)
+
+
+@app.get("/tools/openapi.json", tags=["dify-tools"])
+def tool_openapi(request: Request):
+    """OpenAPI 3 schema for Dify's custom tool provider (Tools > Custom > Create)."""
+    base = config.get().dify_tool_base_url or str(request.base_url).rstrip("/")
+    return flow_tools.openapi(base)
 
 
 class Feedback(BaseModel):
